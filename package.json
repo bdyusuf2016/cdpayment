@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "bdyusuf2016.github.io/cdpayment",
+  "homepage": "bdyusuf2016.github.io/customspayment",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
