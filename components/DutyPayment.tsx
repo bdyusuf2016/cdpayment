@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import { DutyItem, PaymentRecord, Client, SystemConfig } from "../types";
+import { insertDuties, updateDuty, deleteDuty } from "../utils/supabaseApi";
 import { printElement } from "../utils/printTable";
 
 interface DutyPaymentProps {
@@ -118,21 +119,40 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       formattedBe = `C-${formattedBe}`;
     }
 
+    const url = systemConfig.supabaseUrl;
+    const key = systemConfig.supabaseKey;
+
     if (editingId) {
-      setHistory((prev) =>
-        prev.map((rec) =>
-          rec.id === editingId
-            ? {
-                ...rec,
-                ain,
-                clientName,
-                phone,
-                beYear: `${formattedBe}(${beYear})`,
-                duty: parseFloat(dutyAmount),
-              }
-            : rec,
-        ),
-      );
+      const updatedRec: Partial<PaymentRecord> = {
+        ain,
+        clientName,
+        phone,
+        beYear: `${formattedBe}(${beYear})`,
+        duty: parseFloat(dutyAmount),
+      };
+
+      if (url && key) {
+        (async () => {
+          const res = await updateDuty(url, key, editingId, updatedRec);
+          if (res) {
+            setHistory((prev) =>
+              prev.map((rec) => (rec.id === editingId ? res : rec)),
+            );
+          } else {
+            setHistory((prev) =>
+              prev.map((rec) =>
+                rec.id === editingId ? { ...rec, ...(updatedRec as any) } : rec,
+              ),
+            );
+          }
+        })();
+      } else {
+        setHistory((prev) =>
+          prev.map((rec) =>
+            rec.id === editingId ? { ...rec, ...(updatedRec as any) } : rec,
+          ),
+        );
+      }
       setEditingId(null);
     } else {
       setQueue([
@@ -164,7 +184,21 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       status: "New",
       profit: 0,
     }));
-    setHistory([...newRecords, ...history]);
+    const url = systemConfig.supabaseUrl;
+    const key = systemConfig.supabaseKey;
+
+    if (url && key) {
+      (async () => {
+        const inserted = await insertDuties(url, key, newRecords);
+        if (inserted.length > 0) {
+          setHistory([...inserted, ...history]);
+        } else {
+          setHistory([...newRecords, ...history]);
+        }
+      })();
+    } else {
+      setHistory([...newRecords, ...history]);
+    }
     setQueue([]);
     setAin("");
     setClientName("");
@@ -258,24 +292,39 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const processPayment = () => {
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount)) return;
+    const url = systemConfig.supabaseUrl;
+    const key = systemConfig.supabaseKey;
 
-    setHistory((prev) =>
-      prev.map((rec) => {
-        if (!paymentIds.includes(rec.id)) return rec;
+    const updateLocal = (updated: PaymentRecord) => {
+      setHistory((prev) =>
+        prev.map((rec) => (rec.id === updated.id ? updated : rec)),
+      );
+    };
+
+    const applyUpdates = async () => {
+      for (const rec of history.filter((r) => paymentIds.includes(r.id))) {
         const splitAmount = amount / paymentIds.length;
-        return {
-          ...rec,
+        const patched: Partial<PaymentRecord> = {
           status: "Paid",
           received: splitAmount,
           profit: splitAmount - rec.duty,
           paymentMethod: paymentMethod,
         };
-      }),
-    );
+        if (url && key) {
+          const res = await updateDuty(url, key, rec.id, patched);
+          if (res) updateLocal(res);
+          else updateLocal({ ...rec, ...(patched as any) });
+        } else {
+          updateLocal({ ...rec, ...(patched as any) });
+        }
+      }
+    };
 
-    setShowPaymentModal(false);
-    setSelectedIds([]);
-    setPaymentIds([]);
+    applyUpdates().then(() => {
+      setShowPaymentModal(false);
+      setSelectedIds([]);
+      setPaymentIds([]);
+    });
   };
 
   // Trigger Delete Confirmation
@@ -287,11 +336,27 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   // Execute Delete
   const executeDelete = () => {
-    setHistory((prev) =>
-      prev.filter((rec) => !deleteConfirm.ids.includes(rec.id)),
-    );
-    setSelectedIds([]); // Clear selections
-    setDeleteConfirm({ show: false, ids: [] });
+    const url = systemConfig.supabaseUrl;
+    const key = systemConfig.supabaseKey;
+
+    if (url && key) {
+      (async () => {
+        for (const id of deleteConfirm.ids) {
+          await deleteDuty(url, key, id);
+        }
+        setHistory((prev) =>
+          prev.filter((rec) => !deleteConfirm.ids.includes(rec.id)),
+        );
+        setSelectedIds([]);
+        setDeleteConfirm({ show: false, ids: [] });
+      })();
+    } else {
+      setHistory((prev) =>
+        prev.filter((rec) => !deleteConfirm.ids.includes(rec.id)),
+      );
+      setSelectedIds([]); // Clear selections
+      setDeleteConfirm({ show: false, ids: [] });
+    }
   };
 
   const handleStatusUpdate = (
@@ -300,13 +365,28 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   ) => {
     const idsToUpdate = targetId ? [targetId] : selectedIds;
     if (idsToUpdate.length === 0) return;
+    const url = systemConfig.supabaseUrl;
+    const key = systemConfig.supabaseKey;
 
-    setHistory((prev) =>
-      prev.map((rec) => {
-        if (!idsToUpdate.includes(rec.id)) return rec;
-        return { ...rec, status: status };
-      }),
-    );
+    const apply = async () => {
+      for (const id of idsToUpdate) {
+        if (url && key) {
+          const res = await updateDuty(url, key, id, { status });
+          if (res)
+            setHistory((prev) => prev.map((r) => (r.id === id ? res : r)));
+          else
+            setHistory((prev) =>
+              prev.map((r) => (r.id === id ? { ...r, status } : r)),
+            );
+        } else {
+          setHistory((prev) =>
+            prev.map((r) => (r.id === id ? { ...r, status } : r)),
+          );
+        }
+      }
+    };
+
+    apply();
   };
 
   const handleEdit = (id: string) => {
