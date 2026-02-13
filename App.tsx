@@ -112,6 +112,14 @@ const App: React.FC = () => {
     }
   }, [config.theme]);
 
+  // Persist Supabase credentials to localStorage whenever they change
+  useEffect(() => {
+    if (!isLoadingSession) {
+      localStorage.setItem("supabase_url", config.supabaseUrl || "");
+      localStorage.setItem("supabase_key", config.supabaseKey || "");
+    }
+  }, [config.supabaseUrl, config.supabaseKey, isLoadingSession]);
+
   // Handle Login from Auth Component
   const handleLoginSuccess = (newSession: any, url: string, key: string) => {
     setConfig((prev) => ({ ...prev, supabaseUrl: url, supabaseKey: key }));

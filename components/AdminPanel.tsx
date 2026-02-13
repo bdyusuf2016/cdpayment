@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 import {
   StaffUser,
   SystemConfig,
@@ -96,6 +97,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showAddUser, setShowAddUser] = useState(false);
   const [newMethod, setNewMethod] = useState("");
   const [optimizing, setOptimizing] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "idle" | "testing" | "success" | "error"
+  >("idle");
 
   // Backup Restore Refs
   const restoreFileRef = useRef<HTMLInputElement>(null);
@@ -167,6 +171,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const togglePermission = (key: string) => {
     setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const testConnection = async () => {
+    if (!config.supabaseUrl || !config.supabaseKey) return;
+    setConnectionStatus("testing");
+    try {
+      const supabase = createClient(config.supabaseUrl, config.supabaseKey);
+      const { error } = await supabase
+        .from("clients")
+        .select("count", { count: "exact", head: true });
+      if (error) throw error;
+      setConnectionStatus("success");
+      setTimeout(() => setConnectionStatus("idle"), 3000);
+    } catch (err) {
+      setConnectionStatus("error");
+      setTimeout(() => setConnectionStatus("idle"), 3000);
+    }
   };
 
   // Backup Functions
@@ -308,6 +329,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   value={config.supabaseKey || ""}
                   onChange={(e) => updateConfig("supabaseKey", e.target.value)}
                 />
+                <div className="flex justify-end">
+                  <button
+                    onClick={testConnection}
+                    disabled={
+                      connectionStatus === "testing" ||
+                      !config.supabaseUrl ||
+                      !config.supabaseKey
+                    }
+                    className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center ${
+                      connectionStatus === "success"
+                        ? "bg-green-500 text-white"
+                        : connectionStatus === "error"
+                          ? "bg-red-500 text-white"
+                          : isDark
+                            ? "bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700"
+                            : "bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {connectionStatus === "testing" ? (
+                      <i className="fas fa-circle-notch animate-spin mr-2"></i>
+                    ) : connectionStatus === "success" ? (
+                      <i className="fas fa-check mr-2"></i>
+                    ) : connectionStatus === "error" ? (
+                      <i className="fas fa-times mr-2"></i>
+                    ) : (
+                      <i className="fas fa-plug mr-2"></i>
+                    )}
+                    {connectionStatus === "testing"
+                      ? "Checking..."
+                      : connectionStatus === "success"
+                        ? "Connected"
+                        : connectionStatus === "error"
+                          ? "Failed"
+                          : "Test Connection"}
+                  </button>
+                </div>
               </div>
             </div>
 
