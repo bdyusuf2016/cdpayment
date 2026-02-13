@@ -172,8 +172,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const submitQueue = () => {
     if (queue.length === 0) return;
-    const newRecords: PaymentRecord[] = queue.map((item) => ({
-      id: Math.random().toString(36).substr(2, 9),
+    const newRecords: Omit<PaymentRecord, "id">[] = queue.map((item) => ({
       date: new Date().toLocaleDateString("en-GB"),
       ain,
       clientName,
@@ -189,20 +188,26 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
     if (url && key) {
       (async () => {
-        const inserted = await insertDuties(url, key, newRecords);
+        const inserted = await insertDuties(url, key, newRecords as PaymentRecord[]);
         if (inserted.length > 0) {
           reloadData();
+          setQueue([]);
+          setAin("");
+          setClientName("");
+          setPhone("");
         } else {
-          setHistory([...newRecords, ...history]);
+          // Even if insert fails, clear queue but maybe show an error
+          setQueue([]);
         }
       })();
     } else {
-      setHistory([...newRecords, ...history]);
+      // Offline mode
+      // setHistory([...newRecords, ...history]);
+      setQueue([]);
+      setAin("");
+      setClientName("");
+      setPhone("");
     }
-    setQueue([]);
-    setAin("");
-    setClientName("");
-    setPhone("");
   };
 
   const generateWAMessage = (recs: PaymentRecord[]) => {

@@ -181,14 +181,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const totalDiscount = parseFloat(batchDiscount) || 0;
 
     // Distribute discount proportionally
-    const newRecords: AssessmentRecord[] = queue.map((item) => {
+    const newRecords: Omit<AssessmentRecord, "id">[] = queue.map((item) => {
       // Avoid division by zero
       const proportion = totalAmount > 0 ? item.amount / totalAmount : 0;
       const itemDiscount = totalDiscount * proportion;
       const itemNet = item.amount - itemDiscount;
 
       return {
-        id: Math.random().toString(36).substr(2, 9),
         date: new Date().toLocaleDateString("en-GB"),
         ain,
         clientName,
@@ -209,18 +208,27 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
     if (url && key) {
       (async () => {
-        const inserted = await insertAssessments(url, key, newRecords);
-        if (inserted.length > 0) reloadData();
-        else setHistory((prev) => [...newRecords, ...prev]);
+        const inserted = await insertAssessments(url, key, newRecords as AssessmentRecord[]);
+        if (inserted.length > 0) {
+          reloadData();
+          setQueue([]);
+          setAin("");
+          setClientName("");
+          setPhone("");
+          setBatchDiscount("");
+        } else {
+          setQueue([]);
+        }
       })();
     } else {
-      setHistory((prev) => [...newRecords, ...prev]);
+      // Offline mode
+      // setHistory((prev) => [...newRecords, ...prev]);
+      setQueue([]);
+      setAin("");
+      setClientName("");
+      setPhone("");
+      setBatchDiscount("");
     }
-    setQueue([]);
-    setAin("");
-    setClientName("");
-    setPhone("");
-    setBatchDiscount("");
   };
 
   const printAssessmentInvoice = (records: AssessmentRecord[]) => {
