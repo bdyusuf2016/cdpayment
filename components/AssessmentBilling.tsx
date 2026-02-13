@@ -5,6 +5,7 @@ import {
   AssessmentRecord,
   SystemConfig,
 } from "../types";
+import { insertAssessments, updateAssessment } from "../utils/supabaseApi";
 import { printElement } from "../utils/printTable";
 
 interface AssessmentBillingProps {
@@ -114,23 +115,45 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       // Editing mode - direct update
       const discountVal = parseFloat(batchDiscount) || 0; // In edit mode, we might use this as item discount
       const netVal = calculatedAmount - discountVal;
-      setHistory((prev) =>
-        prev.map((rec) =>
-          rec.id === editingId
-            ? {
-                ...rec,
-                ain,
-                clientName,
-                phone,
-                nosOfBe: parseInt(nosOfBe),
-                rate: parseFloat(rate),
-                amount: calculatedAmount,
-                discount: discountVal,
-                net: netVal,
-              }
-            : rec,
-        ),
-      );
+      const url = systemConfig.supabaseUrl;
+      const key = systemConfig.supabaseKey;
+
+      const patched: Partial<AssessmentRecord> = {
+        ain,
+        clientName,
+        phone,
+        nosOfBe: parseInt(nosOfBe),
+        rate: parseFloat(rate),
+        amount: calculatedAmount,
+        discount: discountVal,
+        net: netVal,
+      };
+
+      if (url && key) {
+        (async () => {
+          const res = await updateAssessment(url, key, editingId, patched);
+          if (res)
+            setHistory((prev) =>
+              prev.map((rec) => (rec.id === editingId ? res : rec)),
+            );
+          else
+            setHistory((prev) =>
+              prev.map((rec) =>
+                rec.id === editingId
+                  ? ({ ...rec, ...(patched as any) } as AssessmentRecord)
+                  : rec,
+              ),
+            );
+        })();
+      } else {
+        setHistory((prev) =>
+          prev.map((rec) =>
+            rec.id === editingId
+              ? ({ ...rec, ...(patched as any) } as AssessmentRecord)
+              : rec,
+          ),
+        );
+      }
       setEditingId(null);
       setBatchDiscount("");
     } else {
@@ -181,7 +204,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       };
     });
 
-    setHistory((prev) => [...newRecords, ...prev]);
+    const url = systemConfig.supabaseUrl;
+    const key = systemConfig.supabaseKey;
+
+    if (url && key) {
+      (async () => {
+        const inserted = await insertAssessments(url, key, newRecords);
+        if (inserted.length > 0) setHistory((prev) => [...inserted, ...prev]);
+        else setHistory((prev) => [...newRecords, ...prev]);
+      })();
+    } else {
+      setHistory((prev) => [...newRecords, ...prev]);
+    }
     setQueue([]);
     setAin("");
     setClientName("");
@@ -272,23 +306,46 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const processPayment = () => {
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount)) return;
+    const url = systemConfig.supabaseUrl;
+    const key = systemConfig.supabaseKey;
 
-    setHistory((prev) =>
-      prev.map((rec) => {
-        if (!paymentIds.includes(rec.id)) return rec;
+    const apply = async () => {
+      for (const rec of history.filter((r) => paymentIds.includes(r.id))) {
         const splitAmount = amount / paymentIds.length;
-        return {
-          ...rec,
+        const patched: Partial<AssessmentRecord> = {
           status: "Paid",
           received: splitAmount,
           paymentMethod: paymentMethod,
         };
-      }),
-    );
+        if (url && key) {
+          const res = await updateAssessment(url, key, rec.id, patched);
+          if (res)
+            setHistory((prev) => prev.map((r) => (r.id === rec.id ? res : r)));
+          else
+            setHistory((prev) =>
+              prev.map((r) =>
+                r.id === rec.id
+                  ? ({ ...r, ...(patched as any) } as AssessmentRecord)
+                  : r,
+              ),
+            );
+        } else {
+          setHistory((prev) =>
+            prev.map((r) =>
+              r.id === rec.id
+                ? ({ ...r, ...(patched as any) } as AssessmentRecord)
+                : r,
+            ),
+          );
+        }
+      }
+    };
 
-    setShowPaymentModal(false);
-    setSelectedIds([]);
-    setPaymentIds([]);
+    apply().then(() => {
+      setShowPaymentModal(false);
+      setSelectedIds([]);
+      setPaymentIds([]);
+    });
   };
 
   const isDark = systemConfig.theme === "dark";

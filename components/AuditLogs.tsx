@@ -1,13 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LogEntry, SystemConfig } from "../types";
 import { printElement } from "../utils/printTable";
+import { fetchAuditLogs } from "../utils/supabaseApi";
 
 interface AuditLogsProps {
   systemConfig: SystemConfig;
 }
 
 const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
-  const [logs] = useState<LogEntry[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [filter, setFilter] = useState("");
 
@@ -16,6 +19,70 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
       l.details.toLowerCase().includes(filter.toLowerCase()) ||
       l.action.toLowerCase().includes(filter.toLowerCase()),
   );
+
+  useEffect(() => {
+    async function loadLogs() {
+      if (systemConfig.supabaseUrl && systemConfig.supabaseKey) {
+        setLoading(true);
+        setError(null);
+        try {
+          const data: any[] = await fetchAuditLogs(
+            systemConfig.supabaseUrl,
+            systemConfig.supabaseKey,
+          );
+          const mapped: LogEntry[] = (data || []).map((d: any) => ({
+            id: d.id,
+            timestamp:
+              d.timestamp || d.created_at || new Date().toLocaleString(),
+            user: d.user_name ?? d.user ?? "system",
+            action: d.action || "",
+            module: d.module || "",
+            details: d.details || "",
+            type: d.type || "info",
+          }));
+          setLogs(mapped);
+        } catch (err) {
+          console.error("Failed to load audit logs", err);
+          setError("Failed to load audit logs");
+        } finally {
+          setLoading(false);
+        }
+      }
+    }
+    loadLogs();
+  }, [systemConfig.supabaseUrl, systemConfig.supabaseKey]);
+
+  function exportCSV() {
+    if (!logs || logs.length === 0) return;
+    const headers = [
+      "timestamp",
+      "user",
+      "action",
+      "module",
+      "details",
+      "type",
+    ];
+    const rows = logs.map((l) => [
+      l.timestamp,
+      l.user,
+      l.action,
+      l.module,
+      l.details,
+      l.type,
+    ]);
+    const csv = [headers, ...rows]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit_logs_${new Date().toISOString()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 
   const isDark = systemConfig.theme === "dark";
 
@@ -51,8 +118,50 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
                 onChange={(e) => setFilter(e.target.value)}
               />
             </div>
-            <button className="bg-white/10 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/10 hover:bg-white/20 transition-all">
+            <button
+              onClick={exportCSV}
+              className="bg-white/10 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/10 hover:bg-white/20 transition-all"
+            >
               <i className="fas fa-download mr-2"></i> CSV
+            </button>
+            <button
+              onClick={async () => {
+                if (!systemConfig.supabaseUrl || !systemConfig.supabaseKey)
+                  return;
+                setLoading(true);
+                setError(null);
+                try {
+                  const data: any[] = await fetchAuditLogs(
+                    systemConfig.supabaseUrl,
+                    systemConfig.supabaseKey,
+                  );
+                  const mapped: LogEntry[] = (data || []).map((d: any) => ({
+                    id: d.id,
+                    timestamp:
+                      d.timestamp ||
+                      d.created_at ||
+                      new Date().toLocaleString(),
+                    user: d.user_name ?? d.user ?? "system",
+                    action: d.action || "",
+                    module: d.module || "",
+                    details: d.details || "",
+                    type: d.type || "info",
+                  }));
+                  setLogs(mapped);
+                } catch (err) {
+                  console.error("Failed to refresh logs", err);
+                  setError("Failed to refresh logs");
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/10 transition-all ${loading ? "bg-white/20 text-white/50" : "bg-white/10 text-white hover:bg-white/20"}`}
+            >
+              <i
+                className={`fas ${loading ? "fa-spinner fa-spin" : "fa-sync"} mr-2`}
+              ></i>
+              {loading ? "Loading..." : "Refresh"}
             </button>
             <button
               onClick={() =>
@@ -67,6 +176,12 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
             </button>
           </div>
         </div>
+
+        {error ? (
+          <div className="p-4 bg-red-50 text-red-700 text-sm font-bold">
+            {error}
+          </div>
+        ) : null}
 
         <div className="overflow-x-auto">
           <table id="auditlogs-table" className="w-full text-left">
