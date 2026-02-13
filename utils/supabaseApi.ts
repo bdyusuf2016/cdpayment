@@ -202,7 +202,7 @@ export async function insertAuditLog(
 export async function insertDuties(
   url: string,
   key: string,
-  records: PaymentRecord[],
+  records: Partial<PaymentRecord>[],
 ): Promise<PaymentRecord[]> {
   try {
     const supabase = createSupabaseClient(url, key);
@@ -263,7 +263,7 @@ export async function deleteDuty(
 export async function insertAssessments(
   url: string,
   key: string,
-  records: AssessmentRecord[],
+  records: Partial<AssessmentRecord>[],
 ): Promise<AssessmentRecord[]> {
   try {
     const supabase = createSupabaseClient(url, key);
