@@ -8,7 +8,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   // Log a helpful message in development; do not throw to avoid breaking builds.
   // Change to `throw new Error(...)` if you prefer stricter behavior.
   // eslint-disable-next-line no-console
-  console.warn(
+  console.error(
     "[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not set",
   );
 }
