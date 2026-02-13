@@ -188,7 +188,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
     if (url && key) {
       (async () => {
-        const inserted = await insertDuties(url, key, newRecords as PaymentRecord[]);
+        const inserted = await insertDuties(url, key, newRecords);
         if (inserted.length > 0) {
           reloadData();
           setQueue([]);
@@ -197,6 +197,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           setPhone("");
         } else {
           // Even if insert fails, clear queue but maybe show an error
+          alert("Failed to save records to the database.");
           setQueue([]);
         }
       })();

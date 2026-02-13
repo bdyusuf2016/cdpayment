@@ -208,7 +208,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
     if (url && key) {
       (async () => {
-        const inserted = await insertAssessments(url, key, newRecords as AssessmentRecord[]);
+        const inserted = await insertAssessments(url, key, newRecords);
         if (inserted.length > 0) {
           reloadData();
           setQueue([]);
@@ -217,6 +217,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           setPhone("");
           setBatchDiscount("");
         } else {
+          alert("Failed to save records to the database.");
           setQueue([]);
         }
       })();
