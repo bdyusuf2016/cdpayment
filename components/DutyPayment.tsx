@@ -19,10 +19,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   reloadData,
 }) => {
   const [ain, setAin] = useState("");
-  const [clientName, setClientName] = useState("");
+  const [client_name, setClient_name] = useState("");
   const [phone, setPhone] = useState("");
   const [beNumber, setBeNumber] = useState("");
-  const [beYear, setBeYear] = useState(new Date().getFullYear().toString());
+  const [be_year, setBe_year] = useState(new Date().getFullYear().toString());
   const [dutyAmount, setDutyAmount] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -41,7 +41,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentIds, setPaymentIds] = useState<string[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [payment_method, setPayment_method] = useState("");
 
   // Delete Confirmation State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -67,15 +67,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     return history.filter((rec) => {
       const recDate = parseDate(rec.date);
       const matchesSearch =
-        rec.clientName.toLowerCase().includes(filterSearch.toLowerCase()) ||
+        rec.client_name.toLowerCase().includes(filterSearch.toLowerCase()) ||
         rec.ain.includes(filterSearch) ||
-        rec.beYear.includes(filterSearch);
+        rec.be_year.includes(filterSearch);
 
       const matchesStatus =
         filterStatus === "All" || rec.status === filterStatus;
       const matchesMethod =
         filterPaymentMethod === "All" ||
-        rec.paymentMethod === filterPaymentMethod;
+        rec.payment_method === filterPaymentMethod;
 
       let matchesDate = true;
       if (startDate) {
@@ -104,16 +104,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     setAin(val);
     const client = clients.find((c) => c.ain === val);
     if (client) {
-      setClientName(client.name);
+      setClient_name(client.name);
       setPhone(client.phone);
     } else {
-      setClientName("");
+      setClient_name("");
       setPhone("");
     }
   };
 
   const handleAddOrUpdate = () => {
-    if (!beNumber || !dutyAmount || !beYear) return;
+    if (!beNumber || !dutyAmount || !be_year) return;
 
     // Auto prefix with C-
     let formattedBe = beNumber.trim().toUpperCase();
@@ -127,9 +127,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     if (editingId) {
       const updatedRec: Partial<PaymentRecord> = {
         ain,
-        clientName,
+        client_name,
         phone,
-        beYear: `${formattedBe}(${beYear})`,
+        be_year: `${formattedBe}(${be_year})`,
         duty: parseFloat(dutyAmount),
       };
 
@@ -160,7 +160,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         {
           id: Math.random().toString(36).substr(2, 9),
           beNumber: formattedBe,
-          year: beYear,
+          year: be_year,
           duty: parseFloat(dutyAmount),
         },
       ]);
@@ -175,9 +175,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const newRecords: Omit<PaymentRecord, "id">[] = queue.map((item) => ({
       date: new Date().toLocaleDateString("en-GB"),
       ain,
-      clientName,
+      client_name,
       phone,
-      beYear: `${item.beNumber}(${item.year})`,
+      be_year: `${item.beNumber}(${item.year})`,
       duty: item.duty,
       received: 0,
       status: "New",
@@ -193,7 +193,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           reloadData();
           setQueue([]);
           setAin("");
-          setClientName("");
+          setClient_name("");
           setPhone("");
         } else {
           // Even if insert fails, clear queue but maybe show an error
@@ -206,24 +206,24 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       // setHistory([...newRecords, ...history]);
       setQueue([]);
       setAin("");
-      setClientName("");
+      setClient_name("");
       setPhone("");
     }
   };
 
   const generateWAMessage = (recs: PaymentRecord[]) => {
-    const clientName = recs[0].clientName;
+    const client_name = recs[0].client_name;
     const total = recs.reduce((a, b) => a + b.duty, 0);
 
     let msg = `*INVOICE SUMMARY*\n`;
     msg += `--------------------------------\n`;
     msg += `*Agency:* ${systemConfig.agencyName}\n`;
-    msg += `*Client:* ${clientName}\n`;
+    msg += `*Client:* ${client_name}\n`;
     msg += `*Date:* ${new Date().toLocaleDateString("en-GB")}\n`;
     msg += `--------------------------------\n\n`;
 
     recs.forEach((r, i) => {
-      msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* ৳${r.duty.toLocaleString()}\n\n`;
+      msg += `${i + 1}. *B/E:* ${r.be_year}\n    *Amount:* ৳${r.duty.toLocaleString()}\n\n`;
     });
 
     msg += `--------------------------------\n`;
@@ -262,7 +262,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         (r, i) => `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${i + 1}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee;">Duty Payment for B/E: <strong>${r.beYear}</strong></td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">Duty Payment for B/E: <strong>${r.be_year}</strong></td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">৳${r.duty.toLocaleString()}</td>
       </tr>`,
       )
@@ -279,7 +279,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             <div><h1 style="margin:0">${systemConfig.agencyName}</h1><p>${systemConfig.agencyAddress}</p></div>
             <div style="text-align: right"><h2>PAYMENT RECEIPT</h2><p>Date: ${new Date().toLocaleDateString("en-GB")}</p></div>
           </div>
-          <p><strong>Customer:</strong> ${client.clientName} (AIN: ${client.ain})</p>
+          <p><strong>Customer:</strong> ${client.client_name} (AIN: ${client.ain})</p>
           <table><thead><tr><th>SL</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${items}</tbody></table>
           <div class="total">Total Paid: ৳${totalDuty.toLocaleString()}</div>
         </body>
@@ -291,7 +291,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const initiatePayment = (ids: string[]) => {
     setPaymentIds(ids);
     setPaymentAmount(""); // Received Amount set to blank
-    setPaymentMethod(systemConfig.paymentMethods[0] || "Cash");
+    setPayment_method(systemConfig.payment_methods[0] || "Cash");
     setShowPaymentModal(true);
   };
 
@@ -314,7 +314,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           status: "Paid",
           received: splitAmount,
           profit: splitAmount - rec.duty,
-          paymentMethod: paymentMethod,
+          payment_method: payment_method,
         };
         if (url && key) {
           const res = await updateDuty(url, key, rec.id, patched);
@@ -398,11 +398,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     if (rec) {
       setEditingId(rec.id);
       setAin(rec.ain);
-      setClientName(rec.clientName);
+      setClient_name(rec.client_name);
       setPhone(rec.phone);
-      const [num, yearPart] = rec.beYear.split("(");
+      const [num, yearPart] = rec.be_year.split("(");
       setBeNumber(num.replace("C-", ""));
-      setBeYear(yearPart?.replace(")", "") || "");
+      setBe_year(yearPart?.replace(")", "") || "");
       setDutyAmount(rec.duty.toString());
       window.scrollTo({ top: 0, behavior: "smooth" });
       setTimeout(() => beInputRef.current?.focus(), 50);
@@ -504,7 +504,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 type="text"
                 readOnly
                 className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"}`}
-                value={clientName}
+                value={client_name}
                 placeholder="Client name will appear here..."
               />
             </div>
@@ -523,8 +523,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 <input
                   type="text"
                   className={`w-full px-4 py-3 rounded-xl border font-bold text-lg text-center outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-800"}`}
-                  value={beYear}
-                  onChange={(e) => setBeYear(e.target.value)}
+                  value={be_year}
+                  onChange={(e) => setBe_year(e.target.value)}
                 />
               </div>
               <div className="space-y-1">
@@ -719,7 +719,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               onChange={(e) => setFilterPaymentMethod(e.target.value)}
             >
               <option value="All">All Methods</option>
-              {systemConfig.paymentMethods.map((m) => (
+              {systemConfig.payment_methods.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -859,7 +859,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     <p
                       className={`text-base font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}
                     >
-                      {rec.clientName}
+                      {rec.client_name}
                     </p>
                     <div className="flex gap-2 mt-1.5">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
@@ -881,7 +881,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   <td
                     className={`px-6 py-4 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-900"}`}
                   >
-                    {rec.beYear}
+                    {rec.be_year}
                   </td>
                   <td
                     className={`px-6 py-4 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
@@ -1038,11 +1038,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   Payment Method
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {systemConfig.paymentMethods.map((m) => (
+                  {systemConfig.payment_methods.map((m) => (
                     <button
                       key={m}
-                      onClick={() => setPaymentMethod(m)}
-                      className={`py-3 px-2 rounded-xl text-xs font-bold uppercase border-2 transition-all ${paymentMethod === m ? "border-green-500 bg-green-50 text-green-700" : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                      onClick={() => setPayment_method(m)}
+                      className={`py-3 px-2 rounded-xl text-xs font-bold uppercase border-2 transition-all ${payment_method === m ? "border-green-500 bg-green-50 text-green-700" : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
                     >
                       {m}
                     </button>
