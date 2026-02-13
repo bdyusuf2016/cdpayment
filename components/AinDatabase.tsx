@@ -11,12 +11,14 @@ interface AinDatabaseProps {
   clients: Client[];
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
   systemConfig: SystemConfig;
+  reloadData: () => void;
 }
 
 const AinDatabase: React.FC<AinDatabaseProps> = ({
   clients,
   setClients,
   systemConfig,
+  reloadData,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -80,20 +82,18 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       (async () => {
         if (editingClient) {
           const ok = await updateClient(url, key, editingClient.ain, newClient);
-          if (ok)
-            setClients((prev) =>
-              prev.map((c) => (c.ain === editingClient.ain ? newClient : c)),
-            );
+          if (ok) reloadData();
         } else {
           if (clients.some((c) => c.ain === formAin)) {
             alert("This AIN already exists!");
             return;
           }
           const ok = await insertClient(url, key, newClient);
-          if (ok) setClients((prev) => [newClient, ...prev]);
+          if (ok) reloadData();
         }
       })();
     } else {
+      // Offline mode, still update locally
       if (editingClient) {
         setClients((prev) =>
           prev.map((c) => (c.ain === editingClient.ain ? newClient : c)),
@@ -119,18 +119,17 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
           for (const ain of selectedAins) {
             await deleteClient(url, key, ain);
           }
-          setClients((prev) =>
-            prev.filter((c) => !selectedAins.includes(c.ain)),
-          );
+          reloadData();
           setSelectedAins([]);
         } else if (confirmDelete.ain) {
           const targetAin = confirmDelete.ain;
           await deleteClient(url, key, targetAin);
-          setClients((prev) => prev.filter((c) => c.ain !== targetAin));
+          reloadData();
           setSelectedAins((prev) => prev.filter((id) => id !== targetAin));
         }
       })();
     } else {
+      // Offline mode
       if (confirmDelete.isBulk) {
         setClients((prev) => prev.filter((c) => !selectedAins.includes(c.ain)));
         setSelectedAins([]);
@@ -193,16 +192,11 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
               // attempt insert, ignore duplicates
               await insertClient(url, key, client);
             }
-            // reload clients from DB would be ideal, but append locally for now
-            setClients((prev) => {
-              const existingAins = new Set(prev.map((c) => c.ain));
-              const uniqueNewClients = newClients.filter(
-                (c) => !existingAins.has(c.ain),
-              );
-              return [...uniqueNewClients, ...prev];
-            });
+            // reload clients from DB
+            reloadData();
           })();
         } else {
+          // Offline mode
           setClients((prev) => {
             const existingAins = new Set(prev.map((c) => c.ain));
             const uniqueNewClients = newClients.filter(

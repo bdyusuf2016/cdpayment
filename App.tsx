@@ -29,6 +29,9 @@ const App: React.FC = () => {
   const [assessmentHistory, setAssessmentHistory] = useState<
     AssessmentRecord[]
   >([]);
+  const [dataVersion, setDataVersion] = useState(0);
+
+  const reloadData = () => setDataVersion((v) => v + 1);
 
   const [config, setConfig] = useState<SystemConfig>({
     defaultRate: 100,
@@ -99,7 +102,7 @@ const App: React.FC = () => {
     };
 
     loadData();
-  }, [config.supabaseUrl, config.supabaseKey]);
+  }, [config.supabaseUrl, config.supabaseKey, dataVersion]);
 
   // Update theme class on config change
   useEffect(() => {
@@ -467,6 +470,7 @@ const App: React.FC = () => {
               clients={clients}
               setClients={setClients}
               systemConfig={config}
+              reloadData={reloadData}
             />
           )}
           {activeTab === "admin" && (
