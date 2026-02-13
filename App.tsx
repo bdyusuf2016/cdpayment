@@ -455,6 +455,7 @@ const App: React.FC = () => {
               history={dutyHistory}
               setHistory={setDutyHistory}
               systemConfig={config}
+              reloadData={reloadData}
             />
           )}
           {activeTab === "assessment" && (
@@ -463,6 +464,7 @@ const App: React.FC = () => {
               systemConfig={config}
               history={assessmentHistory}
               setHistory={setAssessmentHistory}
+              reloadData={reloadData}
             />
           )}
           {activeTab === "ain" && (

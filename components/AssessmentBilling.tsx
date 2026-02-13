@@ -13,6 +13,7 @@ interface AssessmentBillingProps {
   systemConfig: SystemConfig;
   history: AssessmentRecord[];
   setHistory: React.Dispatch<React.SetStateAction<AssessmentRecord[]>>;
+  reloadData: () => void;
 }
 
 const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
@@ -20,6 +21,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   systemConfig,
   history,
   setHistory,
+  reloadData,
 }) => {
   const [ain, setAin] = useState("");
   const [clientName, setClientName] = useState("");
@@ -133,9 +135,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         (async () => {
           const res = await updateAssessment(url, key, editingId, patched);
           if (res)
-            setHistory((prev) =>
-              prev.map((rec) => (rec.id === editingId ? res : rec)),
-            );
+            reloadData();
           else
             setHistory((prev) =>
               prev.map((rec) =>
@@ -210,7 +210,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     if (url && key) {
       (async () => {
         const inserted = await insertAssessments(url, key, newRecords);
-        if (inserted.length > 0) setHistory((prev) => [...inserted, ...prev]);
+        if (inserted.length > 0) reloadData();
         else setHistory((prev) => [...newRecords, ...prev]);
       })();
     } else {
@@ -320,7 +320,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         if (url && key) {
           const res = await updateAssessment(url, key, rec.id, patched);
           if (res)
-            setHistory((prev) => prev.map((r) => (r.id === rec.id ? res : r)));
+            reloadData();
           else
             setHistory((prev) =>
               prev.map((r) =>
