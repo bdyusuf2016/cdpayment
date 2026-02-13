@@ -15,8 +15,12 @@ export async function fetchClients(
       .from<Client>("clients")
       .select("*")
       .order("created_at", { ascending: false });
+    console.log("fetchClients data:", data);
+    console.log("fetchClients error:", error);
     if (error) throw error;
-    return (data || []) as Client[];
+    const clients = (data || []) as Client[];
+    console.log("fetchClients returning:", clients);
+    return clients;
   } catch (err) {
     console.error("fetchClients error", err);
     throw err;
