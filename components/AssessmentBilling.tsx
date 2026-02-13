@@ -24,7 +24,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   reloadData,
 }) => {
   const [ain, setAin] = useState("");
-  const [clientName, setClientName] = useState("");
+  const [client_name, setClient_name] = useState("");
   const [phone, setPhone] = useState("");
   const [nosOfBe, setNosOfBe] = useState("");
   const [rate, setRate] = useState(systemConfig.defaultRate.toString());
@@ -46,7 +46,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentIds, setPaymentIds] = useState<string[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [payment_method, setPayment_method] = useState("");
 
   const beCountRef = useRef<HTMLInputElement>(null);
 
@@ -68,13 +68,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     return history.filter((rec) => {
       const recDate = parseDate(rec.date);
       const matchesSearch =
-        rec.clientName.toLowerCase().includes(filterSearch.toLowerCase()) ||
+        rec.client_name.toLowerCase().includes(filterSearch.toLowerCase()) ||
         rec.ain.includes(filterSearch);
       const matchesStatus =
         filterStatus === "All" || rec.status === filterStatus;
       const matchesMethod =
         filterPaymentMethod === "All" ||
-        rec.paymentMethod === filterPaymentMethod;
+        rec.payment_method === filterPaymentMethod;
 
       let matchesDate = true;
       if (startDate) {
@@ -103,10 +103,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     setAin(val);
     const client = clients.find((c) => c.ain === val);
     if (client) {
-      setClientName(client.name);
+      setClient_name(client.name);
       setPhone(client.phone);
     } else {
-      setClientName("");
+      setClient_name("");
       setPhone("");
     }
   };
@@ -122,7 +122,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
       const patched: Partial<AssessmentRecord> = {
         ain,
-        clientName,
+        client_name,
         phone,
         nosOfBe: parseInt(nosOfBe),
         rate: parseFloat(rate),
@@ -190,7 +190,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       return {
         date: new Date().toLocaleDateString("en-GB"),
         ain,
-        clientName,
+        client_name,
         phone,
         nosOfBe: item.nosOfBe,
         rate: item.rate,
@@ -213,7 +213,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           reloadData();
           setQueue([]);
           setAin("");
-          setClientName("");
+          setClient_name("");
           setPhone("");
           setBatchDiscount("");
         } else {
@@ -226,7 +226,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       // setHistory((prev) => [...newRecords, ...prev]);
       setQueue([]);
       setAin("");
-      setClientName("");
+      setClient_name("");
       setPhone("");
       setBatchDiscount("");
     }
@@ -259,7 +259,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             <div><h1>${systemConfig.agencyName}</h1><p>${systemConfig.agencyAddress}</p></div>
             <div style="text-align: right"><h2>Service Bill</h2><p>Date: ${new Date().toLocaleDateString("en-GB")}</p></div>
           </div>
-          <p><strong>Customer:</strong> ${client.clientName}</p>
+          <p><strong>Customer:</strong> ${client.client_name}</p>
           <table><thead><tr><th>#</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table>
           <h3 style="text-align: right">Total: ৳${totalNet.toLocaleString()}</h3>
         </body>
@@ -280,7 +280,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     let msg = `*ASSESSMENT BILL SUMMARY*\n`;
     msg += `--------------------------------\n`;
     msg += `*Agency:* ${systemConfig.agencyName}\n`;
-    msg += `*Client:* ${recs[0].clientName}\n`;
+    msg += `*Client:* ${recs[0].client_name}\n`;
     msg += `*Date:* ${new Date().toLocaleDateString("en-GB")}\n`;
     msg += `--------------------------------\n\n`;
 
@@ -308,7 +308,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       .reduce((acc, r) => acc + r.net, 0);
     setPaymentIds(ids);
     setPaymentAmount(""); // Received Amount starts blank
-    setPaymentMethod(systemConfig.paymentMethods[0] || "Cash");
+    setPayment_method(systemConfig.payment_methods[0] || "Cash");
     setShowPaymentModal(true);
   };
 
@@ -324,7 +324,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         const patched: Partial<AssessmentRecord> = {
           status: "Paid",
           received: splitAmount,
-          paymentMethod: paymentMethod,
+          payment_method: payment_method,
         };
         if (url && key) {
           const res = await updateAssessment(url, key, rec.id, patched);
@@ -407,7 +407,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   type="text"
                   readOnly
                   className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-500" : "bg-slate-50 border-slate-200 text-slate-500"}`}
-                  value={clientName}
+                  value={client_name}
                 />
               </div>
             </div>
@@ -611,7 +611,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               onChange={(e) => setFilterPaymentMethod(e.target.value)}
             >
               <option value="All">All Methods</option>
-              {systemConfig.paymentMethods.map((m) => (
+              {systemConfig.payment_methods.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -713,7 +713,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     <p
                       className={`text-base font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}
                     >
-                      {rec.clientName}
+                      {rec.client_name}
                     </p>
                     <div className="flex gap-2 mt-1.5">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
@@ -849,11 +849,11 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   Payment Method
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {systemConfig.paymentMethods.map((m) => (
+                  {systemConfig.payment_methods.map((m) => (
                     <button
                       key={m}
-                      onClick={() => setPaymentMethod(m)}
-                      className={`py-3 px-2 rounded-xl text-xs font-bold uppercase border-2 transition-all ${paymentMethod === m ? "border-purple-500 bg-purple-50 text-purple-700" : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                      onClick={() => setPayment_method(m)}
+                      className={`py-3 px-2 rounded-xl text-xs font-bold uppercase border-2 transition-all ${payment_method === m ? "border-purple-500 bg-purple-50 text-purple-700" : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
                     >
                       {m}
                     </button>

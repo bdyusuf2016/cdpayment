@@ -17,14 +17,14 @@ export interface PaymentRecord {
   id: string;
   date: string;
   ain: string;
-  clientName: string;
+  client_name: string;
   phone: string;
-  beYear: string;
+  be_year: string;
   duty: number;
   received: number;
   status: 'Completed' | 'Pending' | 'Paid' | 'New';
   profit: number;
-  paymentMethod?: string;
+  payment_method?: string;
 }
 
 export interface AssessmentItem {
@@ -36,7 +36,7 @@ export interface AssessmentItem {
   net: number;
 }
 
-export interface AssessmentRecord extends Omit<PaymentRecord, 'duty' | 'beYear'> {
+export interface AssessmentRecord extends Omit<PaymentRecord, 'duty' | 'be_year'> {
   nosOfBe: number;
   rate: number;
   amount: number;
