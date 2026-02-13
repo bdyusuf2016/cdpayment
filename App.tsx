@@ -7,6 +7,7 @@ import AinDatabase from "./components/AinDatabase";
 import AdminPanel from "./components/AdminPanel";
 import AuditLogs from "./components/AuditLogs";
 import Auth from "./components/Auth";
+import * as api from "./utils/supabaseApi";
 import {
   TabType,
   Client,
@@ -81,9 +82,7 @@ const App: React.FC = () => {
       if (!url || !key) return;
 
       try {
-        const [{ default: api }] = await Promise.all([
-          import("./utils/supabaseApi"),
-        ]);
+
 
         const [fClients, fDuty, fAssessment] = await Promise.all([
           api.fetchClients(url, key),
