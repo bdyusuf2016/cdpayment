@@ -73,10 +73,9 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // When session is set and config contains supabase creds, load persisted data
+  // When Supabase credentials are available, load persisted data (session not required)
   useEffect(() => {
     const loadData = async () => {
-      if (!session) return;
       const url = config.supabaseUrl;
       const key = config.supabaseKey;
       if (!url || !key) return;
@@ -101,7 +100,7 @@ const App: React.FC = () => {
     };
 
     loadData();
-  }, [session, config.supabaseUrl, config.supabaseKey]);
+  }, [config.supabaseUrl, config.supabaseKey]);
 
   // Update theme class on config change
   useEffect(() => {

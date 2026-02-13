@@ -19,7 +19,7 @@ export async function fetchClients(
     return (data || []) as Client[];
   } catch (err) {
     console.error("fetchClients error", err);
-    return [];
+    throw err;
   }
 }
 
@@ -125,7 +125,7 @@ export async function fetchDutyHistory(
     return (data || []) as PaymentRecord[];
   } catch (err) {
     console.error("fetchDutyHistory error", err);
-    return [];
+    throw err;
   }
 }
 
@@ -143,7 +143,7 @@ export async function fetchAssessmentHistory(
     return (data || []) as AssessmentRecord[];
   } catch (err) {
     console.error("fetchAssessmentHistory error", err);
-    return [];
+    throw err;
   }
 }
 
@@ -159,7 +159,7 @@ export async function fetchAuditLogs(url: string, key: string) {
     return data || [];
   } catch (err) {
     console.error("fetchAuditLogs error", err);
-    return [];
+    throw err;
   }
 }
 
