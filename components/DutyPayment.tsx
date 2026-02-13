@@ -8,6 +8,7 @@ interface DutyPaymentProps {
   history: PaymentRecord[];
   setHistory: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
   systemConfig: SystemConfig;
+  reloadData: () => void;
 }
 
 const DutyPayment: React.FC<DutyPaymentProps> = ({
@@ -15,6 +16,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   history,
   setHistory,
   systemConfig,
+  reloadData,
 }) => {
   const [ain, setAin] = useState("");
   const [clientName, setClientName] = useState("");
@@ -135,9 +137,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         (async () => {
           const res = await updateDuty(url, key, editingId, updatedRec);
           if (res) {
-            setHistory((prev) =>
-              prev.map((rec) => (rec.id === editingId ? res : rec)),
-            );
+            reloadData();
           } else {
             setHistory((prev) =>
               prev.map((rec) =>
@@ -191,7 +191,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       (async () => {
         const inserted = await insertDuties(url, key, newRecords);
         if (inserted.length > 0) {
-          setHistory([...inserted, ...history]);
+          reloadData();
         } else {
           setHistory([...newRecords, ...history]);
         }
@@ -312,7 +312,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         };
         if (url && key) {
           const res = await updateDuty(url, key, rec.id, patched);
-          if (res) updateLocal(res);
+          if (res) reloadData();
           else updateLocal({ ...rec, ...(patched as any) });
         } else {
           updateLocal({ ...rec, ...(patched as any) });
@@ -344,9 +344,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         for (const id of deleteConfirm.ids) {
           await deleteDuty(url, key, id);
         }
-        setHistory((prev) =>
-          prev.filter((rec) => !deleteConfirm.ids.includes(rec.id)),
-        );
+        reloadData();
         setSelectedIds([]);
         setDeleteConfirm({ show: false, ids: [] });
       })();
@@ -373,7 +371,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         if (url && key) {
           const res = await updateDuty(url, key, id, { status });
           if (res)
-            setHistory((prev) => prev.map((r) => (r.id === id ? res : r)));
+            reloadData();
           else
             setHistory((prev) =>
               prev.map((r) => (r.id === id ? { ...r, status } : r)),
