@@ -283,6 +283,14 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     const client = recs[0];
+    const fmt = (n: number) =>
+      n.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    const settlementLabel = recs.every((r) => r.status === "Paid")
+      ? "Paid"
+      : "Payable";
     const subtotal = recs.reduce((a, b) => a + b.duty, 0);
     const discount = 0;
     const payable = subtotal - discount;
@@ -292,7 +300,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${i + 1}</td>
         <td style="padding: 12px; border-bottom: 1px solid #eee;">Duty Payment for B/E: <strong>${r.beYear}</strong></td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${r.duty.toLocaleString()}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${fmt(r.duty)}</td>
       </tr>`,
       )
       .join("");
@@ -311,9 +319,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           <p><strong>Customer:</strong> ${client.clientName} (AIN: ${client.ain})</p>
           <table><thead><tr><th>SL</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${items}</tbody></table>
           <div class="summary">
-            <div class="summary-row"><span>Subtotal</span><span>${subtotal.toLocaleString()}</span></div>
-            <div class="summary-row"><span>Discount</span><span>${discount.toLocaleString()}</span></div>
-            <div class="summary-row total"><span>Payable</span><span>${payable.toLocaleString()}</span></div>
+            <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+            <div class="summary-row"><span>Discount</span><span>${fmt(discount)}</span></div>
+            <div class="summary-row total"><span>${settlementLabel}</span><span>${fmt(payable)}</span></div>
           </div>
         </body>
       </html>
