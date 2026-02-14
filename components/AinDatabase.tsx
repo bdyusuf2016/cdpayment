@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Client, SystemConfig } from "../types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
@@ -21,6 +21,8 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   const [formName, setFormName] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [selectedAins, setSelectedAins] = useState<string[]>([]);
+  const [localClients, setLocalClients] = useState<Client[]>([]);
+  const [pendingDeletedAins, setPendingDeletedAins] = useState<string[]>([]);
 
   // For Custom Confirmation
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -35,7 +37,15 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredClients = clients.filter(
+  const allClients = useMemo(() => {
+    const merged = new Map<string, Client>();
+    for (const c of clients) merged.set(c.ain, c);
+    for (const c of localClients) merged.set(c.ain, c);
+    for (const ain of pendingDeletedAins) merged.delete(ain);
+    return Array.from(merged.values());
+  }, [clients, localClients, pendingDeletedAins]);
+
+  const filteredClients = allClients.filter(
     (c) =>
       c.ain.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -72,24 +82,55 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       // If changing the AIN, ensure the new AIN is not already used by another record
       if (
         clientData.ain !== editingClient.ain &&
-        clients.some((c) => c.ain === clientData.ain)
+        allClients.some((c) => c.ain === clientData.ain)
       ) {
         alert("This AIN already exists! Choose a different AIN.");
         return;
       }
-      await updateClient(supabase, editingClient.ain, clientData);
+      const updated =
+        (await updateClient(supabase, editingClient.ain, clientData)) ||
+        (clientData as Client);
+      setLocalClients((prev) => {
+        const next = prev.filter(
+          (c) => c.ain !== editingClient.ain && c.ain !== updated.ain,
+        );
+        return [...next, updated];
+      });
+      setPendingDeletedAins((prev) =>
+        prev.filter((ain) => ain !== editingClient.ain),
+      );
     } else {
-      if (clients.some((c) => c.ain === clientData.ain)) {
+      if (allClients.some((c) => c.ain === clientData.ain)) {
         alert("This AIN already exists!");
         return;
       }
-      await insertClient(supabase, clientData);
+      const inserted = (await insertClient(supabase, clientData)) || clientData;
+      setLocalClients((prev) => {
+        const next = prev.filter((c) => c.ain !== inserted.ain);
+        return [...next, inserted];
+      });
+      setPendingDeletedAins((prev) =>
+        prev.filter((ain) => ain !== inserted.ain),
+      );
     }
     setShowModal(false);
   };
 
   const processDelete = async () => {
     if (!supabase) return;
+    const idsToDelete = confirmDelete.isBulk
+      ? selectedAins
+      : confirmDelete.ain
+        ? [confirmDelete.ain]
+        : [];
+
+    if (idsToDelete.length === 0) {
+      setConfirmDelete({ show: false, ain: null, isBulk: false });
+      return;
+    }
+
+    setPendingDeletedAins((prev) => Array.from(new Set([...prev, ...idsToDelete])));
+    setLocalClients((prev) => prev.filter((c) => !idsToDelete.includes(c.ain)));
 
     if (confirmDelete.isBulk) {
       for (const ain of selectedAins) {
@@ -105,7 +146,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
   const handleExport = () => {
     const headers = "AIN,Name,Phone\n";
-    const rows = clients.map((c) => `${c.ain},${c.name},${c.phone}`).join("\n");
+    const rows = allClients.map((c) => `${c.ain},${c.name},${c.phone}`).join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -130,9 +171,9 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
       for (const line of lines) {
         const row = line.split(",");
-        if (row.length >= 2) {
-          const [ain, name, phone] = row;
-          if (ain && name && !clients.some((c) => c.ain === ain.trim())) {
+          if (row.length >= 2) {
+            const [ain, name, phone] = row;
+          if (ain && name && !allClients.some((c) => c.ain === ain.trim())) {
             newClients.push({
               ain: ain.trim(),
               name: name.trim(),
@@ -144,9 +185,21 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       }
 
       if (newClients.length > 0) {
+        setLocalClients((prev) => {
+          const next = [...prev];
+          for (const nc of newClients) {
+            const idx = next.findIndex((c) => c.ain === nc.ain);
+            if (idx >= 0) next[idx] = nc as Client;
+            else next.push(nc as Client);
+          }
+          return next;
+        });
         for (const client of newClients) {
           await insertClient(supabase, client);
         }
+        setPendingDeletedAins((prev) =>
+          prev.filter((ain) => !newClients.some((c) => c.ain === ain)),
+        );
         alert(`${newClients.length} new clients imported successfully!`);
       }
     };
@@ -252,7 +305,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
           <table className="w-full text-left">
             <thead>
               <tr className={`${isDark ? "bg-slate-900" : "bg-slate-900"}`}>
-                <th className="px-6 py-5 w-14 text-center">
+                <th className="px-6 py-4 w-14 text-center">
                   <input
                     type="checkbox"
                     className="w-5 h-5 rounded-lg border-2 border-slate-700 bg-transparent checked:bg-blue-500 checked:border-blue-500 transition-all cursor-pointer accent-blue-500"
@@ -263,16 +316,16 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                   AIN ID
                 </th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                   Business Information
                 </th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                   Communication
                 </th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase text-right tracking-[0.2em] pr-12">
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-right tracking-[0.2em] pr-12">
                   Action
                 </th>
               </tr>
@@ -282,7 +335,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
             >
               {filteredClients.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center">
+                  <td colSpan={5} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center opacity-30">
                       <i className="fas fa-database text-6xl mb-4"></i>
                       <p className="font-bold text-lg">No Client Data Found</p>
@@ -295,7 +348,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                     key={client.ain}
                     className={`transition-all group ${selectedAins.includes(client.ain) ? "bg-blue-50/40 dark:bg-blue-900/10" : "hover:bg-slate-50/50 dark:hover:bg-slate-700/50"}`}
                   >
-                    <td className="px-6 py-6 text-center">
+                    <td className="px-6 py-4 text-center">
                       <input
                         type="checkbox"
                         className="w-5 h-5 rounded-lg border-2 border-slate-200 transition-all cursor-pointer accent-blue-500"
@@ -303,14 +356,14 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                         onChange={() => toggleSelectOne(client.ain)}
                       />
                     </td>
-                    <td className="px-6 py-6">
+                    <td className="px-6 py-4">
                       <span
                         className={`text-sm font-black px-3 py-1.5 rounded-xl border shadow-sm ${isDark ? "bg-blue-900/30 border-blue-800 text-blue-400" : "bg-blue-50 border-blue-100 text-blue-700"}`}
                       >
                         {client.ain}
                       </span>
                     </td>
-                    <td className="px-6 py-6">
+                    <td className="px-6 py-4">
                       <div
                         className={`text-sm font-black transition-colors ${isDark ? "text-slate-200 group-hover:text-blue-400" : "text-slate-800 group-hover:text-blue-700"}`}
                       >
@@ -320,7 +373,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                         Verified Importer/Exporter
                       </div>
                     </td>
-                    <td className="px-6 py-6">
+                    <td className="px-6 py-4">
                       {client.phone ? (
                         <div className="flex items-center gap-3">
                           <div
@@ -340,7 +393,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-6 text-right">
+                    <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleOpenModal(client)}
