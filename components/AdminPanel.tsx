@@ -64,6 +64,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [newMethod, setNewMethod] = useState("");
   const [optimizing, setOptimizing] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
@@ -190,13 +191,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleRestoreClick = () => {
-    if (
-      window.confirm(
-        "Restoring will overwrite current data. Are you sure? This is irreversible.",
-      )
-    ) {
-      restoreFileRef.current?.click();
-    }
+    setShowRestoreConfirm(true);
+  };
+
+  const confirmRestore = () => {
+    setShowRestoreConfirm(false);
+    restoreFileRef.current?.click();
   };
 
   const handleRestoreFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -613,6 +613,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Password Reset Modal */}
+      {showRestoreConfirm && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div
+            className={`rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center animate-in zoom-in-95 ${isDark ? "bg-slate-800" : "bg-white"}`}
+          >
+            <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-amber-100">
+              <i className="fas fa-triangle-exclamation text-2xl"></i>
+            </div>
+            <h3
+              className={`text-xl font-black leading-tight mb-2 ${isDark ? "text-white" : "text-slate-900"}`}
+            >
+              Confirm Restore?
+            </h3>
+            <p
+              className={`font-medium text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}
+            >
+              Restoring will overwrite current data. This action is
+              irreversible.
+            </p>
+            <div className="flex flex-col gap-3 mt-8">
+              <button
+                onClick={confirmRestore}
+                className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl shadow-xl shadow-amber-100 transition-all active:scale-95 uppercase text-[10px] tracking-widest"
+              >
+                Yes, Restore Data
+              </button>
+              <button
+                onClick={() => setShowRestoreConfirm(false)}
+                className={`w-full py-3.5 font-black rounded-xl transition-all uppercase text-[10px] tracking-widest ${isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Password Reset Modal */}
       {showPasswordReset && (
