@@ -8,6 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "sql:run": "node scripts/run-sql.mjs",
+    "sql:init": "npm run sql:run -- --file sql/run_admin_sql.sql",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist --nojekyll"
   },
