@@ -27,6 +27,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const [queue, setQueue] = useState<DutyItem[]>([]);
   const [insertedRecords, setInsertedRecords] = useState<PaymentRecord[]>([]);
+  const [updatedRecords, setUpdatedRecords] = useState<
+    Record<string, PaymentRecord>
+  >({});
 
   // Filters
   const [filterSearch, setFilterSearch] = useState("");
@@ -69,12 +72,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
   };
 
-  const filteredHistory = useMemo(() => {
+  const allHistory = useMemo(() => {
     // Merge local inserted records with parent-provided history and dedupe by id
     const combined = [...insertedRecords, ...history].filter(
       (v, i, a) => a.findIndex((x) => x.id === v.id) === i,
     );
-    return combined.filter((rec) => {
+    return combined.map((rec) => updatedRecords[rec.id] || rec);
+  }, [insertedRecords, history, updatedRecords]);
+
+  const filteredHistory = useMemo(() => {
+    return allHistory.filter((rec) => {
       const recDate = parseDate(rec.date);
       const recClientName = (rec.clientName || "").toLowerCase();
       const recAin = rec.ain || "";
@@ -105,8 +112,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       return matchesSearch && matchesStatus && matchesDate && matchesMethod;
     });
   }, [
-    history,
-    insertedRecords,
+    allHistory,
     filterSearch,
     filterStatus,
     filterPaymentMethod,
@@ -295,11 +301,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const processPayment = async () => {
-    if (!supabase) return;
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount)) return;
 
-    for (const rec of history.filter((r) => paymentIds.includes(r.id))) {
+    for (const rec of allHistory.filter((r) => paymentIds.includes(r.id))) {
       const splitAmount = amount / paymentIds.length;
       const patched: Partial<PaymentRecord> = {
         status: "Paid",
@@ -307,7 +312,18 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         profit: splitAmount - rec.duty,
         paymentMethod: paymentMethod,
       };
-      await updateDuty(supabase, rec.id, patched);
+      if (supabase) {
+        const res = await updateDuty(supabase, rec.id, patched);
+        setUpdatedRecords((prev) => ({
+          ...prev,
+          [rec.id]: (res as PaymentRecord) || ({ ...rec, ...patched } as PaymentRecord),
+        }));
+      } else {
+        setUpdatedRecords((prev) => ({
+          ...prev,
+          [rec.id]: { ...rec, ...patched } as PaymentRecord,
+        }));
+      }
     }
 
     setShowPaymentModal(false);
@@ -324,9 +340,14 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   // Execute Delete
   const executeDelete = async () => {
-    if (!supabase) return;
     for (const id of deleteConfirm.ids) {
-      await deleteDuty(supabase, id);
+      if (supabase) await deleteDuty(supabase, id);
+      setInsertedRecords((prev) => prev.filter((r) => r.id !== id));
+      setUpdatedRecords((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
     setSelectedIds([]);
     setDeleteConfirm({ show: false, ids: [] });
@@ -336,17 +357,30 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     status: "Completed" | "Pending",
     targetId?: string,
   ) => {
-    if (!supabase) return;
     const idsToUpdate = targetId ? [targetId] : selectedIds;
     if (idsToUpdate.length === 0) return;
 
     for (const id of idsToUpdate) {
-      await updateDuty(supabase, id, { status });
+      const currentRec = allHistory.find((r) => r.id === id);
+      if (!currentRec) continue;
+      const patched: Partial<PaymentRecord> = { status };
+      if (supabase) {
+        const res = await updateDuty(supabase, id, patched);
+        setUpdatedRecords((prev) => ({
+          ...prev,
+          [id]: (res as PaymentRecord) || ({ ...currentRec, ...patched } as PaymentRecord),
+        }));
+      } else {
+        setUpdatedRecords((prev) => ({
+          ...prev,
+          [id]: { ...currentRec, ...patched } as PaymentRecord,
+        }));
+      }
     }
   };
 
   const handleEdit = (id: string) => {
-    const rec = history.find((r) => r.id === id);
+    const rec = allHistory.find((r) => r.id === id);
     if (rec) {
       setEditingId(rec.id);
       setAin(rec.ain);
@@ -377,7 +411,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const isDark = systemConfig.theme === "dark";
-  const totalDueForPayment = history
+  const totalDueForPayment = allHistory
     .filter((r) => paymentIds.includes(r.id))
     .reduce((a, b) => a + b.duty, 0);
 
@@ -641,7 +675,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 <button
                   onClick={() =>
                     shareWhatsApp(
-                      history.filter((h) => selectedIds.includes(h.id)),
+                      allHistory.filter((h) => selectedIds.includes(h.id)),
                     )
                   }
                   className="bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in flex items-center gap-2"
