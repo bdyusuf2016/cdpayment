@@ -744,7 +744,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   Client & AIN
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
-                  Nos of B/E
+                  Count of B/E
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
                   Net Value
