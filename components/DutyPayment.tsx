@@ -59,8 +59,14 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   }, []);
 
   const parseDate = (dateStr: string) => {
-    const [day, month, year] = dateStr.split("/");
-    return new Date(`${year}-${month}-${day}`);
+    if (!dateStr) return new Date(0);
+    if (dateStr.includes("/")) {
+      const [day, month, year] = dateStr.split("/");
+      const parsed = new Date(`${year}-${month}-${day}`);
+      return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+    }
+    const parsed = new Date(dateStr);
+    return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
   };
 
   const filteredHistory = useMemo(() => {
@@ -70,10 +76,13 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     );
     return combined.filter((rec) => {
       const recDate = parseDate(rec.date);
+      const recClientName = (rec.clientName || "").toLowerCase();
+      const recAin = rec.ain || "";
+      const recBeYear = rec.beYear || "";
       const matchesSearch =
-        rec.clientName.toLowerCase().includes(filterSearch.toLowerCase()) ||
-        rec.ain.includes(filterSearch) ||
-        rec.beYear.includes(filterSearch);
+        recClientName.includes(filterSearch.toLowerCase()) ||
+        recAin.includes(filterSearch) ||
+        recBeYear.includes(filterSearch);
 
       const matchesStatus =
         filterStatus === "All" || rec.status === filterStatus;

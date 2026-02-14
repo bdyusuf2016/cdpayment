@@ -20,6 +20,57 @@ import {
   StaffUser,
 } from "./types";
 
+const normalizeDutyRecord = (row: any): PaymentRecord => ({
+  id: row.id,
+  date: row.date ?? "",
+  ain: row.ain ?? "",
+  clientName: row.clientName ?? row.client_name ?? "",
+  phone: row.phone ?? "",
+  beYear: row.beYear ?? row.be_year ?? "",
+  duty: Number(row.duty ?? 0),
+  received: Number(row.received ?? 0),
+  status: (row.status ?? "New") as PaymentRecord["status"],
+  profit: Number(row.profit ?? 0),
+  paymentMethod: row.paymentMethod ?? row.payment_method ?? undefined,
+});
+
+const normalizeAssessmentRecord = (row: any): AssessmentRecord => ({
+  id: row.id,
+  date: row.date ?? "",
+  ain: row.ain ?? "",
+  clientName: row.clientName ?? row.client_name ?? "",
+  phone: row.phone ?? "",
+  nosOfBe: Number(row.nosOfBe ?? row.nos_of_be ?? 0),
+  rate: Number(row.rate ?? 0),
+  amount: Number(row.amount ?? 0),
+  discount: Number(row.discount ?? 0),
+  net: Number(row.net ?? 0),
+  received: Number(row.received ?? 0),
+  status: (row.status ?? "New") as AssessmentRecord["status"],
+  profit: Number(row.profit ?? 0),
+  paymentMethod: row.paymentMethod ?? row.payment_method ?? undefined,
+});
+
+const normalizeStaffUser = (row: any): StaffUser => ({
+  id: row.id,
+  name: row.name ?? "",
+  role: row.role ?? "Staff",
+  permissions: row.permissions ?? {},
+  lastActive: row.lastActive ?? row.last_active ?? "",
+  active: Boolean(row.active),
+});
+
+const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
+  agencyName: row.agencyName ?? row.agency_name,
+  agencyAddress: row.agencyAddress ?? row.agency_address,
+  defaultRate: Number(row.defaultRate ?? row.default_rate ?? 0),
+  autoInvoice: row.autoInvoice ?? row.auto_invoice,
+  currency: row.currency,
+  theme: row.theme,
+  language: row.language,
+  paymentMethods: row.paymentMethods ?? row.payment_methods,
+});
+
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
@@ -87,13 +138,14 @@ const App: React.FC = () => {
     const fetchAndSubscribe = async (
       tableName: string,
       setter: React.Dispatch<React.SetStateAction<any[]>>,
+      transform?: (row: any) => any,
     ) => {
       // Fetch initial data
       const { data, error } = await supabase.from(tableName).select("*");
       if (error) {
         console.error(`Error fetching ${tableName}:`, error);
       } else {
-        setter(data || []);
+        setter((data || []).map((row) => (transform ? transform(row) : row)));
       }
 
       // Subscribe to changes
@@ -104,12 +156,14 @@ const App: React.FC = () => {
           { event: "*", schema: "public", table: tableName },
           (payload) => {
             if (payload.eventType === "INSERT") {
-              setter((current) => [...current, payload.new]);
+              const record = transform ? transform(payload.new) : payload.new;
+              setter((current) => [...current, record]);
             }
             if (payload.eventType === "UPDATE") {
+              const record = transform ? transform(payload.new) : payload.new;
               setter((current) =>
                 current.map((item) =>
-                  item.id === payload.new.id ? payload.new : item,
+                  item.id === payload.new.id ? record : item,
                 ),
               );
             }
@@ -129,14 +183,16 @@ const App: React.FC = () => {
     fetchAndSubscribe("clients", setClients).then((channel) =>
       channels.push(channel),
     );
-    fetchAndSubscribe("duty_payments", setDutyHistory).then((channel) =>
-      channels.push(channel),
+    fetchAndSubscribe("duty_payments", setDutyHistory, normalizeDutyRecord).then(
+      (channel) => channels.push(channel),
     );
-    fetchAndSubscribe("assessments", setAssessmentHistory).then((channel) =>
-      channels.push(channel),
-    );
-    fetchAndSubscribe("staff_users", setUsers).then((channel) =>
-      channels.push(channel),
+    fetchAndSubscribe(
+      "assessments",
+      setAssessmentHistory,
+      normalizeAssessmentRecord,
+    ).then((channel) => channels.push(channel));
+    fetchAndSubscribe("staff_users", setUsers, normalizeStaffUser).then(
+      (channel) => channels.push(channel),
     );
 
     // Special handling for system_settings (assuming single row)
@@ -147,7 +203,7 @@ const App: React.FC = () => {
         .limit(1)
         .single();
       if (!error && data) {
-        setConfig((prev) => ({ ...prev, ...data }));
+        setConfig((prev) => ({ ...prev, ...normalizeSystemConfig(data) }));
       }
       const settingsChannel = supabase
         .channel("public:system_settings")
@@ -155,7 +211,10 @@ const App: React.FC = () => {
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "system_settings" },
           (payload) => {
-            setConfig((prev) => ({ ...prev, ...payload.new }));
+            setConfig((prev) => ({
+              ...prev,
+              ...normalizeSystemConfig(payload.new),
+            }));
           },
         )
         .subscribe();
