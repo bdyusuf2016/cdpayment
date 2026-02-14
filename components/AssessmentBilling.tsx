@@ -790,6 +790,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     autoExcludeControls: true,
                     replaceTakaWithBDT: true,
                     showCurrencyInHeader: true,
+                    centerColumnsByHeader: ["Count of B/E"],
                     totalRecordCount: {
                       label: "Total",
                       value: filteredHistory.length,

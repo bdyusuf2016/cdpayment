@@ -7,6 +7,7 @@ type PrintOptions = {
   };
   replaceTakaWithBDT?: boolean;
   showCurrencyInHeader?: boolean;
+  centerColumnsByHeader?: string[];
   totalRecordCount?: {
     label?: string;
     value: number;
@@ -28,6 +29,13 @@ export function printElement(
   const table = el.cloneNode(true) as HTMLElement;
   const excluded = new Set<number>(options.excludeColumnIndexes || []);
   const getHeaderCells = () => Array.from(table.querySelectorAll("thead th"));
+  const normalizeHeader = (text: string) =>
+    text
+      .trim()
+      .toLowerCase()
+      .replace(/\(bdt\)/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
 
   if (options.autoExcludeControls) {
     const headerCells = Array.from(table.querySelectorAll("thead th"));
@@ -156,6 +164,32 @@ export function printElement(
     tfoot.appendChild(totalRow);
   }
 
+  if (options.centerColumnsByHeader && options.centerColumnsByHeader.length > 0) {
+    const targetSet = new Set(
+      options.centerColumnsByHeader.map((h) => normalizeHeader(h)),
+    );
+    const centerIdxs = getHeaderCells()
+      .map((th, idx) => ({ idx, key: normalizeHeader(th.textContent || "") }))
+      .filter((x) => targetSet.has(x.key))
+      .map((x) => x.idx);
+
+    if (centerIdxs.length > 0) {
+      table.querySelectorAll("thead th").forEach((th, idx) => {
+        if (centerIdxs.includes(idx)) {
+          (th as HTMLElement).style.textAlign = "center";
+        }
+      });
+      table.querySelectorAll("tbody tr, tfoot tr").forEach((tr) => {
+        const cells = Array.from(tr.querySelectorAll("td"));
+        centerIdxs.forEach((idx) => {
+          const td = cells[idx];
+          if (!td) return;
+          td.style.textAlign = "center";
+        });
+      });
+    }
+  }
+
   if (options.totalRecordCount) {
     const headers = getHeaderCells();
     const headerCount = headers.length;
@@ -165,14 +199,6 @@ export function printElement(
       tfoot = document.createElement("tfoot");
       table.appendChild(tfoot);
     }
-
-    const normalizeHeader = (text: string) =>
-      text
-        .trim()
-        .toLowerCase()
-        .replace(/\(bdt\)/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
 
     const resolveHeaderIndex = (name?: string) => {
       if (!name) return -1;
