@@ -17,6 +17,7 @@ interface AssessmentBillingProps {
   clients: Client[];
   systemConfig: SystemConfig;
   history: AssessmentRecord[];
+  setHistory: React.Dispatch<React.SetStateAction<AssessmentRecord[]>>;
   supabase: SupabaseClient | null;
 }
 
@@ -24,6 +25,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   clients,
   systemConfig,
   history,
+  setHistory,
   supabase,
 }) => {
   const [ain, setAin] = useState("");
@@ -167,6 +169,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           editingId as string,
           patched,
         );
+        setHistory((prev) =>
+          prev.map((r) =>
+            r.id === editingId
+              ? ({ ...r, ...patched } as AssessmentRecord)
+              : r,
+          ),
+        );
         setUpdatedRecords((prev) => ({
           ...prev,
           [editingId as string]:
@@ -250,9 +259,16 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       }
       if (inserted.length > 0)
         setInsertedRecords((prev) => [...inserted, ...prev]);
+      if (inserted.length > 0) {
+        setHistory((prev) => {
+          const ids = new Set(inserted.map((i) => i.id));
+          return [...inserted, ...prev.filter((p) => !ids.has(p.id))];
+        });
+      }
     } else {
       // No supabase client — render locally
       setInsertedRecords((prev) => [...newRecords, ...prev]);
+      setHistory((prev) => [...newRecords, ...prev]);
     }
     setQueue([]);
     setAin("");
@@ -345,6 +361,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const key = systemConfig.supabaseKey;
 
     const apply = async () => {
+      setHistory((prev) =>
+        prev.map((rec) =>
+          paymentIds.includes(rec.id)
+            ? ({
+                ...rec,
+                status: "Paid",
+                received: amount / paymentIds.length,
+                paymentMethod,
+              } as AssessmentRecord)
+            : rec,
+        ),
+      );
       for (const rec of allHistory.filter((r) => paymentIds.includes(r.id))) {
         const splitAmount = amount / paymentIds.length;
         const patched: Partial<AssessmentRecord> = {
@@ -354,6 +382,11 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         };
         if (supabase) {
           const res = await updateAssessment(supabase, rec.id, patched);
+          if (res) {
+            setHistory((prev) =>
+              prev.map((r) => (r.id === rec.id ? res : r)),
+            );
+          }
           setUpdatedRecords((prev) => ({
             ...prev,
             [rec.id]:
@@ -388,6 +421,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
     // Optimistic remove for instant UI feedback
     setDeletedIds((prev) => Array.from(new Set([...prev, ...idsToDelete])));
+    setHistory((prev) => prev.filter((rec) => !idsToDelete.includes(rec.id)));
     setInsertedRecords((prev) =>
       prev.filter((r) => !idsToDelete.includes(r.id)),
     );

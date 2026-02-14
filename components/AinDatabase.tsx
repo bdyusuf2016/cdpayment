@@ -5,12 +5,14 @@ import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
 
 interface AinDatabaseProps {
   clients: Client[];
+  setClients: React.Dispatch<React.SetStateAction<Client[]>>;
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
 }
 
 const AinDatabase: React.FC<AinDatabaseProps> = ({
   clients,
+  setClients,
   systemConfig,
   supabase,
 }) => {
@@ -90,6 +92,12 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       const updated =
         (await updateClient(supabase, editingClient.ain, clientData)) ||
         (clientData as Client);
+      setClients((prev) => {
+        const next = prev.filter(
+          (c) => c.ain !== editingClient.ain && c.ain !== updated.ain,
+        );
+        return [...next, updated];
+      });
       setLocalClients((prev) => {
         const next = prev.filter(
           (c) => c.ain !== editingClient.ain && c.ain !== updated.ain,
@@ -105,6 +113,10 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
         return;
       }
       const inserted = (await insertClient(supabase, clientData)) || clientData;
+      setClients((prev) => {
+        const next = prev.filter((c) => c.ain !== inserted.ain);
+        return [...next, inserted];
+      });
       setLocalClients((prev) => {
         const next = prev.filter((c) => c.ain !== inserted.ain);
         return [...next, inserted];
@@ -131,6 +143,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
     setPendingDeletedAins((prev) => Array.from(new Set([...prev, ...idsToDelete])));
     setLocalClients((prev) => prev.filter((c) => !idsToDelete.includes(c.ain)));
+    setClients((prev) => prev.filter((c) => !idsToDelete.includes(c.ain)));
 
     if (confirmDelete.isBulk) {
       for (const ain of selectedAins) {
@@ -185,6 +198,11 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       }
 
       if (newClients.length > 0) {
+        setClients((prev) => {
+          const map = new Map(prev.map((c) => [c.ain, c]));
+          newClients.forEach((c) => map.set(c.ain, c as Client));
+          return Array.from(map.values());
+        });
         setLocalClients((prev) => {
           const next = [...prev];
           for (const nc of newClients) {
