@@ -331,6 +331,15 @@ const App: React.FC = () => {
           (acc, r) => acc + r.received,
           0,
         );
+        const paidCount = assessmentHistory.filter(
+          (r) => r.status === "Paid",
+        ).length;
+        const pendingCount = assessmentHistory.filter(
+          (r) => r.status === "Pending" || r.status === "Completed",
+        ).length;
+        const newCount = assessmentHistory.filter(
+          (r) => r.status === "New",
+        ).length;
         const outstanding = totalNet - totalReceived;
         return [
           {
@@ -343,14 +352,18 @@ const App: React.FC = () => {
             value: `৳ ${totalReceived.toLocaleString()}`,
             color: "#10b981",
           },
-          {
-            label: "Outstanding",
-            value: `৳ ${outstanding.toLocaleString()}`,
-            color: "#ef4444",
-          },
-          { label: "Rate", value: `৳ ${config.defaultRate}`, color: "#f59e0b" },
-        ];
-      }
+            {
+              label: "Outstanding",
+              value: `৳ ${outstanding.toLocaleString()}`,
+              color: "#ef4444",
+            },
+            {
+              label: "Report Status",
+              value: `T:${assessmentHistory.length} P:${paidCount} N:${newCount + pendingCount}`,
+              color: "#f59e0b",
+            },
+          ];
+        }
       default: {
         const grossDuty = dutyHistory.reduce((acc, r) => acc + r.duty, 0);
         const totalCollection = dutyHistory.reduce(

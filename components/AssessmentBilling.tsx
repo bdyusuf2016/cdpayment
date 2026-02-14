@@ -552,20 +552,20 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   key={item.id}
                   className={`p-2.5 rounded-xl border flex justify-between items-center relative group ${isDark ? "bg-slate-800 border-slate-700 hover:border-slate-600" : "bg-slate-50 border-slate-300 hover:border-slate-200"}`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-slate-400 w-5">
-                      #{idx + 1}
-                    </span>
-                    <div>
-                      <p
-                        className={`font-bold text-sm ${isDark ? "text-white" : "text-slate-800"}`}
-                      >
-                        ৳{item.amount.toLocaleString()}
-                      </p>
-                      <p className="text-[10px] font-bold text-slate-500">
+                  <div className="flex items-center justify-between w-full gap-3 pr-14">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] font-bold text-slate-400 w-5">
+                        #{idx + 1}
+                      </span>
+                      <p className="text-[10px] font-bold text-slate-500 truncate">
                         {item.nosOfBe} B/E @ {item.rate}
                       </p>
                     </div>
+                    <p
+                      className={`font-bold text-sm text-right whitespace-nowrap ${isDark ? "text-white" : "text-slate-800"}`}
+                    >
+                      ৳{item.amount.toLocaleString()}
+                    </p>
                   </div>
                   <button
                     onClick={() =>
@@ -743,6 +743,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Client & AIN
                 </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                  Nos of B/E
+                </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
                   Net Value
                 </th>
@@ -786,9 +789,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
                         AIN: {rec.ain}
                       </span>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
-                        {rec.nosOfBe} B/E
-                      </span>
                     </div>
                     <div
                       className="flex items-center gap-2 mt-1.5 text-base font-bold text-slate-600 hover:text-blue-600 cursor-pointer w-fit"
@@ -801,6 +801,11 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                       {rec.phone}{" "}
                       <i className="fas fa-copy ml-1 opacity-50 hover:opacity-100 text-xs"></i>
                     </div>
+                  </td>
+                  <td
+                    className={`px-6 py-3 text-center text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                  >
+                    {rec.nosOfBe}
                   </td>
                   <td
                     className={`px-6 py-3 text-right text-sm font-bold ${isDark ? "text-slate-200" : "text-slate-900"}`}
