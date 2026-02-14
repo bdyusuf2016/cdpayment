@@ -8,6 +8,66 @@ import {
   LogEntry,
 } from "../types";
 
+const toDutyDb = (record: Partial<PaymentRecord>) => ({
+  date: record.date,
+  ain: record.ain,
+  client_name: record.clientName,
+  phone: record.phone,
+  be_year: record.beYear,
+  duty: record.duty,
+  received: record.received,
+  status: record.status,
+  profit: record.profit,
+  payment_method: record.paymentMethod,
+});
+
+const fromDutyDb = (row: any): PaymentRecord => ({
+  id: row.id,
+  date: row.date ?? "",
+  ain: row.ain ?? "",
+  clientName: row.clientName ?? row.client_name ?? "",
+  phone: row.phone ?? "",
+  beYear: row.beYear ?? row.be_year ?? "",
+  duty: Number(row.duty ?? 0),
+  received: Number(row.received ?? 0),
+  status: (row.status ?? "New") as PaymentRecord["status"],
+  profit: Number(row.profit ?? 0),
+  paymentMethod: row.paymentMethod ?? row.payment_method ?? undefined,
+});
+
+const toAssessmentDb = (record: Partial<AssessmentRecord>) => ({
+  date: record.date,
+  ain: record.ain,
+  client_name: record.clientName,
+  phone: record.phone,
+  nos_of_be: record.nosOfBe,
+  rate: record.rate,
+  amount: record.amount,
+  discount: record.discount,
+  net: record.net,
+  received: record.received,
+  status: record.status,
+  profit: record.profit,
+  payment_method: record.paymentMethod,
+});
+
+const fromAssessmentDb = (row: any): AssessmentRecord => ({
+  id: row.id,
+  date: row.date ?? "",
+  ain: row.ain ?? "",
+  clientName: row.clientName ?? row.client_name ?? "",
+  phone: row.phone ?? "",
+  nosOfBe: Number(row.nosOfBe ?? row.nos_of_be ?? 0),
+  rate: Number(row.rate ?? 0),
+  amount: Number(row.amount ?? 0),
+  discount: Number(row.discount ?? 0),
+  net: Number(row.net ?? 0),
+  received: Number(row.received ?? 0),
+  status: (row.status ?? "New") as AssessmentRecord["status"],
+  profit: Number(row.profit ?? 0),
+  paymentMethod: row.paymentMethod ?? row.payment_method ?? undefined,
+});
+
 // Generic fetch
 export async function fetchData<T>(
   supabase: SupabaseClient,
@@ -85,14 +145,14 @@ export async function insertDuty(
 ): Promise<PaymentRecord | null> {
   const { data, error } = await supabase
     .from("duty_payments")
-    .insert(record)
+    .insert(toDutyDb(record))
     .select()
     .single();
   if (error) {
     console.error("insertDuty error", error);
     return null;
   }
-  return data;
+  return fromDutyDb(data);
 }
 
 export async function updateDuty(
@@ -100,9 +160,13 @@ export async function updateDuty(
   id: string,
   patch: Partial<PaymentRecord>,
 ): Promise<PaymentRecord | null> {
+  const dbPatch = toDutyDb(patch);
+  Object.keys(dbPatch).forEach((k) => {
+    if ((dbPatch as any)[k] === undefined) delete (dbPatch as any)[k];
+  });
   const { data, error } = await supabase
     .from("duty_payments")
-    .update(patch)
+    .update(dbPatch)
     .eq("id", id)
     .select()
     .single();
@@ -110,7 +174,7 @@ export async function updateDuty(
     console.error("updateDuty error", error);
     return null;
   }
-  return data;
+  return fromDutyDb(data);
 }
 
 export async function deleteDuty(
@@ -137,14 +201,14 @@ export async function insertAssessment(
 ): Promise<AssessmentRecord | null> {
   const { data, error } = await supabase
     .from("assessments")
-    .insert(record)
+    .insert(toAssessmentDb(record))
     .select()
     .single();
   if (error) {
     console.error("insertAssessment error", error);
     return null;
   }
-  return data;
+  return fromAssessmentDb(data);
 }
 
 export async function updateAssessment(
@@ -152,9 +216,13 @@ export async function updateAssessment(
   id: string,
   patch: Partial<AssessmentRecord>,
 ): Promise<AssessmentRecord | null> {
+  const dbPatch = toAssessmentDb(patch);
+  Object.keys(dbPatch).forEach((k) => {
+    if ((dbPatch as any)[k] === undefined) delete (dbPatch as any)[k];
+  });
   const { data, error } = await supabase
     .from("assessments")
-    .update(patch)
+    .update(dbPatch)
     .eq("id", id)
     .select()
     .single();
@@ -162,7 +230,7 @@ export async function updateAssessment(
     console.error("updateAssessment error", error);
     return null;
   }
-  return data;
+  return fromAssessmentDb(data);
 }
 
 export async function deleteAssessment(
@@ -220,17 +288,44 @@ export async function fetchSystemSettings(
     console.error("fetchSystemSettings error", error);
     return null;
   }
-  return data;
+  return {
+    defaultRate: Number(data.defaultRate ?? data.default_rate ?? 0),
+    agencyName: data.agencyName ?? data.agency_name ?? "",
+    agencyAddress: data.agencyAddress ?? data.agency_address ?? "",
+    autoInvoice: data.autoInvoice ?? data.auto_invoice ?? true,
+    currency: data.currency ?? "BDT",
+    theme: data.theme ?? "light",
+    language: data.language ?? "en",
+    paymentMethods: data.paymentMethods ?? data.payment_methods ?? [],
+    supabaseUrl: data.supabaseUrl,
+    supabaseKey: data.supabaseKey,
+    lastBackup: data.lastBackup,
+    lastMaintenance: data.lastMaintenance,
+  };
 }
 
 export async function updateSystemSettings(
   supabase: SupabaseClient,
   patch: Partial<SystemConfig>,
 ): Promise<SystemConfig | null> {
+  const dbPatch = {
+    agency_name: patch.agencyName,
+    agency_address: patch.agencyAddress,
+    default_rate: patch.defaultRate,
+    auto_invoice: patch.autoInvoice,
+    currency: patch.currency,
+    theme: patch.theme,
+    language: patch.language,
+    payment_methods: patch.paymentMethods,
+  } as Record<string, unknown>;
+  Object.keys(dbPatch).forEach((k) => {
+    if (dbPatch[k] === undefined) delete dbPatch[k];
+  });
+
   // There's only one settings row, so we update it.
   const { data, error } = await supabase
     .from("system_settings")
-    .update(patch)
+    .update(dbPatch)
     .eq("id", 1) // Assuming the settings row has id 1
     .select()
     .single();
@@ -238,7 +333,20 @@ export async function updateSystemSettings(
     console.error("updateSystemSettings error", error);
     return null;
   }
-  return data;
+  return {
+    defaultRate: Number(data.defaultRate ?? data.default_rate ?? 0),
+    agencyName: data.agencyName ?? data.agency_name ?? "",
+    agencyAddress: data.agencyAddress ?? data.agency_address ?? "",
+    autoInvoice: data.autoInvoice ?? data.auto_invoice ?? true,
+    currency: data.currency ?? "BDT",
+    theme: data.theme ?? "light",
+    language: data.language ?? "en",
+    paymentMethods: data.paymentMethods ?? data.payment_methods ?? [],
+    supabaseUrl: data.supabaseUrl,
+    supabaseKey: data.supabaseKey,
+    lastBackup: data.lastBackup,
+    lastMaintenance: data.lastMaintenance,
+  };
 }
 
 // Audit logs

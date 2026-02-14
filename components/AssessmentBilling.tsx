@@ -69,8 +69,14 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   }, [systemConfig.defaultRate, editingId]);
 
   const parseDate = (dateStr: string) => {
-    const [day, month, year] = dateStr.split("/");
-    return new Date(`${year}-${month}-${day}`);
+    if (!dateStr) return new Date(0);
+    if (dateStr.includes("/")) {
+      const [day, month, year] = dateStr.split("/");
+      const parsed = new Date(`${year}-${month}-${day}`);
+      return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+    }
+    const parsed = new Date(dateStr);
+    return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
   };
 
   const filteredHistory = useMemo(() => {
@@ -84,9 +90,11 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     );
     return applied.filter((rec) => {
       const recDate = parseDate(rec.date);
+      const recClientName = (rec.clientName || "").toLowerCase();
+      const recAin = rec.ain || "";
       const matchesSearch =
-        rec.clientName.toLowerCase().includes(filterSearch.toLowerCase()) ||
-        rec.ain.includes(filterSearch);
+        recClientName.includes(filterSearch.toLowerCase()) ||
+        recAin.includes(filterSearch);
       const matchesStatus =
         filterStatus === "All" || rec.status === filterStatus;
       const matchesMethod =
@@ -362,6 +370,20 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       setSelectedIds([]);
       setPaymentIds([]);
     });
+  };
+
+  const handleDeleteRecord = async (id: string) => {
+    if (supabase) {
+      await deleteAssessment(supabase, id);
+      return;
+    }
+    setInsertedRecords((prev) => prev.filter((r) => r.id !== id));
+    setUpdatedRecords((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setSelectedIds((prev) => prev.filter((itemId) => itemId !== id));
   };
 
   const isDark = systemConfig.theme === "dark";
@@ -778,11 +800,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                         <i className="fas fa-print"></i>
                       </button>
                       <button
-                        onClick={() =>
-                          setHistory((prev) =>
-                            prev.filter((r) => r.id !== rec.id),
-                          )
-                        }
+                        onClick={() => handleDeleteRecord(rec.id)}
                         className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all"
                       >
                         <i className="fas fa-trash"></i>
