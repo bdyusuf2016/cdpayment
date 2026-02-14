@@ -7,10 +7,11 @@ import { SupabaseClient } from "@supabase/supabase-js";
 interface AuditLogsProps {
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
+  logs?: LogEntry[];
 }
 
-const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) => {
+  const [localLogs, setLocalLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +27,9 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
     type: d.type || "info",
   });
 
-  const filteredLogs = logs.filter(
+  const sourceLogs = logs ?? localLogs;
+
+  const filteredLogs = sourceLogs.filter(
     (l) =>
       (l.details && l.details.toLowerCase().includes(filter.toLowerCase())) ||
       l.action.toLowerCase().includes(filter.toLowerCase()),
@@ -39,7 +42,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
       try {
         const data = await fetchData<LogEntry>(supabase, "audit_logs");
         const mapped: LogEntry[] = (data || []).map((d: any) => mapLog(d));
-        setLogs(mapped);
+        setLocalLogs(mapped);
       } catch (err) {
         console.error("Failed to load audit logs", err);
         setError("Failed to load audit logs");
@@ -50,6 +53,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
   }, [supabase]);
 
   useEffect(() => {
+    if (logs) return;
     loadLogs();
 
     if (!supabase) return;
@@ -61,14 +65,14 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
         (payload) => {
           if (payload.eventType === "INSERT") {
             const rec = mapLog(payload.new);
-            setLogs((prev) => [rec, ...prev.filter((p) => p.id !== rec.id)]);
+            setLocalLogs((prev) => [rec, ...prev.filter((p) => p.id !== rec.id)]);
           }
           if (payload.eventType === "UPDATE") {
             const rec = mapLog(payload.new);
-            setLogs((prev) => prev.map((p) => (p.id === rec.id ? rec : p)));
+            setLocalLogs((prev) => prev.map((p) => (p.id === rec.id ? rec : p)));
           }
           if (payload.eventType === "DELETE") {
-            setLogs((prev) => prev.filter((p) => p.id !== payload.old.id));
+            setLocalLogs((prev) => prev.filter((p) => p.id !== payload.old.id));
           }
         },
       )
@@ -77,10 +81,10 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, loadLogs]);
+  }, [supabase, loadLogs, logs]);
 
   function exportCSV() {
-    if (!logs || logs.length === 0) return;
+    if (!sourceLogs || sourceLogs.length === 0) return;
     const headers = [
       "timestamp",
       "user",
@@ -89,7 +93,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
       "details",
       "type",
     ];
-    const rows = logs.map((l) => [
+    const rows = sourceLogs.map((l) => [
       l.timestamp,
       l.user,
       l.action,

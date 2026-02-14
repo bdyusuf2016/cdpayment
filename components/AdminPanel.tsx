@@ -7,8 +7,11 @@ import {
   Client,
   PaymentRecord,
   AssessmentRecord,
+  LogEntry,
 } from "../types";
 import {
+  deleteStaffUser,
+  insertAuditLog,
   insertStaffUser,
   updateStaffUser,
   updateSystemSettings,
@@ -22,6 +25,9 @@ interface AdminPanelProps {
   dutyHistory: PaymentRecord[];
   assessmentHistory: AssessmentRecord[];
   users: StaffUser[];
+  setUsers: React.Dispatch<React.SetStateAction<StaffUser[]>>;
+  setAuditLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
+  currentUserEmail: string;
   supabase: SupabaseClient | null;
 }
 
@@ -84,6 +90,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   dutyHistory,
   assessmentHistory,
   users,
+  setUsers,
+  setAuditLogs,
+  currentUserEmail,
   supabase,
 }) => {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -105,6 +114,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [permissions, setPermissions] = useState<GranularPermissions>({
     ...initialPermissions,
   });
+  const [deletingUser, setDeletingUser] = useState<StaffUser | null>(null);
+
+  const appendAuditLog = (entry: LogEntry) => {
+    setAuditLogs((prev) => [entry, ...prev.filter((log) => log.id !== entry.id)]);
+  };
 
   const updateConfig = (key: keyof SystemConfig, value: any) => {
     if (supabase) {
@@ -168,24 +182,88 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!userName || !supabase) return;
 
     if (editingUserId) {
+      const previousUsers = users;
+      const existingUser = users.find((u) => u.id === editingUserId);
+      if (!existingUser) return;
       const updatedUser: Partial<StaffUser> = {
         name: userName,
         role: userRole,
         permissions: permissions,
         active: userActive === "Yes",
       };
-      await updateStaffUser(supabase, editingUserId, updatedUser);
+      const optimisticUser: StaffUser = {
+        ...existingUser,
+        ...updatedUser,
+      };
+      setUsers((prev) =>
+        prev.map((u) => (u.id === editingUserId ? optimisticUser : u)),
+      );
+      const updated = await updateStaffUser(supabase, editingUserId, updatedUser);
+      if (!updated) {
+        setUsers(previousUsers);
+        return;
+      }
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      const log = await insertAuditLog(supabase, {
+        user_name: currentUserEmail || "system",
+        action: "UPDATE",
+        module: "staff_users",
+        details: `User updated: ${updated.name}`,
+        type: "warning",
+      });
+      if (log) appendAuditLog(log);
     } else {
       const now = new Date().toLocaleString();
-      await insertStaffUser(supabase, {
+      const tempId = `tmp-${Date.now()}`;
+      const tempUser: StaffUser = {
+        id: tempId,
         name: userName,
         role: userRole,
         permissions,
         lastActive: now,
         active: userActive === "Yes",
+      };
+      setUsers((prev) => [tempUser, ...prev.filter((u) => u.id !== tempId)]);
+      const created = await insertStaffUser(supabase, tempUser);
+      if (!created) {
+        setUsers((prev) => prev.filter((u) => u.id !== tempId));
+        return;
+      }
+      setUsers((prev) =>
+        [created, ...prev.filter((u) => u.id !== tempId && u.id !== created.id)],
+      );
+      const log = await insertAuditLog(supabase, {
+        user_name: currentUserEmail || "system",
+        action: "INSERT",
+        module: "staff_users",
+        details: `User added: ${created.name}`,
+        type: "success",
       });
+      if (log) appendAuditLog(log);
     }
     setShowAddUser(false);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!supabase || !deletingUser) return;
+    const userToDelete = deletingUser;
+    const previousUsers = users;
+    setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+    setDeletingUser(null);
+
+    const deleted = await deleteStaffUser(supabase, userToDelete.id);
+    if (!deleted) {
+      setUsers(previousUsers);
+      return;
+    }
+    const log = await insertAuditLog(supabase, {
+      user_name: currentUserEmail || "system",
+      action: "DELETE",
+      module: "staff_users",
+      details: `User deleted: ${userToDelete.name}`,
+      type: "danger",
+    });
+    if (log) appendAuditLog(log);
   };
 
   const togglePermission = (key: string) => {
@@ -653,7 +731,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     className="flex items-center justify-between group p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
                     onClick={() => handleOpenUserModal(u)}
                   >
-                    <div>
+                    <div className="flex-1">
                       <div
                         className={`text-xs font-bold ${isDark ? "text-slate-300" : "text-slate-900"}`}
                       >
@@ -668,6 +746,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     >
                       {u.role}
                     </span>
+                    <button
+                      type="button"
+                      className="ml-3 w-8 h-8 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeletingUser(u);
+                      }}
+                      title="Delete user"
+                    >
+                      <i className="fas fa-trash text-xs"></i>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -856,6 +945,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deletingUser && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div
+            className={`rounded-[1.5rem] shadow-2xl w-full max-w-sm overflow-hidden p-7 ${isDark ? "bg-slate-800" : "bg-white"}`}
+          >
+            <h3
+              className={`text-lg font-black mb-2 ${isDark ? "text-white" : "text-slate-900"}`}
+            >
+              Delete User
+            </h3>
+            <p
+              className={`text-xs font-medium ${isDark ? "text-slate-300" : "text-slate-600"}`}
+            >
+              Are you sure you want to delete <b>{deletingUser.name}</b>?
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setDeletingUser(null)}
+                className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase ${isDark ? "bg-slate-700 text-slate-300" : "bg-slate-100 text-slate-600"}`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteUser}
+                className="flex-1 py-2.5 rounded-lg text-xs font-black uppercase bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
