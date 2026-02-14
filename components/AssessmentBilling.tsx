@@ -562,14 +562,14 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           </div>
 
           <div
-            className={`p-3 border-t space-y-2.5 ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-300"}`}
+            className={`p-2.5 border-t space-y-2 ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-300"}`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase">
+              <span className="text-[11px] font-bold text-slate-500 uppercase">
                 Queue Subtotal
               </span>
               <span
-                className={`font-bold ${isDark ? "text-white" : "text-slate-900"}`}
+                className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}
               >
                 ৳{queueTotal.toLocaleString()}
               </span>
@@ -577,25 +577,25 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
             {/* Discount Field */}
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-bold text-red-400 uppercase">
+              <span className="text-[11px] font-bold text-red-400 uppercase">
                 Batch Discount (BDT)
               </span>
               <input
                 type="number"
                 placeholder="0"
-                className={`w-24 px-3 py-1 rounded-lg text-right font-bold border outline-none focus:border-red-500 text-red-500 ${isDark ? "bg-slate-900 border-slate-600" : "bg-white border-slate-200"}`}
+                className={`w-22 px-2.5 py-0.5 rounded-lg text-right text-sm font-bold border outline-none focus:border-red-500 text-red-500 ${isDark ? "bg-slate-900 border-slate-600" : "bg-white border-slate-200"}`}
                 value={batchDiscount}
                 onChange={(e) => setBatchDiscount(e.target.value)}
               />
             </div>
 
             <div
-              className={`flex items-center justify-between pt-4 border-t ${isDark ? "border-slate-700" : "border-slate-200"}`}
+              className={`flex items-center justify-between pt-2.5 border-t ${isDark ? "border-slate-700" : "border-slate-200"}`}
             >
-              <span className="text-sm font-black text-purple-500 uppercase tracking-widest">
+              <span className="text-xs font-black text-purple-500 uppercase tracking-widest">
                 Net Payable
               </span>
-              <span className="text-xl font-black text-purple-600">
+              <span className="text-lg font-black text-purple-600">
                 ৳{queueNetTotal.toLocaleString()}
               </span>
             </div>
