@@ -19,6 +19,7 @@ import {
   PaymentRecord,
   AssessmentRecord,
   StaffUser,
+  LogEntry,
 } from "./types";
 
 const normalizeDutyRecord = (row: any): PaymentRecord => ({
@@ -61,6 +62,16 @@ const normalizeStaffUser = (row: any): StaffUser => ({
   active: Boolean(row.active),
 });
 
+const normalizeAuditLog = (row: any): LogEntry => ({
+  id: row.id,
+  timestamp: row.timestamp || row.created_at || new Date().toLocaleString(),
+  user: row.user ?? row.user_name ?? "system",
+  action: row.action || "",
+  module: row.module || "",
+  details: row.details || "",
+  type: row.type || "info",
+});
+
 const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
   agencyName: row.agencyName ?? row.agency_name,
   agencyAddress: row.agencyAddress ?? row.agency_address,
@@ -92,6 +103,7 @@ const App: React.FC = () => {
   >([]);
   const [visibleAinRows, setVisibleAinRows] = useState<Client[]>([]);
   const [users, setUsers] = useState<StaffUser[]>([]);
+  const [auditLogs, setAuditLogs] = useState<LogEntry[]>([]);
 
   const [config, setConfig] = useState<SystemConfig>({
     defaultRate: 100,
@@ -151,7 +163,7 @@ const App: React.FC = () => {
       eventType: "INSERT" | "UPDATE" | "DELETE",
       payload: any,
     ) => {
-      if (tableName === "audit_logs") return;
+      if (tableName === "audit_logs" || tableName === "staff_users") return;
       const row = eventType === "DELETE" ? payload.old : payload.new;
       const identifier = row?.id || row?.ain || "n/a";
       await insertAuditLog(supabase, {
@@ -236,6 +248,9 @@ const App: React.FC = () => {
       normalizeAssessmentRecord,
     ).then((channel) => channels.push(channel));
     fetchAndSubscribe("staff_users", setUsers, normalizeStaffUser).then(
+      (channel) => channels.push(channel),
+    );
+    fetchAndSubscribe("audit_logs", setAuditLogs, normalizeAuditLog).then(
       (channel) => channels.push(channel),
     );
 
@@ -400,7 +415,31 @@ const App: React.FC = () => {
               value: totalBeCount.toLocaleString(),
               color: "#f59e0b",
             },
-          ];
+        ];
+      }
+      case "admin": {
+        const totalUsers = users.length;
+        const activeUsers = users.filter((u) => u.active).length;
+        const admins = users.filter((u) => u.role === "Admin").length;
+        const inactive = totalUsers - activeUsers;
+        return [
+          { label: "Total Users", value: totalUsers, color: "#2563eb" },
+          { label: "Active Users", value: activeUsers, color: "#10b981" },
+          { label: "Admins", value: admins, color: "#f59e0b" },
+          { label: "Inactive", value: inactive, color: "#ef4444" },
+        ];
+      }
+      case "logs": {
+        const totalLogs = auditLogs.length;
+        const warningCount = auditLogs.filter((l) => l.type === "warning").length;
+        const dangerCount = auditLogs.filter((l) => l.type === "danger").length;
+        const successCount = auditLogs.filter((l) => l.type === "success").length;
+        return [
+          { label: "Total Logs", value: totalLogs, color: "#2563eb" },
+          { label: "Success", value: successCount, color: "#10b981" },
+          { label: "Warnings", value: warningCount, color: "#f59e0b" },
+          { label: "Critical", value: dangerCount, color: "#ef4444" },
+        ];
       }
       default: {
         const rows = visibleDutyRows;
@@ -440,6 +479,8 @@ const App: React.FC = () => {
     visibleDutyRows,
     visibleAssessmentRows,
     visibleAinRows,
+    users,
+    auditLogs,
   ]);
 
   useEffect(() => {
@@ -688,11 +729,14 @@ const App: React.FC = () => {
               dutyHistory={dutyHistory}
               assessmentHistory={assessmentHistory}
               users={users}
+              setUsers={setUsers}
+              setAuditLogs={setAuditLogs}
+              currentUserEmail={session?.user?.email || "system"}
               supabase={supabase}
             />
           )}
           {activeTab === "logs" && (
-            <AuditLogs systemConfig={config} supabase={supabase} />
+            <AuditLogs systemConfig={config} supabase={supabase} logs={auditLogs} />
           )}
         </div>
       </main>

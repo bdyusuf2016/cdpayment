@@ -272,7 +272,14 @@ export async function updateStaffUser(
     console.error("updateStaffUser error", error);
     return null;
   }
-  return data;
+  return {
+    id: data.id,
+    name: data.name ?? "",
+    role: data.role ?? "User",
+    permissions: data.permissions ?? {},
+    lastActive: data.lastActive ?? data.last_active ?? "",
+    active: Boolean(data.active),
+  };
 }
 
 export async function insertStaffUser(
@@ -303,6 +310,23 @@ export async function insertStaffUser(
     lastActive: data.lastActive ?? data.last_active ?? "",
     active: Boolean(data.active),
   };
+}
+
+export async function deleteStaffUser(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<{ id: string } | null> {
+  const { data, error } = await supabase
+    .from("staff_users")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .single();
+  if (error) {
+    console.error("deleteStaffUser error", error);
+    return null;
+  }
+  return data ? { id: data.id } : null;
 }
 
 // System Settings
@@ -396,7 +420,7 @@ export async function insertAuditLog(
     details?: string;
     type?: "info" | "warning" | "danger" | "success";
   },
-) {
+): Promise<LogEntry | null> {
   try {
     const payload = {
       timestamp: entry.timestamp ?? new Date().toLocaleString(),
@@ -406,11 +430,23 @@ export async function insertAuditLog(
       details: entry.details ?? "",
       type: entry.type ?? "info",
     };
-    const { error } = await supabase.from("audit_logs").insert([payload]);
+    const { data, error } = await supabase
+      .from("audit_logs")
+      .insert([payload])
+      .select()
+      .single();
     if (error) throw error;
-    return true;
+    return {
+      id: data.id,
+      timestamp: data.timestamp || data.created_at || payload.timestamp,
+      user: data.user_name ?? data.user ?? payload.user_name,
+      action: data.action || payload.action,
+      module: data.module || payload.module,
+      details: data.details || payload.details,
+      type: data.type || payload.type,
+    };
   } catch (err) {
     console.error("insertAuditLog error", err);
-    return false;
+    return null;
   }
 }
