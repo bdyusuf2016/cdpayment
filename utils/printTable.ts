@@ -5,6 +5,7 @@ type PrintOptions = {
     label?: string;
     value: string | number;
   };
+  replaceTakaWithBDT?: boolean;
 };
 
 export function printElement(
@@ -51,6 +52,42 @@ export function printElement(
     });
   }
 
+  if (options.replaceTakaWithBDT) {
+    table.querySelectorAll("th, td").forEach((cell) => {
+      if (cell.textContent?.includes("৳")) {
+        cell.textContent = cell.textContent.replace(/৳\s*/g, "BDT ");
+      }
+    });
+  }
+
+  if (options.grandTotal) {
+    const headerCount = table.querySelectorAll("thead th").length;
+    const colCount = Math.max(headerCount, 2);
+    let tfoot = table.querySelector("tfoot");
+    if (!tfoot) {
+      tfoot = document.createElement("tfoot");
+      table.appendChild(tfoot);
+    } else {
+      tfoot.innerHTML = "";
+    }
+
+    const totalRow = document.createElement("tr");
+    const labelCell = document.createElement("td");
+    labelCell.colSpan = colCount - 1;
+    labelCell.style.textAlign = "right";
+    labelCell.style.fontWeight = "700";
+    labelCell.textContent = options.grandTotal.label || "Grand Total";
+
+    const valueCell = document.createElement("td");
+    valueCell.style.fontWeight = "800";
+    valueCell.style.textAlign = "right";
+    valueCell.textContent = String(options.grandTotal.value);
+
+    totalRow.appendChild(labelCell);
+    totalRow.appendChild(valueCell);
+    tfoot.appendChild(totalRow);
+  }
+
   const html = `
     <!doctype html>
     <html>
@@ -64,17 +101,11 @@ export function printElement(
           th { background: #f8fafc; font-weight: 700; text-align: left; }
           thead tr { background: #f1f5f9; }
           .title { font-size: 16px; font-weight: 800; margin-bottom: 12px; }
-          .grand-total { margin-top: 12px; text-align: right; font-size: 15px; font-weight: 800; }
         </style>
       </head>
       <body>
         ${title ? `<div class="title">${title}</div>` : ""}
         ${table.outerHTML}
-        ${
-          options.grandTotal
-            ? `<div class="grand-total">${options.grandTotal.label || "Grand Total"}: ${options.grandTotal.value}</div>`
-            : ""
-        }
       </body>
     </html>
   `;

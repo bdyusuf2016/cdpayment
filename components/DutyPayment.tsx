@@ -869,11 +869,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   "Transaction History",
                   {
                     autoExcludeControls: true,
+                    replaceTakaWithBDT: true,
                     grandTotal: {
                       label: "Grand Total",
-                      value: filteredHistory
+                      value: `BDT ${filteredHistory
                         .reduce((sum, rec) => sum + rec.duty, 0)
-                        .toLocaleString(),
+                        .toLocaleString()}`,
                     },
                   },
                 )
