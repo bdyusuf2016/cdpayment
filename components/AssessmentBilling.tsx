@@ -372,6 +372,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   };
 
   const handleDeleteRecord = async (id: string) => {
+    const ok = window.confirm("Are you sure you want to delete this record?");
+    if (!ok) return;
+
     setInsertedRecords((prev) => prev.filter((r) => r.id !== id));
     setUpdatedRecords((prev) => {
       const next = { ...prev };
