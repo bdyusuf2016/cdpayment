@@ -486,7 +486,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                AIN Number
+                Client AIN
               </label>
               <div className="relative">
                 <i className="fas fa-id-badge absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -501,7 +501,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                WhatsApp Contact
+                WhatsApp Number
               </label>
               <div className="relative">
                 <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -516,7 +516,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             </div>
             <div className="md:col-span-2 space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Client Name
+                Client Name (Auto)
               </label>
               <input
                 type="text"
@@ -536,7 +536,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               {/* Swapped Year and BE Number */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase">
-                  Year
+                  B/E Year
                 </label>
                 <input
                   type="text"
@@ -561,7 +561,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase">
-                  Amount
+                  Duty Amount (BDT)
                 </label>
                 <input
                   type="number"

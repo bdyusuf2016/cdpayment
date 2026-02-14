@@ -428,7 +428,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase">
-                  AIN Reference
+                  Client AIN
                 </label>
                 <div className="relative">
                   <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -443,7 +443,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               </div>
               <div className="md:col-span-2 space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase">
-                  Client Name
+                  Client Name (Auto)
                 </label>
                 <input
                   type="text"
@@ -461,7 +461,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-end">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase">
-                    Total B/E
+                    Number of B/E
                   </label>
                   <input
                     ref={beCountRef}
@@ -474,7 +474,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase">
-                    Rate/Unit
+                    Rate per B/E (BDT)
                   </label>
                   <input
                     type="number"
@@ -487,13 +487,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   onClick={handleAddOrUpdate}
                   className="h-[48px] bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl uppercase tracking-widest text-xs shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
                 >
-                  Add Bill
+                  Add to Queue
                 </button>
               </div>
               {/* Live Result Display */}
               <div className="mt-4 pt-4 border-t border-dashed border-slate-300 dark:border-slate-700 flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Item Amount
+                  Current Line Amount
                 </span>
                 <span className="text-2xl font-bold text-purple-600">
                   ৳{calculatedAmount.toLocaleString()}
@@ -510,7 +510,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           <div className="p-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white flex justify-between items-center">
             <div>
               <h4 className="font-bold text-sm uppercase tracking-widest">
-                Billing Queue
+                Assessment Queue
               </h4>
               <p className="text-[10px] opacity-70 font-bold uppercase mt-1">
                 {queue.length} Bills Ready
@@ -566,7 +566,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500 uppercase">
-                Subtotal
+                Queue Subtotal
               </span>
               <span
                 className={`font-bold ${isDark ? "text-white" : "text-slate-900"}`}
@@ -578,7 +578,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             {/* Discount Field */}
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-bold text-red-400 uppercase">
-                Discount
+                Batch Discount (BDT)
               </span>
               <input
                 type="number"
@@ -593,7 +593,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               className={`flex items-center justify-between pt-4 border-t ${isDark ? "border-slate-700" : "border-slate-200"}`}
             >
               <span className="text-sm font-black text-purple-500 uppercase tracking-widest">
-                Total Payable
+                Net Payable
               </span>
               <span className="text-xl font-black text-purple-600">
                 ৳{queueNetTotal.toLocaleString()}
@@ -605,7 +605,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               disabled={queue.length === 0}
               className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-4 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
             >
-              Confirm & Post
+              Submit Queue
             </button>
           </div>
         </div>
@@ -863,7 +863,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 className={`p-4 rounded-xl border flex justify-between items-center ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-300"}`}
               >
                 <span className="text-xs font-bold text-slate-500 uppercase">
-                  Total Bill Amount
+                  Total Selected Amount
                 </span>
                 <span
                   className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
@@ -878,7 +878,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  Received Amount
+                  Received Amount (BDT)
                 </label>
                 <input
                   type="number"
