@@ -56,6 +56,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const [paymentIds, setPaymentIds] = useState<string[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    ids: string[];
+  }>({ show: false, ids: [] });
 
   const beCountRef = useRef<HTMLInputElement>(null);
 
@@ -371,20 +375,28 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     });
   };
 
-  const handleDeleteRecord = async (id: string) => {
-    const ok = window.confirm("Are you sure you want to delete this record?");
-    if (!ok) return;
+  const handleDeleteRecord = (id?: string) => {
+    const idsToDelete = id ? [id] : selectedIds;
+    if (idsToDelete.length === 0) return;
+    setDeleteConfirm({ show: true, ids: idsToDelete });
+  };
 
-    setInsertedRecords((prev) => prev.filter((r) => r.id !== id));
-    setUpdatedRecords((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-    setSelectedIds((prev) => prev.filter((itemId) => itemId !== id));
-    if (supabase) {
-      await deleteAssessment(supabase, id);
+  const executeDelete = async () => {
+    for (const id of deleteConfirm.ids) {
+      setInsertedRecords((prev) => prev.filter((r) => r.id !== id));
+      setUpdatedRecords((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      if (supabase) {
+        await deleteAssessment(supabase, id);
+      }
     }
+    setSelectedIds((prev) =>
+      prev.filter((itemId) => !deleteConfirm.ids.includes(itemId)),
+    );
+    setDeleteConfirm({ show: false, ids: [] });
   };
 
   const isDark = systemConfig.theme === "dark";
@@ -619,6 +631,12 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in"
                 >
                   Bulk Pay ({selectedIds.length})
+                </button>
+                <button
+                  onClick={() => handleDeleteRecord()}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in"
+                >
+                  Delete ({selectedIds.length})
                 </button>
                 <button
                   onClick={() =>
@@ -892,6 +910,44 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 className="w-full py-4 mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl uppercase tracking-widest text-xs shadow-xl shadow-purple-200 transition-all active:scale-95"
               >
                 Confirm Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div
+            className={`rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center animate-in zoom-in-95 ${isDark ? "bg-slate-800" : "bg-white"}`}
+          >
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-red-100">
+              <i className="fas fa-trash-alt text-2xl"></i>
+            </div>
+            <h3
+              className={`text-xl font-black leading-tight mb-2 ${isDark ? "text-white" : "text-slate-900"}`}
+            >
+              Delete Record?
+            </h3>
+            <p
+              className={`font-medium text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}
+            >
+              You are about to permanently delete {deleteConfirm.ids.length}{" "}
+              selected item(s). This action cannot be reversed.
+            </p>
+            <div className="flex flex-col gap-3 mt-8">
+              <button
+                onClick={executeDelete}
+                className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-xl shadow-red-100 transition-all active:scale-95 uppercase text-[10px] tracking-widest"
+              >
+                Yes, Delete Permanently
+              </button>
+              <button
+                onClick={() => setDeleteConfirm({ show: false, ids: [] })}
+                className={`w-full py-3.5 font-black rounded-xl transition-all uppercase text-[10px] tracking-widest ${isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              >
+                Cancel
               </button>
             </div>
           </div>
