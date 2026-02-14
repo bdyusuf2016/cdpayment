@@ -79,15 +79,19 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
   };
 
-  const filteredHistory = useMemo(() => {
+  const allHistory = useMemo(() => {
     // Merge local inserted records and apply local updates, dedupe by id
     const combined = [...insertedRecords, ...history].filter(
       (v, i, a) => a.findIndex((x) => x.id === v.id) === i,
     );
     // Apply any local updates
-    const applied = combined.map((rec) =>
+    return combined.map((rec) =>
       updatedRecords[rec.id] ? updatedRecords[rec.id] : rec,
     );
+  }, [history, insertedRecords, updatedRecords]);
+
+  const filteredHistory = useMemo(() => {
+    const applied = allHistory;
     return applied.filter((rec) => {
       const recDate = parseDate(rec.date);
       const recClientName = (rec.clientName || "").toLowerCase();
@@ -116,9 +120,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       return matchesSearch && matchesStatus && matchesDate && matchesMethod;
     });
   }, [
-    history,
-    insertedRecords,
-    updatedRecords,
+    allHistory,
     filterSearch,
     filterStatus,
     filterPaymentMethod,
@@ -325,9 +327,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   };
 
   const initiatePayment = (ids: string[]) => {
-    const totalDue = history
-      .filter((r) => ids.includes(r.id))
-      .reduce((acc, r) => acc + r.net, 0);
     setPaymentIds(ids);
     setPaymentAmount(""); // Received Amount starts blank
     setPaymentMethod(systemConfig.paymentMethods[0] || "Cash");
@@ -341,7 +340,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const key = systemConfig.supabaseKey;
 
     const apply = async () => {
-      for (const rec of history.filter((r) => paymentIds.includes(r.id))) {
+      for (const rec of allHistory.filter((r) => paymentIds.includes(r.id))) {
         const splitAmount = amount / paymentIds.length;
         const patched: Partial<AssessmentRecord> = {
           status: "Paid",
@@ -622,7 +621,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 <button
                   onClick={() =>
                     shareWhatsApp(
-                      history.filter((h) => selectedIds.includes(h.id)),
+                      allHistory.filter((h) => selectedIds.includes(h.id)),
                     )
                   }
                   className="bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in flex items-center gap-2"
@@ -850,7 +849,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
                 >
                   ৳
-                  {history
+                  {allHistory
                     .filter((r) => paymentIds.includes(r.id))
                     .reduce((a, b) => a + b.net, 0)
                     .toLocaleString()}
