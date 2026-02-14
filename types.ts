@@ -87,6 +87,9 @@ export interface SystemConfig {
   defaultRate: number;
   agencyName: string;
   agencyAddress: string;
+  developerCreditName?: string;
+  developerCreditUrl?: string;
+  showDeveloperCredit?: boolean;
   autoInvoice: boolean;
   currency: string;
   theme: 'light' | 'dark';

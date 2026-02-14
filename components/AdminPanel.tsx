@@ -303,7 +303,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const applyThemeTemplate = (
     template: NonNullable<SystemConfig["themeTemplate"]>,
   ) => {
-    setConfig((prev) => ({ ...prev, themeTemplate: template }));
+    updateConfig("themeTemplate", template);
     localStorage.setItem("ui_theme_template", template);
   };
 
@@ -613,6 +613,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 ))}
               </div>
             </div>
+            <div className="space-y-2">
+              <span
+                className={`font-bold text-sm ${isDark ? "text-slate-200" : "text-slate-800"}`}
+              >
+                Theme Mode
+              </span>
+              <div
+                className={`flex p-1 rounded-xl ${isDark ? "bg-slate-900" : "bg-slate-100"}`}
+              >
+                <button
+                  onClick={() => updateConfig("theme", "light")}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase ${config.theme === "light" ? "bg-blue-600 text-white shadow-lg" : "opacity-50"}`}
+                >
+                  Light
+                </button>
+                <button
+                  onClick={() => updateConfig("theme", "dark")}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase ${config.theme === "dark" ? "bg-blue-600 text-white shadow-lg" : "opacity-50"}`}
+                >
+                  Dark
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -651,6 +674,54 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onChange={(e) => updateConfig("agencyAddress", e.target.value)}
               />
             </div>
+            <div className="space-y-1">
+              <label
+                className={`text-[10px] font-black opacity-60 uppercase tracking-widest ml-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}
+              >
+                Developer Credit Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Dev Studio"
+                className={`w-full px-5 py-3 rounded-xl border-2 font-bold outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-900"}`}
+                value={config.developerCreditName || ""}
+                onChange={(e) =>
+                  updateConfig("developerCreditName", e.target.value)
+                }
+              />
+            </div>
+            <div className="space-y-1">
+              <label
+                className={`text-[10px] font-black opacity-60 uppercase tracking-widest ml-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}
+              >
+                Developer Credit URL
+              </label>
+              <input
+                type="text"
+                placeholder="https://your-site.com"
+                className={`w-full px-5 py-3 rounded-xl border-2 font-bold outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-900"}`}
+                value={config.developerCreditUrl || ""}
+                onChange={(e) =>
+                  updateConfig("developerCreditUrl", e.target.value)
+                }
+              />
+            </div>
+            <label
+              className={`flex items-center justify-between px-3 py-2 rounded-xl border ${isDark ? "border-slate-700 bg-slate-900" : "border-slate-300 bg-slate-50"}`}
+            >
+              <span
+                className={`text-xs font-bold ${isDark ? "text-slate-200" : "text-slate-700"}`}
+              >
+                Show Developer Credit in Footer
+              </span>
+              <input
+                type="checkbox"
+                checked={Boolean(config.showDeveloperCredit)}
+                onChange={(e) =>
+                  updateConfig("showDeveloperCredit", e.target.checked)
+                }
+              />
+            </label>
           </div>
         </div>
 

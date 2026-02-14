@@ -11,7 +11,7 @@ import AinDatabase from "./components/AinDatabase";
 import AdminPanel from "./components/AdminPanel";
 import AuditLogs from "./components/AuditLogs";
 import Auth from "./components/Auth";
-import { insertAuditLog } from "./utils/supabaseApi";
+import { insertAuditLog, updateSystemSettings } from "./utils/supabaseApi";
 import {
   TabType,
   Client,
@@ -75,6 +75,11 @@ const normalizeAuditLog = (row: any): LogEntry => ({
 const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
   agencyName: row.agencyName ?? row.agency_name,
   agencyAddress: row.agencyAddress ?? row.agency_address,
+  developerCreditName:
+    row.developerCreditName ?? row.developer_credit_name ?? "",
+  developerCreditUrl: row.developerCreditUrl ?? row.developer_credit_url ?? "",
+  showDeveloperCredit:
+    row.showDeveloperCredit ?? row.show_developer_credit ?? false,
   defaultRate: Number(row.defaultRate ?? row.default_rate ?? 0),
   autoInvoice: row.autoInvoice ?? row.auto_invoice,
   currency: row.currency,
@@ -109,6 +114,9 @@ const App: React.FC = () => {
     defaultRate: 100,
     agencyName: "Customs Duty Pro Ltd.",
     agencyAddress: "House #12, Road #4, Sector #7, Uttara, Dhaka-1230",
+    developerCreditName: "",
+    developerCreditUrl: "",
+    showDeveloperCredit: false,
     autoInvoice: true,
     currency: "BDT",
     theme: "light",
@@ -568,12 +576,13 @@ const App: React.FC = () => {
             </button>
             <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
             <button
-              onClick={() =>
-                setConfig((prev) => ({
-                  ...prev,
-                  theme: isDark ? "light" : "dark",
-                }))
-              }
+              onClick={() => {
+                const nextTheme = isDark ? "light" : "dark";
+                setConfig((prev) => ({ ...prev, theme: nextTheme }));
+                if (supabase) {
+                  updateSystemSettings(supabase, { theme: nextTheme });
+                }
+              }}
               className={`w-8 h-7 rounded-md flex items-center justify-center transition-all ${isDark ? "text-yellow-400" : "text-slate-400 hover:text-slate-600"}`}
             >
               <i className={`fas ${isDark ? "fa-sun" : "fa-moon"}`}></i>
@@ -751,6 +760,23 @@ const App: React.FC = () => {
           <p className="text-[9px] font-bold text-slate-400 max-w-sm">
             System v2.0 • {config.agencyAddress}
           </p>
+          {config.showDeveloperCredit && config.developerCreditName ? (
+            <p className="text-[10px] font-bold text-slate-500">
+              Developed by{" "}
+              {config.developerCreditUrl ? (
+                <a
+                  href={config.developerCreditUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  {config.developerCreditName}
+                </a>
+              ) : (
+                config.developerCreditName
+              )}
+            </p>
+          ) : null}
         </div>
       </footer>
     </div>
