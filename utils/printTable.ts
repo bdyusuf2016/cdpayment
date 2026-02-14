@@ -1,7 +1,51 @@
-export function printElement(el: HTMLElement | null, title = "") {
+type PrintOptions = {
+  excludeColumnIndexes?: number[];
+  autoExcludeControls?: boolean;
+};
+
+export function printElement(
+  el: HTMLElement | null,
+  title = "",
+  options: PrintOptions = {},
+) {
   if (!el) return;
   const printWindow = window.open("", "_blank");
   if (!printWindow) return;
+
+  const table = el.cloneNode(true) as HTMLElement;
+  const excluded = new Set<number>(options.excludeColumnIndexes || []);
+
+  if (options.autoExcludeControls) {
+    const headerCells = Array.from(table.querySelectorAll("thead th"));
+    headerCells.forEach((th, idx) => {
+      const txt = (th.textContent || "").trim().toLowerCase();
+      const hasCheckbox = !!th.querySelector('input[type="checkbox"]');
+      if (
+        hasCheckbox ||
+        txt === "controls" ||
+        txt === "actions" ||
+        txt === "control"
+      ) {
+        excluded.add(idx);
+      }
+    });
+  }
+
+  if (excluded.size > 0) {
+    const removeByIndex = (cells: Element[]) => {
+      Array.from(excluded)
+        .sort((a, b) => b - a)
+        .forEach((idx) => {
+          const cell = cells[idx];
+          if (cell) cell.remove();
+        });
+    };
+
+    table.querySelectorAll("tr").forEach((tr) => {
+      const cells = Array.from(tr.querySelectorAll("th, td"));
+      removeByIndex(cells);
+    });
+  }
 
   const html = `
     <!doctype html>
@@ -20,7 +64,7 @@ export function printElement(el: HTMLElement | null, title = "") {
       </head>
       <body>
         ${title ? `<div class="title">${title}</div>` : ""}
-        ${el.outerHTML}
+        ${table.outerHTML}
       </body>
     </html>
   `;

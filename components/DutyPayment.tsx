@@ -861,6 +861,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 printElement(
                   document.getElementById("duty-table"),
                   "Transaction History",
+                  { autoExcludeControls: true },
                 )
               }
               title="Print table"
