@@ -289,6 +289,14 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     const client = records[0];
+    const fmt = (n: number) =>
+      n.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    const settlementLabel = records.every((r) => r.status === "Paid")
+      ? "Paid"
+      : "Payable";
     const subtotal = records.reduce((acc, r) => acc + r.amount, 0);
     const totalDiscount = records.reduce((acc, r) => acc + r.discount, 0);
     const totalNet = records.reduce((acc, r) => acc + r.net, 0);
@@ -298,7 +306,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${index + 1}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">Assessment Bill (${rec.nosOfBe} B/E)</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${rec.net.toLocaleString()}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${fmt(rec.net)}</td>
       </tr>`,
       )
       .join("");
@@ -317,9 +325,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           <p><strong>Customer:</strong> ${client.clientName}</p>
           <table><thead><tr><th>#</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table>
           <div class="summary">
-            <div class="summary-row"><span>Subtotal</span><span>${subtotal.toLocaleString()}</span></div>
-            <div class="summary-row"><span>Discount</span><span>${totalDiscount.toLocaleString()}</span></div>
-            <div class="summary-row total"><span>Payable</span><span>${totalNet.toLocaleString()}</span></div>
+            <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+            <div class="summary-row"><span>Discount</span><span>${fmt(totalDiscount)}</span></div>
+            <div class="summary-row total"><span>${settlementLabel}</span><span>${fmt(totalNet)}</span></div>
           </div>
         </body>
       </html>
