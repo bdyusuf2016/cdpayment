@@ -453,7 +453,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Left: Input Form Card */}
         <div
-          className={`lg:col-span-2 rounded-[1.5rem] shadow-sm border p-8 flex flex-col gap-6 relative overflow-hidden transition-all ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"} ${editingId ? "ring-2 ring-red-500 ring-offset-2" : ""}`}
+          className={`lg:col-span-2 rounded-[1.5rem] shadow-sm border p-6 flex flex-col gap-4 relative overflow-hidden transition-all ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"} ${editingId ? "ring-2 ring-red-500 ring-offset-2" : ""}`}
         >
           <div className="flex items-center justify-between pb-4 border-b dark:border-slate-700">
             <h3
@@ -483,7 +483,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           </div>
 
           {/* Client Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 AIN Number
@@ -493,7 +493,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 <input
                   type="text"
                   placeholder="Search AIN..."
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                   value={ain}
                   onChange={(e) => handleAinChange(e.target.value)}
                 />
@@ -508,7 +508,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 <input
                   type="text"
                   placeholder="Mobile No"
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
@@ -521,7 +521,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <input
                 type="text"
                 readOnly
-                className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"}`}
+                className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"}`}
                 value={clientName}
                 placeholder="Client name will appear here..."
               />
@@ -540,7 +540,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 </label>
                 <input
                   type="text"
-                  className={`w-full px-4 py-3 rounded-xl border font-bold text-lg text-center outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-800"}`}
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-base text-center outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-800"}`}
                   value={beYear}
                   onChange={(e) => setBeYear(e.target.value)}
                 />
@@ -554,7 +554,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   autoFocus
                   type="text"
                   placeholder="XXXXX"
-                  className={`w-full px-4 py-3 rounded-xl border font-bold text-lg text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-800"}`}
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-base text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-800"}`}
                   value={beNumber}
                   onChange={(e) => setBeNumber(e.target.value)}
                 />
@@ -566,7 +566,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 <input
                   type="number"
                   placeholder="0.00"
-                  className={`w-full px-4 py-3 rounded-xl border font-bold text-lg text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-blue-400" : "bg-white border-slate-300 text-blue-600"}`}
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-base text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-blue-400" : "bg-white border-slate-300 text-blue-600"}`}
                   value={dutyAmount}
                   onChange={(e) => setDutyAmount(e.target.value)}
                 />
@@ -574,7 +574,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             </div>
             <button
               onClick={handleAddOrUpdate}
-              className={`w-full mt-4 text-white font-bold py-3.5 rounded-xl uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all flex justify-center items-center gap-2 ${editingId ? "bg-red-600 hover:bg-red-700 shadow-red-600/20" : "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"}`}
+              className={`w-full mt-4 text-white font-bold py-3 rounded-xl uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all flex justify-center items-center gap-2 ${editingId ? "bg-red-600 hover:bg-red-700 shadow-red-600/20" : "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"}`}
             >
               {editingId ? (
                 <>

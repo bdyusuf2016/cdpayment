@@ -431,7 +431,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
           <div
             className={`rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300 ${isDark ? "bg-slate-800" : "bg-white"}`}
           >
-            <div className="bg-gradient-to-br from-slate-900 to-blue-900 p-10 pb-12 relative">
+            <div className="bg-gradient-to-br from-slate-900 to-blue-900 p-8 pb-10 relative">
               <button
                 onClick={() => setShowModal(false)}
                 className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
@@ -456,7 +456,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
             </div>
 
             <div
-              className={`p-10 -mt-6 rounded-t-[2.5rem] space-y-6 ${isDark ? "bg-slate-800" : "bg-white"}`}
+              className={`p-8 -mt-6 rounded-t-[2.5rem] space-y-5 ${isDark ? "bg-slate-800" : "bg-white"}`}
             >
               <div className="space-y-4">
                 <div className="space-y-1">
@@ -465,7 +465,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                   </label>
                   <input
                     type="text"
-                    className={`w-full px-6 py-4 rounded-2xl border-2 outline-none font-black text-lg transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-50 text-slate-800"} focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5`}
+                    className={`w-full px-6 py-3 rounded-2xl border-2 outline-none font-black text-base transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-50 text-slate-800"} focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5`}
                     placeholder="8031XXXXX"
                     value={formAin}
                     onChange={(e) => setFormAin(e.target.value)}
@@ -477,7 +477,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                   </label>
                   <input
                     type="text"
-                    className={`w-full px-6 py-4 rounded-2xl border-2 outline-none font-black text-slate-800 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200 focus:border-blue-500" : "bg-slate-50 border-slate-50 focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5"}`}
+                    className={`w-full px-6 py-3 rounded-2xl border-2 outline-none font-black text-slate-800 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200 focus:border-blue-500" : "bg-slate-50 border-slate-50 focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5"}`}
                     placeholder="Enter legal business name..."
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
@@ -489,7 +489,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                   </label>
                   <input
                     type="text"
-                    className={`w-full px-6 py-4 rounded-2xl border-2 outline-none font-black text-slate-800 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200 focus:border-green-500" : "bg-slate-50 border-slate-50 focus:bg-white focus:border-green-500 focus:ring-8 focus:ring-green-500/5"}`}
+                    className={`w-full px-6 py-3 rounded-2xl border-2 outline-none font-black text-slate-800 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200 focus:border-green-500" : "bg-slate-50 border-slate-50 focus:bg-white focus:border-green-500 focus:ring-8 focus:ring-green-500/5"}`}
                     placeholder="017XXXXXXXX"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
@@ -500,13 +500,13 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
               <div className="flex gap-4 pt-4">
                 <button
                   onClick={() => setShowModal(false)}
-                  className={`flex-grow py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all ${isDark ? "text-slate-400 hover:bg-slate-700" : "text-slate-500 hover:bg-slate-100"}`}
+                  className={`flex-grow py-3 rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all ${isDark ? "text-slate-400 hover:bg-slate-700" : "text-slate-500 hover:bg-slate-100"}`}
                 >
                   Discard
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex-grow py-4 rounded-2xl font-black text-white uppercase text-[11px] tracking-widest bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-95"
+                  className="flex-grow py-3 rounded-2xl font-black text-white uppercase text-[11px] tracking-widest bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-95"
                 >
                   {editingClient ? "Update Profile" : "Save Profile"}
                 </button>
