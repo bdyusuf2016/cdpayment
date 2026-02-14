@@ -30,6 +30,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [updatedRecords, setUpdatedRecords] = useState<
     Record<string, PaymentRecord>
   >({});
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
 
   // Filters
   const [filterSearch, setFilterSearch] = useState("");
@@ -77,8 +78,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const combined = [...insertedRecords, ...history].filter(
       (v, i, a) => a.findIndex((x) => x.id === v.id) === i,
     );
-    return combined.map((rec) => updatedRecords[rec.id] || rec);
-  }, [insertedRecords, history, updatedRecords]);
+    return combined
+      .map((rec) => updatedRecords[rec.id] || rec)
+      .filter((rec) => !deletedIds.includes(rec.id));
+  }, [insertedRecords, history, updatedRecords, deletedIds]);
 
   const filteredHistory = useMemo(() => {
     return allHistory.filter((rec) => {
@@ -361,17 +364,37 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   // Execute Delete
   const executeDelete = async (ids = deleteConfirm.ids) => {
-    for (const id of ids) {
-      if (supabase) await deleteDuty(supabase, id);
-      setInsertedRecords((prev) => prev.filter((r) => r.id !== id));
-      setUpdatedRecords((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    }
+    const idsToDelete = [...ids];
+    if (idsToDelete.length === 0) return;
+
+    // Optimistic remove for instant UI feedback
+    setDeletedIds((prev) => Array.from(new Set([...prev, ...idsToDelete])));
+    setInsertedRecords((prev) =>
+      prev.filter((r) => !idsToDelete.includes(r.id)),
+    );
+    setUpdatedRecords((prev) => {
+      const next = { ...prev };
+      idsToDelete.forEach((id) => delete next[id]);
+      return next;
+    });
     setSelectedIds([]);
     setDeleteConfirm({ show: false, ids: [] });
+
+    if (!supabase) return;
+
+    const results = await Promise.all(
+      idsToDelete.map(async (id) => {
+        const res = await deleteDuty(supabase, id);
+        return { id, ok: Boolean(res) };
+      }),
+    );
+
+    const failedIds = results.filter((r) => !r.ok).map((r) => r.id);
+    if (failedIds.length > 0) {
+      // Roll back only failed deletions
+      setDeletedIds((prev) => prev.filter((id) => !failedIds.includes(id)));
+      console.error("Failed to delete some duty rows:", failedIds);
+    }
   };
 
   const handleStatusUpdate = async (
