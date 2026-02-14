@@ -372,10 +372,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   };
 
   const handleDeleteRecord = async (id: string) => {
-    if (supabase) {
-      await deleteAssessment(supabase, id);
-      return;
-    }
     setInsertedRecords((prev) => prev.filter((r) => r.id !== id));
     setUpdatedRecords((prev) => {
       const next = { ...prev };
@@ -383,6 +379,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       return next;
     });
     setSelectedIds((prev) => prev.filter((itemId) => itemId !== id));
+    if (supabase) {
+      await deleteAssessment(supabase, id);
+    }
   };
 
   const isDark = systemConfig.theme === "dark";
