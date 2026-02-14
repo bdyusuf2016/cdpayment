@@ -121,7 +121,7 @@ ${p}`}class Le extends Error{constructor({message:t,code:n,cause:r,name:s}){var 
       <html>
         <head>
           <title>Duty Invoice</title>
-          <style>body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #1e293b; } .header { display: flex; justify-content: space-between; border-bottom: 2px solid #1e293b; padding-bottom: 20px; margin-bottom: 30px; } table { width: 100%; border-collapse: collapse; } th { background: #f1f5f9; text-align: left; padding: 12px; font-weight: 600; } .summary { margin-top: 20px; margin-left: auto; width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #cbd5e1; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; } .status-seal { display: inline-block; margin: 4px 0 14px 0; padding: 8px 16px; border: 2px solid #1e293b; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; background: ${$==="Paid"?"#dcfce7":"#fef3c7"}; color: ${$==="Paid"?"#166534":"#92400e"}; }</style>
+          <style>body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #1e293b; } .header { display: flex; justify-content: space-between; border-bottom: 2px solid #1e293b; padding-bottom: 20px; margin-bottom: 30px; } table { width: 100%; border-collapse: collapse; } th { background: #f1f5f9; text-align: left; padding: 12px; font-weight: 600; } .summary-wrap { margin-top: 20px; display: flex; justify-content: flex-end; align-items: flex-end; gap: 22px; } .summary { width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #cbd5e1; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; } .status-seal { align-self: flex-end; margin-bottom: 2px; padding: 14px 30px; border: 4px solid ${$==="Paid"?"#166534":"#92400e"}; border-radius: 999px; font-size: 28px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: ${$==="Paid"?"#166534":"#92400e"}; background: transparent; opacity: 0.23; transform: rotate(-14deg); } .print-footer { margin-top: 34px; padding-top: 10px; border-top: 1px solid #cbd5e1; text-align: center; font-size: 11px; color: #475569; }</style>
         </head>
         <body onload="window.print()">
           <div class="header">
@@ -129,13 +129,18 @@ ${p}`}class Le extends Error{constructor({message:t,code:n,cause:r,name:s}){var 
             <div style="text-align: right"><h2>PAYMENT RECEIPT</h2><p>Date: ${new Date().toLocaleDateString("en-GB")}</p></div>
           </div>
           <p><strong>Customer:</strong> ${A.clientName} (AIN: ${A.ain})</p>
-          <div class="status-seal">${$}</div>
           <table><thead><tr><th>SL</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${Tn}</tbody></table>
-          <div class="summary">
-            <div class="summary-row"><span>Subtotal</span><span>${D(L)}</span></div>
-            <div class="summary-row"><span>Service Charge</span><span>${D(ae)}</span></div>
-            <div class="summary-row"><span>Due</span><span>${D(G)}</span></div>
-            <div class="summary-row total"><span>Net Amount</span><span>${D(le)}</span></div>
+          <div class="summary-wrap">
+            <div class="status-seal">${$}</div>
+            <div class="summary">
+              <div class="summary-row"><span>Subtotal</span><span>${D(L)}</span></div>
+              <div class="summary-row"><span>Service Charge</span><span>${D(ae)}</span></div>
+              <div class="summary-row"><span>Due</span><span>${D(G)}</span></div>
+              <div class="summary-row total"><span>Net Amount</span><span>${D(le)}</span></div>
+            </div>
+          </div>
+          <div class="print-footer">
+            This is system-generated invoice. Powered by ${s.agencyName} • Printed on ${new Date().toLocaleString("en-GB")}
           </div>
         </body>
       </html>
