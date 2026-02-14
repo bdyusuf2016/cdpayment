@@ -11,6 +11,7 @@ import AinDatabase from "./components/AinDatabase";
 import AdminPanel from "./components/AdminPanel";
 import AuditLogs from "./components/AuditLogs";
 import Auth from "./components/Auth";
+import { insertAuditLog } from "./utils/supabaseApi";
 import {
   TabType,
   Client,
@@ -145,11 +146,35 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!session || !supabase) return;
 
+    const writeAuditLog = async (
+      tableName: string,
+      eventType: "INSERT" | "UPDATE" | "DELETE",
+      payload: any,
+    ) => {
+      if (tableName === "audit_logs") return;
+      const row = eventType === "DELETE" ? payload.old : payload.new;
+      const identifier = row?.id || row?.ain || "n/a";
+      await insertAuditLog(supabase, {
+        user_name: session?.user?.email || "system",
+        action: eventType,
+        module: tableName,
+        details: `Row ${identifier}`,
+        type:
+          eventType === "DELETE"
+            ? "danger"
+            : eventType === "UPDATE"
+              ? "warning"
+              : "success",
+      });
+    };
+
     const fetchAndSubscribe = async (
       tableName: string,
       setter: React.Dispatch<React.SetStateAction<any[]>>,
       transform?: (row: any) => any,
     ) => {
+      const getRowKey = (row: any) => row?.id ?? row?.ain;
+
       // Fetch initial data
       const { data, error } = await supabase.from(tableName).select("*");
       if (error) {
@@ -167,20 +192,29 @@ const App: React.FC = () => {
           (payload) => {
             if (payload.eventType === "INSERT") {
               const record = transform ? transform(payload.new) : payload.new;
-              setter((current) => [...current, record]);
+              setter((current) => {
+                const key = getRowKey(record);
+                const next = current.filter((item) => getRowKey(item) !== key);
+                return [...next, record];
+              });
+              writeAuditLog(tableName, "INSERT", payload);
             }
             if (payload.eventType === "UPDATE") {
               const record = transform ? transform(payload.new) : payload.new;
+              const key = getRowKey(payload.new);
               setter((current) =>
                 current.map((item) =>
-                  item.id === payload.new.id ? record : item,
+                  getRowKey(item) === key ? record : item,
                 ),
               );
+              writeAuditLog(tableName, "UPDATE", payload);
             }
             if (payload.eventType === "DELETE") {
+              const key = getRowKey(payload.old);
               setter((current) =>
-                current.filter((item) => item.id !== payload.old.id),
+                current.filter((item) => getRowKey(item) !== key),
               );
+              writeAuditLog(tableName, "DELETE", payload);
             }
           },
         )
