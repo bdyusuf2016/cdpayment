@@ -297,6 +297,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const settlementLabel = records.every((r) => r.status === "Paid")
       ? "Paid"
       : "Payable";
+    const sealLabel = settlementLabel === "Paid" ? "PAID" : "UNPAID";
     const subtotal = records.reduce((acc, r) => acc + r.amount, 0);
     const totalDiscount = records.reduce((acc, r) => acc + r.discount, 0);
     const totalNet = records.reduce((acc, r) => acc + r.net, 0);
@@ -315,7 +316,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       <html>
         <head>
           <title>Assessment Invoice</title>
-          <style>body { font-family: 'Inter', sans-serif; padding: 40px; padding-bottom: 92px; } .header { border-bottom: 2px solid #333; padding-bottom: 20px; display: flex; justify-content: space-between; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { text-align: left; padding: 10px; background: #f4f4f4; border-bottom: 1px solid #333; } td { padding: 10px; border-bottom: 1px solid #eee; } .summary { margin-top: 18px; margin-left: auto; width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #d1d5db; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; } .print-footer { position: fixed; left: 40px; right: 40px; bottom: 18px; border-top: 1px solid #cbd5e1; padding-top: 8px; text-align: center; font-size: 11px; color: #475569; }</style>
+          <style>body { font-family: 'Inter', sans-serif; padding: 40px; padding-bottom: 92px; } .header { border-bottom: 2px solid #333; padding-bottom: 20px; display: flex; justify-content: space-between; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { text-align: left; padding: 10px; background: #f4f4f4; border-bottom: 1px solid #333; } td { padding: 10px; border-bottom: 1px solid #eee; } .summary { margin-top: 18px; margin-left: auto; width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #d1d5db; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; } .status-seal { position: fixed; left: 48px; bottom: 138px; padding: 14px 28px; border: 4px solid ${settlementLabel === "Paid" ? "#166534" : "#92400e"}; border-radius: 999px; font-size: 28px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: ${settlementLabel === "Paid" ? "#166534" : "#92400e"}; background: transparent; opacity: 0.2; transform: rotate(-15deg); } .print-footer { position: fixed; left: 40px; right: 40px; bottom: 18px; border-top: 1px solid #cbd5e1; padding-top: 8px; text-align: center; font-size: 11px; color: #475569; }</style>
         </head>
         <body onload="window.print()">
           <div class="header">
@@ -323,6 +324,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             <div style="text-align: right"><h2>Service Bill</h2><p>Date: ${new Date().toLocaleDateString("en-GB")}</p></div>
           </div>
           <p><strong>Customer:</strong> ${client.clientName}</p>
+          <div class="status-seal">${sealLabel}</div>
           <table><thead><tr><th>#</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table>
           <div class="summary">
             <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
