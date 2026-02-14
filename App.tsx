@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import StatsCards from "./components/StatsCards";
 import DutyPayment from "./components/DutyPayment";
 import AssessmentBilling from "./components/AssessmentBilling";
@@ -13,6 +13,7 @@ import {
   SystemConfig,
   PaymentRecord,
   AssessmentRecord,
+  StaffUser,
 } from "./types";
 
 const App: React.FC = () => {
@@ -28,6 +29,7 @@ const App: React.FC = () => {
   const [assessmentHistory, setAssessmentHistory] = useState<
     AssessmentRecord[]
   >([]);
+  const [users, setUsers] = useState<StaffUser[]>([]);
 
   const [config, setConfig] = useState<SystemConfig>({
     defaultRate: 100,
@@ -42,20 +44,18 @@ const App: React.FC = () => {
     supabaseKey: "",
   });
 
-  // Check for existing session on mount
-  useEffect(() => {
+  const supabase = useMemo(() => {
     const savedUrl = localStorage.getItem("supabase_url");
     const savedKey = localStorage.getItem("supabase_key");
-
     if (savedUrl && savedKey) {
-      setConfig((prev) => ({
-        ...prev,
-        supabaseUrl: savedUrl,
-        supabaseKey: savedKey,
-      }));
+      return createClient(savedUrl, savedKey);
+    }
+    return null;
+  }, [config.supabaseUrl, config.supabaseKey]);
 
-      const supabase = createClient(savedUrl, savedKey);
-
+  // Check for existing session on mount
+  useEffect(() => {
+    if (supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         setSession(session);
         setIsLoadingSession(false);
@@ -71,37 +71,96 @@ const App: React.FC = () => {
     } else {
       setIsLoadingSession(false);
     }
-  }, []);
+  }, [supabase]);
 
-  // When session is set and config contains supabase creds, load persisted data
+  // When session is set, load data and set up realtime subscriptions
   useEffect(() => {
-    const loadData = async () => {
-      if (!session) return;
-      const url = config.supabaseUrl;
-      const key = config.supabaseKey;
-      if (!url || !key) return;
+    if (!session || !supabase) return;
 
-      try {
-        const [{ default: api }] = await Promise.all([
-          import("./utils/supabaseApi"),
-        ]);
-
-        const [fClients, fDuty, fAssessment] = await Promise.all([
-          api.fetchClients(url, key),
-          api.fetchDutyHistory(url, key),
-          api.fetchAssessmentHistory(url, key),
-        ]);
-
-        setClients(fClients);
-        setDutyHistory(fDuty);
-        setAssessmentHistory(fAssessment);
-      } catch (err) {
-        console.error("Error loading persisted data", err);
+    const fetchAndSubscribe = async (
+      tableName: string,
+      setter: React.Dispatch<React.SetStateAction<any[]>>,
+    ) => {
+      // Fetch initial data
+      const { data, error } = await supabase.from(tableName).select("*");
+      if (error) {
+        console.error(`Error fetching ${tableName}:`, error);
+      } else {
+        setter(data || []);
       }
+
+      // Subscribe to changes
+      const channel = supabase
+        .channel(`public:${tableName}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: tableName },
+          (payload) => {
+            if (payload.eventType === "INSERT") {
+              setter((current) => [...current, payload.new]);
+            }
+            if (payload.eventType === "UPDATE") {
+              setter((current) =>
+                current.map((item) =>
+                  item.id === payload.new.id ? payload.new : item,
+                ),
+              );
+            }
+            if (payload.eventType === "DELETE") {
+              setter((current) =>
+                current.filter((item) => item.id !== payload.old.id),
+              );
+            }
+          },
+        )
+        .subscribe();
+
+      return channel;
     };
 
-    loadData();
-  }, [session, config.supabaseUrl, config.supabaseKey]);
+    const channels: any[] = [];
+    fetchAndSubscribe("clients", setClients).then((channel) =>
+      channels.push(channel),
+    );
+    fetchAndSubscribe("duty_payments", setDutyHistory).then((channel) =>
+      channels.push(channel),
+    );
+    fetchAndSubscribe("assessments", setAssessmentHistory).then((channel) =>
+      channels.push(channel),
+    );
+    fetchAndSubscribe("staff_users", setUsers).then((channel) =>
+      channels.push(channel),
+    );
+
+    // Special handling for system_settings (assuming single row)
+    const fetchAndSubscribeSettings = async () => {
+      const { data, error } = await supabase
+        .from("system_settings")
+        .select("*")
+        .limit(1)
+        .single();
+      if (!error && data) {
+        setConfig((prev) => ({ ...prev, ...data }));
+      }
+      const settingsChannel = supabase
+        .channel("public:system_settings")
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "system_settings" },
+          (payload) => {
+            setConfig((prev) => ({ ...prev, ...payload.new }));
+          },
+        )
+        .subscribe();
+      channels.push(settingsChannel);
+    };
+    fetchAndSubscribeSettings();
+
+    return () => {
+      channels.forEach((channel) => supabase.removeChannel(channel));
+    };
+  }, [session, supabase]);
+
 
   // Update theme class on config change
   useEffect(() => {
@@ -114,15 +173,19 @@ const App: React.FC = () => {
 
   // Handle Login from Auth Component
   const handleLoginSuccess = (newSession: any, url: string, key: string) => {
+    localStorage.setItem("supabase_url", url);
+    localStorage.setItem("supabase_key", key);
     setConfig((prev) => ({ ...prev, supabaseUrl: url, supabaseKey: key }));
     setSession(newSession);
   };
 
   const handleLogout = async () => {
-    if (config.supabaseUrl && config.supabaseKey) {
-      const supabase = createClient(config.supabaseUrl, config.supabaseKey);
+    if (supabase) {
       await supabase.auth.signOut();
+      localStorage.removeItem("supabase_url");
+      localStorage.removeItem("supabase_key");
       setSession(null);
+      setConfig((prev) => ({...prev, supabaseUrl: "", supabaseKey: ""}))
     }
   };
 
@@ -444,8 +507,8 @@ const App: React.FC = () => {
             <DutyPayment
               clients={clients}
               history={dutyHistory}
-              setHistory={setDutyHistory}
               systemConfig={config}
+              supabase={supabase}
             />
           )}
           {activeTab === "assessment" && (
@@ -453,14 +516,14 @@ const App: React.FC = () => {
               clients={clients}
               systemConfig={config}
               history={assessmentHistory}
-              setHistory={setAssessmentHistory}
+              supabase={supabase}
             />
           )}
           {activeTab === "ain" && (
             <AinDatabase
               clients={clients}
-              setClients={setClients}
               systemConfig={config}
+              supabase={supabase}
             />
           )}
           {activeTab === "admin" && (
@@ -468,14 +531,13 @@ const App: React.FC = () => {
               config={config}
               setConfig={setConfig}
               clients={clients}
-              setClients={setClients}
               dutyHistory={dutyHistory}
-              setDutyHistory={setDutyHistory}
               assessmentHistory={assessmentHistory}
-              setAssessmentHistory={setAssessmentHistory}
+              users={users}
+              supabase={supabase}
             />
           )}
-          {activeTab === "logs" && <AuditLogs systemConfig={config} />}
+          {activeTab === "logs" && <AuditLogs systemConfig={config} supabase={supabase} />}
         </div>
       </main>
 

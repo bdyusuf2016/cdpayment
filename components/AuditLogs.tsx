@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { LogEntry, SystemConfig } from "../types";
 import { printElement } from "../utils/printTable";
-import { fetchAuditLogs } from "../utils/supabaseApi";
+import { fetchData } from "../utils/supabaseApi";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 interface AuditLogsProps {
   systemConfig: SystemConfig;
+  supabase: SupabaseClient | null;
 }
 
-const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
+const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,41 +18,38 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
 
   const filteredLogs = logs.filter(
     (l) =>
-      l.details.toLowerCase().includes(filter.toLowerCase()) ||
+      (l.details && l.details.toLowerCase().includes(filter.toLowerCase())) ||
       l.action.toLowerCase().includes(filter.toLowerCase()),
   );
 
-  useEffect(() => {
-    async function loadLogs() {
-      if (systemConfig.supabaseUrl && systemConfig.supabaseKey) {
-        setLoading(true);
-        setError(null);
-        try {
-          const data: any[] = await fetchAuditLogs(
-            systemConfig.supabaseUrl,
-            systemConfig.supabaseKey,
-          );
-          const mapped: LogEntry[] = (data || []).map((d: any) => ({
-            id: d.id,
-            timestamp:
-              d.timestamp || d.created_at || new Date().toLocaleString(),
-            user: d.user_name ?? d.user ?? "system",
-            action: d.action || "",
-            module: d.module || "",
-            details: d.details || "",
-            type: d.type || "info",
-          }));
-          setLogs(mapped);
-        } catch (err) {
-          console.error("Failed to load audit logs", err);
-          setError("Failed to load audit logs");
-        } finally {
-          setLoading(false);
-        }
+  const loadLogs = async () => {
+    if (supabase) {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchData<LogEntry>(supabase, "audit_logs");
+        const mapped: LogEntry[] = (data || []).map((d: any) => ({
+          id: d.id,
+          timestamp: d.timestamp || d.created_at || new Date().toLocaleString(),
+          user: d.user_name ?? d.user ?? "system",
+          action: d.action || "",
+          module: d.module || "",
+          details: d.details || "",
+          type: d.type || "info",
+        }));
+        setLogs(mapped);
+      } catch (err) {
+        console.error("Failed to load audit logs", err);
+        setError("Failed to load audit logs");
+      } finally {
+        setLoading(false);
       }
     }
+  };
+
+  useEffect(() => {
     loadLogs();
-  }, [systemConfig.supabaseUrl, systemConfig.supabaseKey]);
+  }, [supabase]);
 
   function exportCSV() {
     if (!logs || logs.length === 0) return;
@@ -89,10 +88,14 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div
-        className={`rounded-[2rem] shadow-xl border overflow-hidden ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-300"}`}
+        className={`rounded-[2rem] shadow-xl border overflow-hidden ${
+          isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-300"
+        }`}
       >
         <div
-          className={`p-8 border-b flex flex-wrap items-center justify-between gap-6 ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-900"}`}
+          className={`p-8 border-b flex flex-wrap items-center justify-between gap-6 ${
+            isDark ? "bg-slate-900 border-slate-700" : "bg-slate-900"
+          }`}
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/10 text-blue-400">
@@ -113,7 +116,11 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
               <input
                 type="text"
                 placeholder="Filter logs..."
-                className={`border rounded-xl pl-12 pr-4 py-2.5 text-xs font-bold outline-none focus:border-blue-500 transition-all w-64 ${isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-800 border-slate-700 text-white"}`}
+                className={`border rounded-xl pl-12 pr-4 py-2.5 text-xs font-bold outline-none focus:border-blue-500 transition-all w-64 ${
+                  isDark
+                    ? "bg-slate-800 border-slate-700 text-white"
+                    : "bg-slate-800 border-slate-700 text-white"
+                }`}
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
               />
@@ -125,41 +132,18 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
               <i className="fas fa-download mr-2"></i> CSV
             </button>
             <button
-              onClick={async () => {
-                if (!systemConfig.supabaseUrl || !systemConfig.supabaseKey)
-                  return;
-                setLoading(true);
-                setError(null);
-                try {
-                  const data: any[] = await fetchAuditLogs(
-                    systemConfig.supabaseUrl,
-                    systemConfig.supabaseKey,
-                  );
-                  const mapped: LogEntry[] = (data || []).map((d: any) => ({
-                    id: d.id,
-                    timestamp:
-                      d.timestamp ||
-                      d.created_at ||
-                      new Date().toLocaleString(),
-                    user: d.user_name ?? d.user ?? "system",
-                    action: d.action || "",
-                    module: d.module || "",
-                    details: d.details || "",
-                    type: d.type || "info",
-                  }));
-                  setLogs(mapped);
-                } catch (err) {
-                  console.error("Failed to refresh logs", err);
-                  setError("Failed to refresh logs");
-                } finally {
-                  setLoading(false);
-                }
-              }}
+              onClick={loadLogs}
               disabled={loading}
-              className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/10 transition-all ${loading ? "bg-white/20 text-white/50" : "bg-white/10 text-white hover:bg-white/20"}`}
+              className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/10 transition-all ${
+                loading
+                  ? "bg-white/20 text-white/50"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
             >
               <i
-                className={`fas ${loading ? "fa-spinner fa-spin" : "fa-sync"} mr-2`}
+                className={`fas ${
+                  loading ? "fa-spinner fa-spin" : "fa-sync"
+                } mr-2`}
               ></i>
               {loading ? "Loading..." : "Refresh"}
             </button>
@@ -186,7 +170,9 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
         <div className="overflow-x-auto">
           <table id="auditlogs-table" className="w-full text-left">
             <thead>
-              <tr className={`${isDark ? "bg-slate-900" : "bg-slate-50"}`}>
+              <tr
+                className={`${isDark ? "bg-slate-900" : "bg-slate-50"}`}
+              >
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Timestamp
                 </th>
@@ -205,7 +191,9 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
               </tr>
             </thead>
             <tbody
-              className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
+              className={`divide-y ${
+                isDark ? "divide-slate-700" : "divide-slate-300"
+              }`}
             >
               {filteredLogs.length === 0 ? (
                 <tr>
@@ -220,14 +208,20 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
                 filteredLogs.map((log) => (
                   <tr
                     key={log.id}
-                    className={`transition-colors group ${isDark ? "hover:bg-slate-700/50" : "hover:bg-slate-50/50"}`}
+                    className={`transition-colors group ${
+                      isDark
+                        ? "hover:bg-slate-700/50"
+                        : "hover:bg-slate-50/50"
+                    }`}
                   >
                     <td className="px-8 py-6 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
                       {log.timestamp}
                     </td>
                     <td className="px-8 py-6">
                       <span
-                        className={`text-[11px] font-black uppercase tracking-tight ${isDark ? "text-slate-200" : "text-slate-900"}`}
+                        className={`text-[11px] font-black uppercase tracking-tight ${
+                          isDark ? "text-slate-200" : "text-slate-900"
+                        }`}
                       >
                         {log.user}
                       </span>
@@ -246,7 +240,9 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
                           }`}
                         ></div>
                         <span
-                          className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                          className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${
+                            isDark ? "text-slate-300" : "text-slate-700"
+                          }`}
                         >
                           {log.action}
                         </span>
@@ -254,14 +250,22 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig }) => {
                     </td>
                     <td className="px-8 py-6">
                       <span
-                        className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-tighter ${isDark ? "text-slate-400 bg-slate-900 border-slate-700" : "text-slate-400 bg-slate-100 border-slate-200"}`}
+                        className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-tighter ${
+                          isDark
+                            ? "text-slate-400 bg-slate-900 border-slate-700"
+                            : "text-slate-400 bg-slate-100 border-slate-200"
+                        }`}
                       >
                         {log.module}
                       </span>
                     </td>
                     <td className="px-8 py-6">
                       <p
-                        className={`text-[11px] font-bold leading-snug transition-colors ${isDark ? "text-slate-400 group-hover:text-slate-200" : "text-slate-500 group-hover:text-slate-800"}`}
+                        className={`text-[11px] font-bold leading-snug transition-colors ${
+                          isDark
+                            ? "text-slate-400 group-hover:text-slate-200"
+                            : "text-slate-500 group-hover:text-slate-800"
+                        }`}
                       >
                         {log.details}
                       </p>

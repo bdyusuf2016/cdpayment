@@ -1,171 +1,255 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { Client, PaymentRecord, AssessmentRecord } from "../types";
+import { SupabaseClient } from "@supabase/supabase-js";
+import {
+  Client,
+  PaymentRecord,
+  AssessmentRecord,
+  StaffUser,
+  SystemConfig,
+  LogEntry,
+} from "../types";
 
-export function createSupabaseClient(url: string, key: string): SupabaseClient {
-  return createClient(url, key);
-}
-
-export async function fetchClients(
-  url: string,
-  key: string,
-): Promise<Client[]> {
+// Generic fetch
+export async function fetchData<T>(
+  supabase: SupabaseClient,
+  tableName: string,
+): Promise<T[]> {
   try {
-    const supabase = createSupabaseClient(url, key);
     const { data, error } = await supabase
-      .from<Client>("clients")
+      .from(tableName)
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data || []) as Client[];
+    return (data as T[]) || [];
   } catch (err) {
-    console.error("fetchClients error", err);
+    console.error(`Error fetching ${tableName}:`, err);
     return [];
   }
 }
 
+// Client CRUD
 export async function insertClient(
-  url: string,
-  key: string,
-  client: Client,
-): Promise<boolean> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { error } = await supabase.from("clients").insert([client]);
-    if (error) throw error;
-    // Log audit
-    try {
-      await insertAuditLog(url, key, {
-        timestamp: new Date().toLocaleString(),
-        user_name: "system",
-        action: "Create Client",
-        module: "clients",
-        details: `Created client AIN=${client.ain} name=${client.name}`,
-        type: "success",
-      });
-    } catch (e) {
-      // ignore logging failure
-    }
-    return true;
-  } catch (err) {
-    console.error("insertClient error", err);
-    return false;
+  supabase: SupabaseClient,
+  client: Omit<Client, "created_at">,
+): Promise<Client | null> {
+  const { data, error } = await supabase
+    .from("clients")
+    .insert(client)
+    .select()
+    .single();
+  if (error) {
+    console.error("insertClient error", error);
+    return null;
   }
+  return data;
 }
 
 export async function updateClient(
-  url: string,
-  key: string,
+  supabase: SupabaseClient,
   ain: string,
   client: Partial<Client>,
-): Promise<boolean> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { error } = await supabase
-      .from("clients")
-      .update(client)
-      .eq("ain", ain);
-    if (error) throw error;
-    try {
-      await insertAuditLog(url, key, {
-        timestamp: new Date().toLocaleString(),
-        user_name: "system",
-        action: "Update Client",
-        module: "clients",
-        details: `Updated client AIN=${ain}`,
-        type: "info",
-      });
-    } catch (e) {}
-    return true;
-  } catch (err) {
-    console.error("updateClient error", err);
-    return false;
+): Promise<Client | null> {
+  const { data, error } = await supabase
+    .from("clients")
+    .update(client)
+    .eq("ain", ain)
+    .select()
+    .single();
+  if (error) {
+    console.error("updateClient error", error);
+    return null;
   }
+  return data;
 }
 
 export async function deleteClient(
-  url: string,
-  key: string,
+  supabase: SupabaseClient,
   ain: string,
-): Promise<boolean> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { error } = await supabase.from("clients").delete().eq("ain", ain);
-    if (error) throw error;
-    // Log audit
-    try {
-      await insertAuditLog(url, key, {
-        timestamp: new Date().toLocaleString(),
-        user_name: "system",
-        action: "Delete Client",
-        module: "clients",
-        details: `Deleted client AIN=${ain}`,
-        type: "danger",
-      });
-    } catch (e) {
-      // ignore
-    }
-    return true;
-  } catch (err) {
-    console.error("deleteClient error", err);
-    return false;
+): Promise<{ ain: string } | null> {
+  const { data, error } = await supabase
+    .from("clients")
+    .delete()
+    .eq("ain", ain)
+    .select()
+    .single();
+  if (error) {
+    console.error("deleteClient error", error);
+    return null;
   }
+  return data ? { ain } : null; // Return identifier for UI update
 }
 
-export async function fetchDutyHistory(
-  url: string,
-  key: string,
-): Promise<PaymentRecord[]> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { data, error } = await supabase
-      .from<PaymentRecord>("duty_payments")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data || []) as PaymentRecord[];
-  } catch (err) {
-    console.error("fetchDutyHistory error", err);
-    return [];
+// Duty Payments CRUD
+export async function insertDuty(
+  supabase: SupabaseClient,
+  record: Omit<PaymentRecord, "id" | "created_at">,
+): Promise<PaymentRecord | null> {
+  const { data, error } = await supabase
+    .from("duty_payments")
+    .insert(record)
+    .select()
+    .single();
+  if (error) {
+    console.error("insertDuty error", error);
+    return null;
   }
+  return data;
 }
 
-export async function fetchAssessmentHistory(
-  url: string,
-  key: string,
-): Promise<AssessmentRecord[]> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { data, error } = await supabase
-      .from<AssessmentRecord>("assessments")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data || []) as AssessmentRecord[];
-  } catch (err) {
-    console.error("fetchAssessmentHistory error", err);
-    return [];
+export async function updateDuty(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<PaymentRecord>,
+): Promise<PaymentRecord | null> {
+  const { data, error } = await supabase
+    .from("duty_payments")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("updateDuty error", error);
+    return null;
   }
+  return data;
+}
+
+export async function deleteDuty(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<{ id: string } | null> {
+  const { error, data } = await supabase
+    .from("duty_payments")
+    .delete()
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("deleteDuty error", error);
+    return null;
+  }
+  return data ? { id } : null;
+}
+
+// Assessments CRUD
+export async function insertAssessment(
+  supabase: SupabaseClient,
+  record: Omit<AssessmentRecord, "id" | "created_at">,
+): Promise<AssessmentRecord | null> {
+  const { data, error } = await supabase
+    .from("assessments")
+    .insert(record)
+    .select()
+    .single();
+  if (error) {
+    console.error("insertAssessment error", error);
+    return null;
+  }
+  return data;
+}
+
+export async function updateAssessment(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<AssessmentRecord>,
+): Promise<AssessmentRecord | null> {
+  const { data, error } = await supabase
+    .from("assessments")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("updateAssessment error", error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteAssessment(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<{ id: string } | null> {
+  const { error, data } = await supabase
+    .from("assessments")
+    .delete()
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("deleteAssessment error", error);
+    return null;
+  }
+  return data ? { id } : null;
+}
+
+// Staff Users CRUD
+export async function fetchStaffUsers(
+  supabase: SupabaseClient,
+): Promise<StaffUser[]> {
+  return fetchData<StaffUser>(supabase, "staff_users");
+}
+
+export async function updateStaffUser(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<StaffUser>,
+): Promise<StaffUser | null> {
+  const { data, error } = await supabase
+    .from("staff_users")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("updateStaffUser error", error);
+    return null;
+  }
+  return data;
+}
+
+// System Settings
+export async function fetchSystemSettings(
+  supabase: SupabaseClient,
+): Promise<SystemConfig | null> {
+  const { data, error } = await supabase
+    .from("system_settings")
+    .select("*")
+    .limit(1)
+    .single();
+  if (error) {
+    console.error("fetchSystemSettings error", error);
+    return null;
+  }
+  return data;
+}
+
+export async function updateSystemSettings(
+  supabase: SupabaseClient,
+  patch: Partial<SystemConfig>,
+): Promise<SystemConfig | null> {
+  // There's only one settings row, so we update it.
+  const { data, error } = await supabase
+    .from("system_settings")
+    .update(patch)
+    .eq("id", 1) // Assuming the settings row has id 1
+    .select()
+    .single();
+  if (error) {
+    console.error("updateSystemSettings error", error);
+    return null;
+  }
+  return data;
 }
 
 // Audit logs
-export async function fetchAuditLogs(url: string, key: string) {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { data, error } = await supabase
-      .from("audit_logs")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return data || [];
-  } catch (err) {
-    console.error("fetchAuditLogs error", err);
-    return [];
-  }
+export async function fetchAuditLogs(
+  supabase: SupabaseClient,
+): Promise<LogEntry[]> {
+  return fetchData<LogEntry>(supabase, "audit_logs");
 }
 
 export async function insertAuditLog(
-  url: string,
-  key: string,
+  supabase: SupabaseClient,
   entry: {
     timestamp?: string;
     user_name?: string;
@@ -176,7 +260,6 @@ export async function insertAuditLog(
   },
 ) {
   try {
-    const supabase = createSupabaseClient(url, key);
     const payload = {
       timestamp: entry.timestamp ?? new Date().toLocaleString(),
       user_name: entry.user_name ?? "system",
@@ -190,125 +273,6 @@ export async function insertAuditLog(
     return true;
   } catch (err) {
     console.error("insertAuditLog error", err);
-    return false;
-  }
-}
-
-// Duty payments CRUD
-export async function insertDuties(
-  url: string,
-  key: string,
-  records: PaymentRecord[],
-): Promise<PaymentRecord[]> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { data, error } = await supabase
-      .from<PaymentRecord>("duty_payments")
-      .insert(records)
-      .select("*");
-    if (error) throw error;
-    return (data || []) as PaymentRecord[];
-  } catch (err) {
-    console.error("insertDuties error", err);
-    return [];
-  }
-}
-
-export async function updateDuty(
-  url: string,
-  key: string,
-  id: string,
-  patch: Partial<PaymentRecord>,
-): Promise<PaymentRecord | null> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { data, error } = await supabase
-      .from<PaymentRecord>("duty_payments")
-      .update(patch)
-      .eq("id", id)
-      .select("*")
-      .maybeSingle();
-    if (error) throw error;
-    return (data as PaymentRecord) || null;
-  } catch (err) {
-    console.error("updateDuty error", err);
-    return null;
-  }
-}
-
-export async function deleteDuty(
-  url: string,
-  key: string,
-  id: string,
-): Promise<boolean> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { error } = await supabase
-      .from("duty_payments")
-      .delete()
-      .eq("id", id);
-    if (error) throw error;
-    return true;
-  } catch (err) {
-    console.error("deleteDuty error", err);
-    return false;
-  }
-}
-
-// Assessments CRUD
-export async function insertAssessments(
-  url: string,
-  key: string,
-  records: AssessmentRecord[],
-): Promise<AssessmentRecord[]> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { data, error } = await supabase
-      .from<AssessmentRecord>("assessments")
-      .insert(records)
-      .select("*");
-    if (error) throw error;
-    return (data || []) as AssessmentRecord[];
-  } catch (err) {
-    console.error("insertAssessments error", err);
-    return [];
-  }
-}
-
-export async function updateAssessment(
-  url: string,
-  key: string,
-  id: string,
-  patch: Partial<AssessmentRecord>,
-): Promise<AssessmentRecord | null> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { data, error } = await supabase
-      .from<AssessmentRecord>("assessments")
-      .update(patch)
-      .eq("id", id)
-      .select("*")
-      .maybeSingle();
-    if (error) throw error;
-    return (data as AssessmentRecord) || null;
-  } catch (err) {
-    console.error("updateAssessment error", err);
-    return null;
-  }
-}
-
-export async function deleteAssessment(
-  url: string,
-  key: string,
-  id: string,
-): Promise<boolean> {
-  try {
-    const supabase = createSupabaseClient(url, key);
-    const { error } = await supabase.from("assessments").delete().eq("id", id);
-    if (error) throw error;
-    return true;
-  } catch (err) {
-    console.error("deleteAssessment error", err);
     return false;
   }
 }

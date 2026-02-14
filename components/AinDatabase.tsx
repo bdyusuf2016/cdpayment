@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Client, SystemConfig } from "../types";
+import { SupabaseClient } from "@supabase/supabase-js";
 import {
-  createSupabaseClient,
   insertClient,
   updateClient,
   deleteClient,
@@ -9,14 +9,14 @@ import {
 
 interface AinDatabaseProps {
   clients: Client[];
-  setClients: React.Dispatch<React.SetStateAction<Client[]>>;
   systemConfig: SystemConfig;
+  supabase: SupabaseClient | null;
 }
 
 const AinDatabase: React.FC<AinDatabaseProps> = ({
   clients,
-  setClients,
   systemConfig,
+  supabase,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -50,7 +50,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       setEditingClient(client);
       setFormAin(client.ain);
       setFormName(client.name);
-      setFormPhone(client.phone);
+      setFormPhone(client.phone || "");
     } else {
       setEditingClient(null);
       setFormAin("");
@@ -60,85 +60,42 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    if (!formAin || !formName) {
-      alert("AIN and Name are required!");
+  const handleSave = async () => {
+    if (!formAin || !formName || !supabase) {
+      alert("AIN, Name, and a valid Supabase client are required!");
       return;
     }
 
-    const newClient: Client = {
+    const clientData = {
       ain: formAin.trim(),
       name: formName.trim(),
       phone: formPhone.trim(),
       active: true,
     };
 
-    const url = systemConfig.supabaseUrl;
-    const key = systemConfig.supabaseKey;
-
-    if (url && key) {
-      (async () => {
-        if (editingClient) {
-          const ok = await updateClient(url, key, editingClient.ain, newClient);
-          if (ok)
-            setClients((prev) =>
-              prev.map((c) => (c.ain === editingClient.ain ? newClient : c)),
-            );
-        } else {
-          if (clients.some((c) => c.ain === formAin)) {
-            alert("This AIN already exists!");
-            return;
-          }
-          const ok = await insertClient(url, key, newClient);
-          if (ok) setClients((prev) => [newClient, ...prev]);
-        }
-      })();
+    if (editingClient) {
+      await updateClient(supabase, editingClient.ain, clientData);
     } else {
-      if (editingClient) {
-        setClients((prev) =>
-          prev.map((c) => (c.ain === editingClient.ain ? newClient : c)),
-        );
-      } else {
-        if (clients.some((c) => c.ain === formAin)) {
-          alert("This AIN already exists!");
-          return;
-        }
-        setClients((prev) => [newClient, ...prev]);
+      if (clients.some((c) => c.ain === formAin)) {
+        alert("This AIN already exists!");
+        return;
       }
+      await insertClient(supabase, clientData);
     }
     setShowModal(false);
   };
 
-  const processDelete = () => {
-    const url = systemConfig.supabaseUrl;
-    const key = systemConfig.supabaseKey;
+  const processDelete = async () => {
+    if (!supabase) return;
 
-    if (url && key) {
-      (async () => {
-        if (confirmDelete.isBulk) {
-          for (const ain of selectedAins) {
-            await deleteClient(url, key, ain);
-          }
-          setClients((prev) =>
-            prev.filter((c) => !selectedAins.includes(c.ain)),
-          );
-          setSelectedAins([]);
-        } else if (confirmDelete.ain) {
-          const targetAin = confirmDelete.ain;
-          await deleteClient(url, key, targetAin);
-          setClients((prev) => prev.filter((c) => c.ain !== targetAin));
-          setSelectedAins((prev) => prev.filter((id) => id !== targetAin));
-        }
-      })();
-    } else {
-      if (confirmDelete.isBulk) {
-        setClients((prev) => prev.filter((c) => !selectedAins.includes(c.ain)));
-        setSelectedAins([]);
-      } else if (confirmDelete.ain) {
-        const targetAin = confirmDelete.ain;
-        setClients((prev) => prev.filter((c) => c.ain !== targetAin));
-        setSelectedAins((prev) => prev.filter((id) => id !== targetAin));
+    if (confirmDelete.isBulk) {
+      for (const ain of selectedAins) {
+        await deleteClient(supabase, ain);
       }
+      setSelectedAins([]);
+    } else if (confirmDelete.ain) {
+      await deleteClient(supabase, confirmDelete.ain);
+      setSelectedAins((prev) => prev.filter((id) => id !== confirmDelete.ain));
     }
     setConfirmDelete({ show: false, ain: null, isBulk: false });
   };
@@ -160,19 +117,19 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !supabase) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const text = event.target?.result as string;
-      const lines = text.split("\n");
-      const newClients: Client[] = [];
+      const lines = text.split("\n").slice(1); // Skip header
+      const newClients: Omit<Client, "created_at">[] = [];
 
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(",");
+      for (const line of lines) {
+        const row = line.split(",");
         if (row.length >= 2) {
           const [ain, name, phone] = row;
-          if (ain && name) {
+          if (ain && name && !clients.some((c) => c.ain === ain.trim())) {
             newClients.push({
               ain: ain.trim(),
               name: name.trim(),
@@ -184,33 +141,10 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       }
 
       if (newClients.length > 0) {
-        const url = systemConfig.supabaseUrl;
-        const key = systemConfig.supabaseKey;
-
-        if (url && key) {
-          (async () => {
-            for (const client of newClients) {
-              // attempt insert, ignore duplicates
-              await insertClient(url, key, client);
-            }
-            // reload clients from DB would be ideal, but append locally for now
-            setClients((prev) => {
-              const existingAins = new Set(prev.map((c) => c.ain));
-              const uniqueNewClients = newClients.filter(
-                (c) => !existingAins.has(c.ain),
-              );
-              return [...uniqueNewClients, ...prev];
-            });
-          })();
-        } else {
-          setClients((prev) => {
-            const existingAins = new Set(prev.map((c) => c.ain));
-            const uniqueNewClients = newClients.filter(
-              (c) => !existingAins.has(c.ain),
-            );
-            return [...uniqueNewClients, ...prev];
-          });
+        for (const client of newClients) {
+          await insertClient(supabase, client);
         }
+        alert(`${newClients.length} new clients imported successfully!`);
       }
     };
     reader.readAsText(file);

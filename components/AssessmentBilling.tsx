@@ -5,21 +5,26 @@ import {
   AssessmentRecord,
   SystemConfig,
 } from "../types";
-import { insertAssessments, updateAssessment } from "../utils/supabaseApi";
+import {
+  insertAssessment,
+  updateAssessment,
+  deleteAssessment,
+} from "../utils/supabaseApi";
 import { printElement } from "../utils/printTable";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 interface AssessmentBillingProps {
   clients: Client[];
   systemConfig: SystemConfig;
   history: AssessmentRecord[];
-  setHistory: React.Dispatch<React.SetStateAction<AssessmentRecord[]>>;
+  supabase: SupabaseClient | null;
 }
 
 const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   clients,
   systemConfig,
   history,
-  setHistory,
+  supabase,
 }) => {
   const [ain, setAin] = useState("");
   const [clientName, setClientName] = useState("");
