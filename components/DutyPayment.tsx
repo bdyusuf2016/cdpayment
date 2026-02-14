@@ -871,17 +871,31 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     autoExcludeControls: true,
                     replaceTakaWithBDT: true,
                     showCurrencyInHeader: true,
-                    grandTotal: {
-                      label: "Grand Total",
-                      value: filteredHistory
-                        .reduce((sum, rec) => sum + rec.duty, 0)
-                        .toLocaleString(),
-                    },
                     totalRecordCount: {
                       label: "Total",
                       value: filteredHistory.length,
                       labelColumnHeader: "Client Information",
                       valueColumnHeader: "B/E Reference",
+                      additionalValuesByHeader: {
+                        Amount: filteredHistory
+                          .reduce((sum, rec) => sum + rec.duty, 0)
+                          .toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }),
+                        Received: filteredHistory
+                          .reduce((sum, rec) => sum + rec.received, 0)
+                          .toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }),
+                        Profit: filteredHistory
+                          .reduce((sum, rec) => sum + rec.profit, 0)
+                          .toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }),
+                      },
                     },
                   },
                 )

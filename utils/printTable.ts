@@ -12,6 +12,7 @@ type PrintOptions = {
     value: number;
     labelColumnHeader?: string;
     valueColumnHeader?: string;
+    additionalValuesByHeader?: Record<string, string | number>;
   };
 };
 
@@ -165,11 +166,19 @@ export function printElement(
       table.appendChild(tfoot);
     }
 
+    const normalizeHeader = (text: string) =>
+      text
+        .trim()
+        .toLowerCase()
+        .replace(/\(bdt\)/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
     const resolveHeaderIndex = (name?: string) => {
       if (!name) return -1;
-      const target = name.trim().toLowerCase();
+      const target = normalizeHeader(name);
       return headers.findIndex(
-        (th) => (th.textContent || "").trim().toLowerCase() === target,
+        (th) => normalizeHeader(th.textContent || "") === target,
       );
     };
 
@@ -183,6 +192,11 @@ export function printElement(
     })();
 
     const countRow = document.createElement("tr");
+    const additionalMap = options.totalRecordCount.additionalValuesByHeader || {};
+    const additionalIndexes = Object.entries(additionalMap)
+      .map(([header, value]) => ({ idx: resolveHeaderIndex(header), value }))
+      .filter((it) => it.idx >= 0);
+
     for (let i = 0; i < colCount; i += 1) {
       const cell = document.createElement("td");
       if (i === labelIdx) {
@@ -194,7 +208,14 @@ export function printElement(
         cell.style.textAlign = "right";
         cell.textContent = String(options.totalRecordCount.value);
       } else {
-        cell.textContent = "";
+        const extra = additionalIndexes.find((x) => x.idx === i);
+        if (extra) {
+          cell.style.fontWeight = "800";
+          cell.style.textAlign = "right";
+          cell.textContent = String(extra.value);
+        } else {
+          cell.textContent = "";
+        }
       }
       countRow.appendChild(cell);
     }
