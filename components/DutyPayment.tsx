@@ -7,6 +7,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 interface DutyPaymentProps {
   clients: Client[];
   history: PaymentRecord[];
+  setHistory: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
 }
@@ -14,6 +15,7 @@ interface DutyPaymentProps {
 const DutyPayment: React.FC<DutyPaymentProps> = ({
   clients,
   history,
+  setHistory,
   systemConfig,
   supabase,
 }) => {
@@ -199,18 +201,29 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           profit: record.profit,
         });
         console.debug("insertDuty result:", res, record);
-        if (res) setInsertedRecords((prev) => [res, ...prev]);
+        if (res) {
+          setInsertedRecords((prev) => [res, ...prev]);
+          setHistory((prev) => {
+            const next = prev.filter((p) => p.id !== res.id);
+            return [res, ...next];
+          });
+        }
         else {
           // If insert failed or returned null, still render locally so UX reflects the queue
           console.warn(
             "insertDuty returned null — rendering local record instead.",
           );
           setInsertedRecords((prev) => [record, ...prev]);
+          setHistory((prev) => {
+            const next = prev.filter((p) => p.id !== record.id);
+            return [record, ...next];
+          });
         }
       }
     } else {
       // No supabase client — render locally
       setInsertedRecords((prev) => [...newRecords, ...prev]);
+      setHistory((prev) => [...newRecords, ...prev]);
     }
 
     setQueue([]);
@@ -326,6 +339,19 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       }
       return next;
     });
+    setHistory((prev) =>
+      prev.map((rec) =>
+        paymentIds.includes(rec.id)
+          ? ({
+              ...rec,
+              status: "Paid",
+              received: splitAmount,
+              profit: splitAmount - rec.duty,
+              paymentMethod: paymentMethod,
+            } as PaymentRecord)
+          : rec,
+      ),
+    );
 
     // Then sync with server in parallel
     if (supabase) {
@@ -348,6 +374,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         }
         return next;
       });
+      setHistory((prev) =>
+        prev.map((rec) => {
+          const updated = results.find((r) => r.id === rec.id)?.res;
+          return updated ? updated : rec;
+        }),
+      );
     }
 
     setShowPaymentModal(false);
@@ -369,6 +401,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
     // Optimistic remove for instant UI feedback
     setDeletedIds((prev) => Array.from(new Set([...prev, ...idsToDelete])));
+    setHistory((prev) => prev.filter((rec) => !idsToDelete.includes(rec.id)));
     setInsertedRecords((prev) =>
       prev.filter((r) => !idsToDelete.includes(r.id)),
     );
@@ -414,6 +447,13 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       }
       return next;
     });
+    setHistory((prev) =>
+      prev.map((rec) =>
+        idsToUpdate.includes(rec.id)
+          ? ({ ...rec, status } as PaymentRecord)
+          : rec,
+      ),
+    );
 
     // Sync with server in parallel
     if (supabase) {
@@ -430,6 +470,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         }
         return next;
       });
+      setHistory((prev) =>
+        prev.map((rec) => {
+          const updated = results.find((r) => r.id === rec.id)?.res;
+          return updated ? updated : rec;
+        }),
+      );
     }
 
   };

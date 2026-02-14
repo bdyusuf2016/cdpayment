@@ -593,6 +593,7 @@ const App: React.FC = () => {
             <DutyPayment
               clients={clients}
               history={dutyHistory}
+              setHistory={setDutyHistory}
               systemConfig={config}
               supabase={supabase}
             />
@@ -602,12 +603,14 @@ const App: React.FC = () => {
               clients={clients}
               systemConfig={config}
               history={assessmentHistory}
+              setHistory={setAssessmentHistory}
               supabase={supabase}
             />
           )}
           {activeTab === "ain" && (
             <AinDatabase
               clients={clients}
+              setClients={setClients}
               systemConfig={config}
               supabase={supabase}
             />
