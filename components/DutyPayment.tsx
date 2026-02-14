@@ -8,6 +8,7 @@ interface DutyPaymentProps {
   clients: Client[];
   history: PaymentRecord[];
   setHistory: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
+  onVisibleRowsChange: (rows: PaymentRecord[]) => void;
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
 }
@@ -16,6 +17,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   clients,
   history,
   setHistory,
+  onVisibleRowsChange,
   systemConfig,
   supabase,
 }) => {
@@ -124,6 +126,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     startDate,
     endDate,
   ]);
+
+  useEffect(() => {
+    onVisibleRowsChange(filteredHistory);
+  }, [filteredHistory, onVisibleRowsChange]);
 
   const handleAinChange = (val: string) => {
     setAin(val);

@@ -18,6 +18,7 @@ interface AssessmentBillingProps {
   systemConfig: SystemConfig;
   history: AssessmentRecord[];
   setHistory: React.Dispatch<React.SetStateAction<AssessmentRecord[]>>;
+  onVisibleRowsChange: (rows: AssessmentRecord[]) => void;
   supabase: SupabaseClient | null;
 }
 
@@ -26,6 +27,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   systemConfig,
   history,
   setHistory,
+  onVisibleRowsChange,
   supabase,
 }) => {
   const [ain, setAin] = useState("");
@@ -134,6 +136,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     startDate,
     endDate,
   ]);
+
+  useEffect(() => {
+    onVisibleRowsChange(filteredHistory);
+  }, [filteredHistory, onVisibleRowsChange]);
 
   const handleAinChange = (val: string) => {
     setAin(val);
