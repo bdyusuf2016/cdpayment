@@ -289,6 +289,8 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     const client = records[0];
+    const subtotal = records.reduce((acc, r) => acc + r.amount, 0);
+    const totalDiscount = records.reduce((acc, r) => acc + r.discount, 0);
     const totalNet = records.reduce((acc, r) => acc + r.net, 0);
     const itemsHtml = records
       .map(
@@ -296,7 +298,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${index + 1}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">Assessment Bill (${rec.nosOfBe} B/E)</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">৳${rec.net.toLocaleString()}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${rec.net.toLocaleString()}</td>
       </tr>`,
       )
       .join("");
@@ -305,7 +307,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       <html>
         <head>
           <title>Assessment Invoice</title>
-          <style>body { font-family: 'Inter', sans-serif; padding: 40px; } .header { border-bottom: 2px solid #333; padding-bottom: 20px; display: flex; justify-content: space-between; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { text-align: left; padding: 10px; background: #f4f4f4; border-bottom: 1px solid #333; } td { padding: 10px; border-bottom: 1px solid #eee; }</style>
+          <style>body { font-family: 'Inter', sans-serif; padding: 40px; } .header { border-bottom: 2px solid #333; padding-bottom: 20px; display: flex; justify-content: space-between; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { text-align: left; padding: 10px; background: #f4f4f4; border-bottom: 1px solid #333; } td { padding: 10px; border-bottom: 1px solid #eee; } .summary { margin-top: 18px; margin-left: auto; width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #d1d5db; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; }</style>
         </head>
         <body onload="window.print()">
           <div class="header">
@@ -314,7 +316,11 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           </div>
           <p><strong>Customer:</strong> ${client.clientName}</p>
           <table><thead><tr><th>#</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table>
-          <h3 style="text-align: right">Total: ৳${totalNet.toLocaleString()}</h3>
+          <div class="summary">
+            <div class="summary-row"><span>Subtotal</span><span>${subtotal.toLocaleString()}</span></div>
+            <div class="summary-row"><span>Discount</span><span>${totalDiscount.toLocaleString()}</span></div>
+            <div class="summary-row total"><span>Payable</span><span>${totalNet.toLocaleString()}</span></div>
+          </div>
         </body>
       </html>
     `);
