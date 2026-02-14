@@ -8,7 +8,11 @@ import {
   PaymentRecord,
   AssessmentRecord,
 } from "../types";
-import { updateStaffUser, updateSystemSettings } from "../utils/supabaseApi";
+import {
+  insertStaffUser,
+  updateStaffUser,
+  updateSystemSettings,
+} from "../utils/supabaseApi";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 interface AdminPanelProps {
@@ -53,6 +57,26 @@ const initialPermissions: GranularPermissions = PERMISSION_ITEMS.reduce(
   {} as GranularPermissions,
 );
 
+const adminRolePermissions: GranularPermissions = PERMISSION_ITEMS.reduce(
+  (acc, it) => {
+    acc[it.key as string] = true;
+    return acc;
+  },
+  {} as GranularPermissions,
+);
+
+const userRolePermissions: GranularPermissions = {
+  ...initialPermissions,
+  bill_add: true,
+  bill_edit: true,
+  bill_wa_share: true,
+  invoice_print: true,
+  ain_view: true,
+};
+
+const getDefaultPermissionsForRole = (role: string): GranularPermissions =>
+  role === "Admin" ? { ...adminRolePermissions } : { ...userRolePermissions };
+
 const AdminPanel: React.FC<AdminPanelProps> = ({
   config,
   setConfig,
@@ -76,7 +100,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   // New/Edit User Form
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
-  const [userRole, setUserRole] = useState("Staff");
+  const [userRole, setUserRole] = useState("User");
   const [userActive, setUserActive] = useState("Yes");
   const [permissions, setPermissions] = useState<GranularPermissions>({
     ...initialPermissions,
@@ -127,15 +151,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (user) {
       setEditingUserId(user.id);
       setUserName(user.name);
-      setUserRole(user.role);
+      setUserRole(user.role === "Staff" ? "User" : user.role);
       setUserActive(user.active ? "Yes" : "No");
       setPermissions(user.permissions);
     } else {
       setEditingUserId(null);
       setUserName("");
-      setUserRole("Staff");
+      setUserRole("User");
       setUserActive("Yes");
-      setPermissions({ ...initialPermissions });
+      setPermissions(getDefaultPermissionsForRole("User"));
     }
     setShowAddUser(true);
   };
@@ -152,10 +176,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       };
       await updateStaffUser(supabase, editingUserId, updatedUser);
     } else {
-      // Note: Creating a new auth user should be handled here
-      // For now, we are just creating a record in staff_users
-      // This will not work without a corresponding auth.users entry
-      console.warn("User creation without auth is not fully implemented.");
+      const now = new Date().toLocaleString();
+      await insertStaffUser(supabase, {
+        name: userName,
+        role: userRole,
+        permissions,
+        lastActive: now,
+        active: userActive === "Yes",
+      });
     }
     setShowAddUser(false);
   };
@@ -772,9 +800,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <select
                 className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
                 value={userRole}
-                onChange={(e) => setUserRole(e.target.value)}
+                onChange={(e) => {
+                  const role = e.target.value;
+                  setUserRole(role);
+                  setPermissions(getDefaultPermissionsForRole(role));
+                }}
               >
-                <option value="Staff">STAFF</option>
+                <option value="User">USER</option>
                 <option value="Admin">ADMIN</option>
               </select>
               <select
