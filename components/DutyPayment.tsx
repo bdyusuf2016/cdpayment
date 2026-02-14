@@ -293,6 +293,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       : "Payable";
     const subtotal = recs.reduce((a, b) => a + b.duty, 0);
     const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
+    const serviceCharge = recs.reduce((a, b) => a + (b.profit || 0), 0);
     const due = Math.max(0, subtotal - totalReceived);
     const settlementValue =
       settlementLabel === "Paid" ? Math.max(totalReceived, subtotal) : due;
@@ -323,6 +324,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           <div class="summary">
             <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
             <div class="summary-row"><span>Due</span><span>${fmt(due)}</span></div>
+            <div class="summary-row"><span>Service Charge</span><span>${fmt(serviceCharge)}</span></div>
             <div class="summary-row total"><span>${settlementLabel}</span><span>${fmt(settlementValue)}</span></div>
           </div>
         </body>
