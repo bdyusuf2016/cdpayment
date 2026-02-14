@@ -90,6 +90,7 @@ export interface SystemConfig {
   autoInvoice: boolean;
   currency: string;
   theme: 'light' | 'dark';
+  themeTemplate?: 'soft' | 'paper' | 'sand' | 'ink';
   language: 'en' | 'bn';
   paymentMethods: string[];
   // Supabase & Backup Settings

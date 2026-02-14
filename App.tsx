@@ -67,6 +67,7 @@ const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
   autoInvoice: row.autoInvoice ?? row.auto_invoice,
   currency: row.currency,
   theme: row.theme,
+  themeTemplate: row.themeTemplate ?? row.theme_template,
   language: row.language,
   paymentMethods: row.paymentMethods ?? row.payment_methods,
 });
@@ -93,6 +94,10 @@ const App: React.FC = () => {
     autoInvoice: true,
     currency: "BDT",
     theme: "light",
+    themeTemplate:
+      (localStorage.getItem("ui_theme_template") as
+        | SystemConfig["themeTemplate"]
+        | null) || "soft",
     language: "en",
     paymentMethods: ["Cash", "Bank", "bKash", "Nagad"],
     supabaseUrl: SUPABASE_SITE_URL || "",
@@ -229,14 +234,20 @@ const App: React.FC = () => {
 
   // Update theme class on config change
   useEffect(() => {
+    const templates = ["soft", "paper", "sand", "ink"];
+    templates.forEach((tpl) =>
+      document.documentElement.classList.remove(`template-${tpl}`),
+    );
+
     if (config.theme === "dark") {
       document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light-soft");
     } else {
       document.documentElement.classList.remove("dark");
-      document.documentElement.classList.add("light-soft");
     }
-  }, [config.theme]);
+    const activeTemplate = config.themeTemplate || "soft";
+    document.documentElement.classList.add(`template-${activeTemplate}`);
+    localStorage.setItem("ui_theme_template", activeTemplate);
+  }, [config.theme, config.themeTemplate]);
 
   // Handle Login from Auth Component
   const handleLoginSuccess = (newSession: any, url: string, key: string) => {

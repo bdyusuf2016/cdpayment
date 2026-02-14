@@ -194,6 +194,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setShowRestoreConfirm(true);
   };
 
+  const applyThemeTemplate = (
+    template: NonNullable<SystemConfig["themeTemplate"]>,
+  ) => {
+    setConfig((prev) => ({ ...prev, themeTemplate: template }));
+    localStorage.setItem("ui_theme_template", template);
+  };
+
   const confirmRestore = () => {
     setShowRestoreConfirm(false);
     restoreFileRef.current?.click();
@@ -471,6 +478,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 >
                   বাংলা
                 </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <span
+                className={`font-bold text-sm ${isDark ? "text-slate-200" : "text-slate-800"}`}
+              >
+                Theme Template
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: "soft", label: "Soft Blue" },
+                  { id: "paper", label: "Paper Gray" },
+                  { id: "sand", label: "Warm Sand" },
+                  { id: "ink", label: "Dark Ink" },
+                ].map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    onClick={() =>
+                      applyThemeTemplate(
+                        tpl.id as NonNullable<SystemConfig["themeTemplate"]>,
+                      )
+                    }
+                    className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase border transition-all ${config.themeTemplate === tpl.id ? "bg-blue-600 text-white border-blue-600" : isDark ? "bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500" : "bg-slate-50 border-slate-300 text-slate-700 hover:border-slate-500"}`}
+                  >
+                    {tpl.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
