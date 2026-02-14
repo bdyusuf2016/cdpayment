@@ -6,6 +6,11 @@ type PrintOptions = {
     value: string | number;
   };
   replaceTakaWithBDT?: boolean;
+  showCurrencyInHeader?: boolean;
+  totalRecordCount?: {
+    label?: string;
+    value: number;
+  };
 };
 
 export function printElement(
@@ -54,8 +59,35 @@ export function printElement(
 
   if (options.replaceTakaWithBDT) {
     table.querySelectorAll("th, td").forEach((cell) => {
-      if (cell.textContent?.includes("৳")) {
-        cell.textContent = cell.textContent.replace(/৳\s*/g, "BDT ");
+      if (
+        cell.textContent?.includes("৳") ||
+        cell.textContent?.includes("BDT")
+      ) {
+        cell.textContent = cell.textContent
+          .replace(/৳\s*/g, "")
+          .replace(/\bBDT\s*/g, "");
+      }
+    });
+  }
+
+  if (options.showCurrencyInHeader) {
+    const currencyHeaderKeywords = [
+      "amount",
+      "net",
+      "received",
+      "profit",
+      "payable",
+      "total",
+      "value",
+    ];
+    table.querySelectorAll("thead th").forEach((th) => {
+      const text = (th.textContent || "").trim();
+      const lower = text.toLowerCase();
+      const isCurrencyCol = currencyHeaderKeywords.some((k) =>
+        lower.includes(k),
+      );
+      if (isCurrencyCol && !lower.includes("bdt")) {
+        th.textContent = `${text} (BDT)`;
       }
     });
   }
@@ -88,6 +120,34 @@ export function printElement(
       totalRow.appendChild(cell);
     }
     tfoot.appendChild(totalRow);
+  }
+
+  if (options.totalRecordCount) {
+    const headerCount = table.querySelectorAll("thead th").length;
+    const colCount = Math.max(headerCount, 2);
+    let tfoot = table.querySelector("tfoot");
+    if (!tfoot) {
+      tfoot = document.createElement("tfoot");
+      table.appendChild(tfoot);
+    }
+
+    const countRow = document.createElement("tr");
+    for (let i = 0; i < colCount; i += 1) {
+      const cell = document.createElement("td");
+      if (i === colCount - 2) {
+        cell.style.textAlign = "right";
+        cell.style.fontWeight = "700";
+        cell.textContent = options.totalRecordCount.label || "Total Records";
+      } else if (i === colCount - 1) {
+        cell.style.fontWeight = "800";
+        cell.style.textAlign = "right";
+        cell.textContent = String(options.totalRecordCount.value);
+      } else {
+        cell.textContent = "";
+      }
+      countRow.appendChild(cell);
+    }
+    tfoot.appendChild(countRow);
   }
 
   const html = `
