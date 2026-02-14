@@ -283,14 +283,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     const client = recs[0];
-    const totalDuty = recs.reduce((a, b) => a + b.duty, 0);
+    const subtotal = recs.reduce((a, b) => a + b.duty, 0);
+    const discount = 0;
+    const payable = subtotal - discount;
     const items = recs
       .map(
         (r, i) => `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${i + 1}</td>
         <td style="padding: 12px; border-bottom: 1px solid #eee;">Duty Payment for B/E: <strong>${r.beYear}</strong></td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">৳${r.duty.toLocaleString()}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${r.duty.toLocaleString()}</td>
       </tr>`,
       )
       .join("");
@@ -299,7 +301,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       <html>
         <head>
           <title>Duty Invoice</title>
-          <style>body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #1e293b; } .header { display: flex; justify-content: space-between; border-bottom: 2px solid #1e293b; padding-bottom: 20px; margin-bottom: 30px; } table { width: 100%; border-collapse: collapse; } th { background: #f1f5f9; text-align: left; padding: 12px; font-weight: 600; } .total { text-align: right; margin-top: 30px; font-size: 18px; font-weight: 700; }</style>
+          <style>body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #1e293b; } .header { display: flex; justify-content: space-between; border-bottom: 2px solid #1e293b; padding-bottom: 20px; margin-bottom: 30px; } table { width: 100%; border-collapse: collapse; } th { background: #f1f5f9; text-align: left; padding: 12px; font-weight: 600; } .summary { margin-top: 20px; margin-left: auto; width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #cbd5e1; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; }</style>
         </head>
         <body onload="window.print()">
           <div class="header">
@@ -308,7 +310,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           </div>
           <p><strong>Customer:</strong> ${client.clientName} (AIN: ${client.ain})</p>
           <table><thead><tr><th>SL</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${items}</tbody></table>
-          <div class="total">Total Paid: ৳${totalDuty.toLocaleString()}</div>
+          <div class="summary">
+            <div class="summary-row"><span>Subtotal</span><span>${subtotal.toLocaleString()}</span></div>
+            <div class="summary-row"><span>Discount</span><span>${discount.toLocaleString()}</span></div>
+            <div class="summary-row total"><span>Payable</span><span>${payable.toLocaleString()}</span></div>
+          </div>
         </body>
       </html>
     `);
