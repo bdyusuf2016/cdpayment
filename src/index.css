@@ -24,6 +24,13 @@
     border-color: #d6e0ea !important;
   }
 
+  html.template-soft input:not([type="checkbox"]):not([type="radio"]),
+  html.template-soft select,
+  html.template-soft textarea {
+    background-color: #e8eef6 !important;
+    border-color: #c7d4e4 !important;
+  }
+
   html.template-paper,
   html.template-paper body {
     background-color: #f2f4f7;
@@ -45,6 +52,13 @@
     border-color: #d8dee7 !important;
   }
 
+  html.template-paper input:not([type="checkbox"]):not([type="radio"]),
+  html.template-paper select,
+  html.template-paper textarea {
+    background-color: #e9edf3 !important;
+    border-color: #ccd4df !important;
+  }
+
   html.template-sand,
   html.template-sand body {
     background-color: #f5f1e8;
@@ -64,6 +78,13 @@
   html.template-sand .border-slate-200,
   html.template-sand .border-slate-300 {
     border-color: #e1d5c4 !important;
+  }
+
+  html.template-sand input:not([type="checkbox"]):not([type="radio"]),
+  html.template-sand select,
+  html.template-sand textarea {
+    background-color: #efe5d6 !important;
+    border-color: #dcc9ad !important;
   }
 
   html.template-ink.dark,
