@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Client, SystemConfig } from "../types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
@@ -6,6 +6,7 @@ import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
 interface AinDatabaseProps {
   clients: Client[];
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
+  onVisibleRowsChange: (rows: Client[]) => void;
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
 }
@@ -13,6 +14,7 @@ interface AinDatabaseProps {
 const AinDatabase: React.FC<AinDatabaseProps> = ({
   clients,
   setClients,
+  onVisibleRowsChange,
   systemConfig,
   supabase,
 }) => {
@@ -52,6 +54,10 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       c.ain.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  useEffect(() => {
+    onVisibleRowsChange(filteredClients);
+  }, [filteredClients, onVisibleRowsChange]);
 
   const handleOpenModal = (client?: Client) => {
     if (client) {

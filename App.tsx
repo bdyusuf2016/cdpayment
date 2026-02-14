@@ -85,6 +85,11 @@ const App: React.FC = () => {
   const [assessmentHistory, setAssessmentHistory] = useState<
     AssessmentRecord[]
   >([]);
+  const [visibleDutyRows, setVisibleDutyRows] = useState<PaymentRecord[]>([]);
+  const [visibleAssessmentRows, setVisibleAssessmentRows] = useState<
+    AssessmentRecord[]
+  >([]);
+  const [visibleAinRows, setVisibleAinRows] = useState<Client[]>([]);
   const [users, setUsers] = useState<StaffUser[]>([]);
 
   const [config, setConfig] = useState<SystemConfig>({
@@ -303,20 +308,22 @@ const App: React.FC = () => {
   const stats = useMemo(() => {
     switch (activeTab) {
       case "ain":
+        {
+          const rows = visibleAinRows;
         return [
           {
             label: config.language === "en" ? "Total Database" : "মোট ডাটাবেস",
-            value: clients.length,
+            value: rows.length,
             color: "#2563eb",
           },
           {
             label: config.language === "en" ? "Verified" : "ভেরিফাইড",
-            value: clients.filter((c) => c.phone).length,
+            value: rows.filter((c) => c.phone).length,
             color: "#10b981",
           },
           {
             label: config.language === "en" ? "Active" : "সক্রিয়",
-            value: clients.filter((c) => c.active).length,
+            value: rows.filter((c) => c.active).length,
             color: "#3b82f6",
           },
           {
@@ -325,13 +332,15 @@ const App: React.FC = () => {
             color: "#f59e0b",
           },
         ];
+      }
       case "assessment": {
-        const totalNet = assessmentHistory.reduce((acc, r) => acc + r.net, 0);
-        const totalReceived = assessmentHistory.reduce(
+        const rows = visibleAssessmentRows;
+        const totalNet = rows.reduce((acc, r) => acc + r.net, 0);
+        const totalReceived = rows.reduce(
           (acc, r) => acc + r.received,
           0,
         );
-        const totalBeCount = assessmentHistory.reduce(
+        const totalBeCount = rows.reduce(
           (acc, r) => acc + Number(r.nosOfBe || 0),
           0,
         );
@@ -358,14 +367,15 @@ const App: React.FC = () => {
               color: "#f59e0b",
             },
           ];
-        }
+      }
       default: {
-        const grossDuty = dutyHistory.reduce((acc, r) => acc + r.duty, 0);
-        const totalCollection = dutyHistory.reduce(
+        const rows = visibleDutyRows;
+        const grossDuty = rows.reduce((acc, r) => acc + r.duty, 0);
+        const totalCollection = rows.reduce(
           (acc, r) => acc + r.received,
           0,
         );
-        const serviceProfit = dutyHistory.reduce((acc, r) => acc + r.profit, 0);
+        const serviceProfit = rows.reduce((acc, r) => acc + r.profit, 0);
         return [
           {
             label: "Gross Duty",
@@ -384,13 +394,31 @@ const App: React.FC = () => {
           },
           {
             label: "Pending Job",
-            value: dutyHistory.filter((r) => r.status !== "Paid").length,
+            value: rows.filter((r) => r.status !== "Paid").length,
             color: "#ef4444",
           },
         ];
       }
     }
-  }, [activeTab, clients, config, dutyHistory, assessmentHistory]);
+  }, [
+    activeTab,
+    config,
+    visibleDutyRows,
+    visibleAssessmentRows,
+    visibleAinRows,
+  ]);
+
+  useEffect(() => {
+    setVisibleDutyRows(dutyHistory);
+  }, [dutyHistory]);
+
+  useEffect(() => {
+    setVisibleAssessmentRows(assessmentHistory);
+  }, [assessmentHistory]);
+
+  useEffect(() => {
+    setVisibleAinRows(clients);
+  }, [clients]);
 
   // Loading Screen
   if (isLoadingSession) {
@@ -594,6 +622,7 @@ const App: React.FC = () => {
               clients={clients}
               history={dutyHistory}
               setHistory={setDutyHistory}
+              onVisibleRowsChange={setVisibleDutyRows}
               systemConfig={config}
               supabase={supabase}
             />
@@ -604,6 +633,7 @@ const App: React.FC = () => {
               systemConfig={config}
               history={assessmentHistory}
               setHistory={setAssessmentHistory}
+              onVisibleRowsChange={setVisibleAssessmentRows}
               supabase={supabase}
             />
           )}
@@ -611,6 +641,7 @@ const App: React.FC = () => {
             <AinDatabase
               clients={clients}
               setClients={setClients}
+              onVisibleRowsChange={setVisibleAinRows}
               systemConfig={config}
               supabase={supabase}
             />
