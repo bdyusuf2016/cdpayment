@@ -1,5 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import supabaseDefault, {
+  SUPABASE_SITE_URL,
+  SUPABASE_SITE_KEY,
+} from "./utils/supabaseClient";
 import StatsCards from "./components/StatsCards";
 import DutyPayment from "./components/DutyPayment";
 import AssessmentBilling from "./components/AssessmentBilling";
@@ -40,11 +44,14 @@ const App: React.FC = () => {
     theme: "light",
     language: "en",
     paymentMethods: ["Cash", "Bank", "bKash", "Nagad"],
-    supabaseUrl: "",
-    supabaseKey: "",
+    supabaseUrl: SUPABASE_SITE_URL || "",
+    supabaseKey: SUPABASE_SITE_KEY || "",
   });
 
   const supabase = useMemo(() => {
+    // Prefer build-time Vite env client if available
+    if (SUPABASE_SITE_URL && SUPABASE_SITE_KEY) return supabaseDefault;
+
     const savedUrl = localStorage.getItem("supabase_url");
     const savedKey = localStorage.getItem("supabase_key");
     if (savedUrl && savedKey) {
@@ -161,7 +168,6 @@ const App: React.FC = () => {
     };
   }, [session, supabase]);
 
-
   // Update theme class on config change
   useEffect(() => {
     if (config.theme === "dark") {
@@ -185,7 +191,7 @@ const App: React.FC = () => {
       localStorage.removeItem("supabase_url");
       localStorage.removeItem("supabase_key");
       setSession(null);
-      setConfig((prev) => ({...prev, supabaseUrl: "", supabaseKey: ""}))
+      setConfig((prev) => ({ ...prev, supabaseUrl: "", supabaseKey: "" }));
     }
   };
 
@@ -537,7 +543,9 @@ const App: React.FC = () => {
               supabase={supabase}
             />
           )}
-          {activeTab === "logs" && <AuditLogs systemConfig={config} supabase={supabase} />}
+          {activeTab === "logs" && (
+            <AuditLogs systemConfig={config} supabase={supabase} />
+          )}
         </div>
       </main>
 
