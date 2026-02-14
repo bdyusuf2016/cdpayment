@@ -26,6 +26,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [queue, setQueue] = useState<DutyItem[]>([]);
+  const [insertedRecords, setInsertedRecords] = useState<PaymentRecord[]>([]);
 
   // Filters
   const [filterSearch, setFilterSearch] = useState("");
@@ -63,7 +64,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const filteredHistory = useMemo(() => {
-    return history.filter((rec) => {
+    // Merge local inserted records with parent-provided history and dedupe by id
+    const combined = [...insertedRecords, ...history].filter(
+      (v, i, a) => a.findIndex((x) => x.id === v.id) === i,
+    );
+    return combined.filter((rec) => {
       const recDate = parseDate(rec.date);
       const matchesSearch =
         rec.clientName.toLowerCase().includes(filterSearch.toLowerCase()) ||
@@ -92,6 +97,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     });
   }, [
     history,
+    insertedRecords,
     filterSearch,
     filterStatus,
     filterPaymentMethod,
@@ -163,7 +169,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     );
 
     for (const record of newRecords) {
-      await insertDuty(supabase, record);
+      const res = await insertDuty(supabase, record);
+      if (res) setInsertedRecords((prev) => [res, ...prev]);
     }
 
     setQueue([]);

@@ -43,6 +43,12 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const [endDate, setEndDate] = useState("");
 
   const [queue, setQueue] = useState<AssessmentItem[]>([]);
+  const [insertedRecords, setInsertedRecords] = useState<AssessmentRecord[]>(
+    [],
+  );
+  const [updatedRecords, setUpdatedRecords] = useState<
+    Record<string, AssessmentRecord>
+  >({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Payment Modal
@@ -68,7 +74,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   };
 
   const filteredHistory = useMemo(() => {
-    return history.filter((rec) => {
+    // Merge local inserted records and apply local updates, dedupe by id
+    const combined = [...insertedRecords, ...history].filter(
+      (v, i, a) => a.findIndex((x) => x.id === v.id) === i,
+    );
+    // Apply any local updates
+    const applied = combined.map((rec) =>
+      updatedRecords[rec.id] ? updatedRecords[rec.id] : rec,
+    );
+    return applied.filter((rec) => {
       const recDate = parseDate(rec.date);
       const matchesSearch =
         rec.clientName.toLowerCase().includes(filterSearch.toLowerCase()) ||
@@ -95,6 +109,8 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     });
   }, [
     history,
+    insertedRecords,
+    updatedRecords,
     filterSearch,
     filterStatus,
     filterPaymentMethod,
@@ -114,15 +130,12 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     }
   };
 
-  const handleAddOrUpdate = () => {
+  const handleAddOrUpdate = async () => {
     if (!nosOfBe || !ain) return;
     if (editingId) {
       // Editing mode - direct update
       const discountVal = parseFloat(batchDiscount) || 0; // In edit mode, we might use this as item discount
       const netVal = calculatedAmount - discountVal;
-      const url = systemConfig.supabaseUrl;
-      const key = systemConfig.supabaseKey;
-
       const patched: Partial<AssessmentRecord> = {
         ain,
         clientName,
@@ -133,31 +146,26 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         discount: discountVal,
         net: netVal,
       };
-
-      if (url && key) {
-        (async () => {
-          const res = await updateAssessment(url, key, editingId, patched);
-          if (res)
-            setHistory((prev) =>
-              prev.map((rec) => (rec.id === editingId ? res : rec)),
-            );
-          else
-            setHistory((prev) =>
-              prev.map((rec) =>
-                rec.id === editingId
-                  ? ({ ...rec, ...(patched as any) } as AssessmentRecord)
-                  : rec,
-              ),
-            );
-        })();
-      } else {
-        setHistory((prev) =>
-          prev.map((rec) =>
-            rec.id === editingId
-              ? ({ ...rec, ...(patched as any) } as AssessmentRecord)
-              : rec,
-          ),
+      if (supabase) {
+        const res = await updateAssessment(
+          supabase,
+          editingId as string,
+          patched,
         );
+        setUpdatedRecords((prev) => ({
+          ...prev,
+          [editingId as string]:
+            (res as AssessmentRecord) ||
+            ({ ...(patched as any), id: editingId } as AssessmentRecord),
+        }));
+      } else {
+        setUpdatedRecords((prev) => ({
+          ...prev,
+          [editingId as string]: {
+            ...(patched as any),
+            id: editingId,
+          } as AssessmentRecord,
+        }));
       }
       setEditingId(null);
       setBatchDiscount("");
@@ -179,7 +187,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     beCountRef.current?.focus();
   };
 
-  const submitQueue = () => {
+  const submitQueue = async () => {
     if (queue.length === 0) return;
 
     const totalAmount = queue.reduce((sum, item) => sum + item.amount, 0);
@@ -212,14 +220,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const url = systemConfig.supabaseUrl;
     const key = systemConfig.supabaseKey;
 
-    if (url && key) {
-      (async () => {
-        const inserted = await insertAssessments(url, key, newRecords);
-        if (inserted.length > 0) setHistory((prev) => [...inserted, ...prev]);
-        else setHistory((prev) => [...newRecords, ...prev]);
-      })();
+    if (supabase) {
+      const inserted: AssessmentRecord[] = [];
+      for (const rec of newRecords) {
+        const res = await insertAssessment(supabase, rec as any);
+        if (res) inserted.push(res);
+        else inserted.push(rec as AssessmentRecord);
+      }
+      if (inserted.length > 0)
+        setInsertedRecords((prev) => [...inserted, ...prev]);
     } else {
-      setHistory((prev) => [...newRecords, ...prev]);
+      // No supabase client — render locally
+      setInsertedRecords((prev) => [...newRecords, ...prev]);
     }
     setQueue([]);
     setAin("");
@@ -322,26 +334,19 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           received: splitAmount,
           paymentMethod: paymentMethod,
         };
-        if (url && key) {
-          const res = await updateAssessment(url, key, rec.id, patched);
-          if (res)
-            setHistory((prev) => prev.map((r) => (r.id === rec.id ? res : r)));
-          else
-            setHistory((prev) =>
-              prev.map((r) =>
-                r.id === rec.id
-                  ? ({ ...r, ...(patched as any) } as AssessmentRecord)
-                  : r,
-              ),
-            );
+        if (supabase) {
+          const res = await updateAssessment(supabase, rec.id, patched);
+          setUpdatedRecords((prev) => ({
+            ...prev,
+            [rec.id]:
+              (res as AssessmentRecord) ||
+              ({ ...(patched as any), id: rec.id } as AssessmentRecord),
+          }));
         } else {
-          setHistory((prev) =>
-            prev.map((r) =>
-              r.id === rec.id
-                ? ({ ...r, ...(patched as any) } as AssessmentRecord)
-                : r,
-            ),
-          );
+          setUpdatedRecords((prev) => ({
+            ...prev,
+            [rec.id]: { ...(patched as any), id: rec.id } as AssessmentRecord,
+          }));
         }
       }
     };
