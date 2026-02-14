@@ -315,7 +315,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       <html>
         <head>
           <title>Assessment Invoice</title>
-          <style>body { font-family: 'Inter', sans-serif; padding: 40px; } .header { border-bottom: 2px solid #333; padding-bottom: 20px; display: flex; justify-content: space-between; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { text-align: left; padding: 10px; background: #f4f4f4; border-bottom: 1px solid #333; } td { padding: 10px; border-bottom: 1px solid #eee; } .summary { margin-top: 18px; margin-left: auto; width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #d1d5db; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; }</style>
+          <style>body { font-family: 'Inter', sans-serif; padding: 40px; padding-bottom: 92px; } .header { border-bottom: 2px solid #333; padding-bottom: 20px; display: flex; justify-content: space-between; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { text-align: left; padding: 10px; background: #f4f4f4; border-bottom: 1px solid #333; } td { padding: 10px; border-bottom: 1px solid #eee; } .summary { margin-top: 18px; margin-left: auto; width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #d1d5db; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; } .print-footer { position: fixed; left: 40px; right: 40px; bottom: 18px; border-top: 1px solid #cbd5e1; padding-top: 8px; text-align: center; font-size: 11px; color: #475569; }</style>
         </head>
         <body onload="window.print()">
           <div class="header">
@@ -328,6 +328,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
             <div class="summary-row"><span>Discount</span><span>${fmt(totalDiscount)}</span></div>
             <div class="summary-row total"><span>${settlementLabel}</span><span>${fmt(totalNet)}</span></div>
+          </div>
+          <div class="print-footer">
+            This is system-generated invoice. Powered by ${systemConfig.agencyName} • Printed on ${new Date().toLocaleString("en-GB")}
           </div>
         </body>
       </html>
