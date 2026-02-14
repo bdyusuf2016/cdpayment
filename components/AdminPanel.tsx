@@ -21,7 +21,37 @@ interface AdminPanelProps {
   supabase: SupabaseClient | null;
 }
 
+// Permission metadata and defaults
+const PERMISSION_ITEMS: {
+  key: keyof GranularPermissions;
+  label: string;
+  code: string;
+}[] = [
+  { key: "bill_add", label: "Add Bills", code: "BILL_ADD" },
+  { key: "bill_edit", label: "Edit Bills", code: "BILL_EDIT" },
+  { key: "bill_delete", label: "Delete Bills", code: "BILL_DELETE" },
+  { key: "bill_bulk_pay", label: "Bulk Pay", code: "BILL_BULK_PAY" },
+  { key: "bill_export", label: "Export Bills", code: "BILL_EXPORT" },
+  { key: "bill_wa_share", label: "WA Share", code: "BILL_WA_SHARE" },
+  { key: "invoice_print", label: "Print Invoice", code: "INVOICE_PRINT" },
+  { key: "ain_view", label: "View AINs", code: "AIN_VIEW" },
+  { key: "ain_add", label: "Add AIN", code: "AIN_ADD" },
+  { key: "ain_delete", label: "Delete AIN", code: "AIN_DELETE" },
+  { key: "ain_import", label: "Import AINs", code: "AIN_IMPORT" },
+  { key: "ain_export", label: "Export AINs", code: "AIN_EXPORT" },
+  { key: "user_manage", label: "Manage Users", code: "USER_MANAGE" },
+  { key: "user_reset_pass", label: "Reset Passwords", code: "USER_RESET_PASS" },
+  { key: "view_logs", label: "View Logs", code: "VIEW_LOGS" },
+  { key: "settings_manage", label: "Manage Settings", code: "SETTINGS_MANAGE" },
+];
 
+const initialPermissions: GranularPermissions = PERMISSION_ITEMS.reduce(
+  (acc, it) => {
+    acc[it.key as string] = false;
+    return acc;
+  },
+  {} as GranularPermissions,
+);
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
   config,
@@ -38,7 +68,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [optimizing, setOptimizing] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
   const [testingConnection, setTestingConnection] = useState(false);
-
 
   // Backup Restore Refs
   const restoreFileRef = useRef<HTMLInputElement>(null);
@@ -80,7 +109,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setTestingConnection(false);
     }
   };
-
 
   const addPaymentMethod = () => {
     if (!newMethod) return;
@@ -171,9 +199,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleRestoreFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleRestoreFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !supabase) return;
 
@@ -279,17 +305,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   value={config.supabaseKey || ""}
                   onChange={(e) => updateConfig("supabaseKey", e.target.value)}
                 />
-                 <button
-                    onClick={handleTestConnection}
-                    disabled={testingConnection}
-                    className="w-full mt-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg bg-blue-600 text-white disabled:bg-blue-400 disabled:cursor-not-allowed"
-                    >
-                    {testingConnection ? "Testing..." : "Test Connection"}
+                <button
+                  onClick={handleTestConnection}
+                  disabled={testingConnection}
+                  className="w-full mt-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg bg-blue-600 text-white disabled:bg-blue-400 disabled:cursor-not-allowed"
+                >
+                  {testingConnection ? "Testing..." : "Test Connection"}
                 </button>
                 {connectionStatus && (
-                <p className={`text-xs mt-2 ${connectionStatus.startsWith("Error") ? 'text-red-500' : 'text-green-500'}`}>
+                  <p
+                    className={`text-xs mt-2 ${connectionStatus.startsWith("Error") ? "text-red-500" : "text-green-500"}`}
+                  >
                     {connectionStatus}
-                </p>
+                  </p>
                 )}
               </div>
             </div>
