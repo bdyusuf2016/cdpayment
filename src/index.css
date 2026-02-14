@@ -3,24 +3,82 @@
 @tailwind utilities;
 
 @layer base {
-  html.light-soft,
-  html.light-soft body {
+  html.template-soft,
+  html.template-soft body {
     background-color: #eef3f8;
     color: #0f172a;
   }
 
-  html.light-soft .bg-white {
+  html.template-soft .bg-white {
     background-color: #f4f7fb !important;
   }
 
-  html.light-soft .bg-slate-50,
-  html.light-soft .bg-slate-50\/50 {
+  html.template-soft .bg-slate-50,
+  html.template-soft .bg-slate-50\/50 {
     background-color: #eaf0f6 !important;
   }
 
-  html.light-soft .border-slate-100,
-  html.light-soft .border-slate-200,
-  html.light-soft .border-slate-300 {
+  html.template-soft .border-slate-100,
+  html.template-soft .border-slate-200,
+  html.template-soft .border-slate-300 {
     border-color: #d6e0ea !important;
+  }
+
+  html.template-paper,
+  html.template-paper body {
+    background-color: #f2f4f7;
+    color: #0f172a;
+  }
+
+  html.template-paper .bg-white {
+    background-color: #f8f9fb !important;
+  }
+
+  html.template-paper .bg-slate-50,
+  html.template-paper .bg-slate-50\/50 {
+    background-color: #eef1f5 !important;
+  }
+
+  html.template-paper .border-slate-100,
+  html.template-paper .border-slate-200,
+  html.template-paper .border-slate-300 {
+    border-color: #d8dee7 !important;
+  }
+
+  html.template-sand,
+  html.template-sand body {
+    background-color: #f5f1e8;
+    color: #1f2937;
+  }
+
+  html.template-sand .bg-white {
+    background-color: #fbf7ef !important;
+  }
+
+  html.template-sand .bg-slate-50,
+  html.template-sand .bg-slate-50\/50 {
+    background-color: #f2ebdf !important;
+  }
+
+  html.template-sand .border-slate-100,
+  html.template-sand .border-slate-200,
+  html.template-sand .border-slate-300 {
+    border-color: #e1d5c4 !important;
+  }
+
+  html.template-ink.dark,
+  html.template-ink.dark body {
+    background-color: #0b1020;
+    color: #dbe4f0;
+  }
+
+  html.template-ink.dark .bg-slate-800,
+  html.template-ink.dark .bg-slate-900 {
+    background-color: #111a30 !important;
+  }
+
+  html.template-ink.dark .border-slate-700,
+  html.template-ink.dark .border-slate-800 {
+    border-color: #22304f !important;
   }
 }
