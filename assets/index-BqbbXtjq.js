@@ -153,7 +153,7 @@ ${p}`}class Le extends Error{constructor({message:t,code:n,cause:r,name:s}){var 
       <html>
         <head>
           <title>Assessment Invoice</title>
-          <style>body { font-family: 'Inter', sans-serif; padding: 40px; padding-bottom: 92px; } .header { border-bottom: 2px solid #333; padding-bottom: 20px; display: flex; justify-content: space-between; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { text-align: left; padding: 10px; background: #f4f4f4; border-bottom: 1px solid #333; } td { padding: 10px; border-bottom: 1px solid #eee; } .summary { margin-top: 18px; margin-left: auto; width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #d1d5db; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; } .status-seal { position: fixed; left: 48px; bottom: 138px; padding: 14px 28px; border: 4px solid ${I==="Paid"?"#166534":"#92400e"}; border-radius: 999px; font-size: 28px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: ${I==="Paid"?"#166534":"#92400e"}; background: transparent; opacity: 0.2; transform: rotate(-15deg); } .print-footer { position: fixed; left: 40px; right: 40px; bottom: 18px; border-top: 1px solid #cbd5e1; padding-top: 8px; text-align: center; font-size: 11px; color: #475569; }</style>
+          <style>body { font-family: 'Inter', sans-serif; padding: 40px; padding-bottom: 92px; } .header { border-bottom: 2px solid #333; padding-bottom: 20px; display: flex; justify-content: space-between; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { text-align: left; padding: 10px; background: #f4f4f4; border-bottom: 1px solid #333; } td { padding: 10px; border-bottom: 1px solid #eee; } .summary-wrap { margin-top: 18px; display: flex; justify-content: flex-end; align-items: flex-end; gap: 22px; } .summary { width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #d1d5db; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; } .status-seal { align-self: flex-end; margin-bottom: 2px; padding: 14px 28px; border: 4px solid ${I==="Paid"?"#166534":"#92400e"}; border-radius: 999px; font-size: 28px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: ${I==="Paid"?"#166534":"#92400e"}; background: transparent; opacity: 0.2; transform: rotate(-15deg); } .print-footer { position: fixed; left: 40px; right: 40px; bottom: 18px; border-top: 1px solid #cbd5e1; padding-top: 8px; text-align: center; font-size: 11px; color: #475569; }</style>
         </head>
         <body onload="window.print()">
           <div class="header">
@@ -161,12 +161,14 @@ ${p}`}class Le extends Error{constructor({message:t,code:n,cause:r,name:s}){var 
             <div style="text-align: right"><h2>Service Bill</h2><p>Date: ${new Date().toLocaleDateString("en-GB")}</p></div>
           </div>
           <p><strong>Customer:</strong> ${E.clientName}</p>
-          <div class="status-seal">${$}</div>
           <table><thead><tr><th>#</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${X}</tbody></table>
-          <div class="summary">
-            <div class="summary-row"><span>Subtotal</span><span>${A(L)}</span></div>
-            <div class="summary-row"><span>Discount</span><span>${A(ee)}</span></div>
-            <div class="summary-row total"><span>${I}</span><span>${A(le)}</span></div>
+          <div class="summary-wrap">
+            <div class="status-seal">${$}</div>
+            <div class="summary">
+              <div class="summary-row"><span>Subtotal</span><span>${A(L)}</span></div>
+              <div class="summary-row"><span>Discount</span><span>${A(ee)}</span></div>
+              <div class="summary-row total"><span>${I}</span><span>${A(le)}</span></div>
+            </div>
           </div>
           <div class="print-footer">
             This is system-generated invoice. Powered by ${t.agencyName} • Printed on ${new Date().toLocaleString("en-GB")}
