@@ -356,12 +356,22 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const handleDeleteClick = (id?: string) => {
     const idsToDelete = id ? [id] : selectedIds;
     if (idsToDelete.length === 0) return;
+
+    const isBulk = idsToDelete.length > 1;
+    const ok = window.confirm(
+      isBulk
+        ? `Are you sure you want to delete ${idsToDelete.length} records?`
+        : "Are you sure you want to delete this record?",
+    );
+    if (!ok) return;
+
     setDeleteConfirm({ show: true, ids: idsToDelete });
+    executeDelete(idsToDelete);
   };
 
   // Execute Delete
-  const executeDelete = async () => {
-    for (const id of deleteConfirm.ids) {
+  const executeDelete = async (ids = deleteConfirm.ids) => {
+    for (const id of ids) {
       if (supabase) await deleteDuty(supabase, id);
       setInsertedRecords((prev) => prev.filter((r) => r.id !== id));
       setUpdatedRecords((prev) => {
