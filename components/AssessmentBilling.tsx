@@ -410,7 +410,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Left: Smart Calculator Form */}
         <div
-          className={`lg:col-span-2 rounded-[1.5rem] shadow-sm border p-6 relative overflow-hidden transition-all ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
+          className={`lg:col-span-2 rounded-[1.5rem] shadow-sm border p-5 relative overflow-hidden transition-all ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
         >
           <div className="flex items-center gap-3 mb-6 pb-4 border-b dark:border-slate-700">
             <span className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-lg shadow-purple-500/30">
@@ -423,9 +423,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             </h3>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-4">
             {/* Client Finder */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase">
                   Client AIN
@@ -435,7 +435,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   <input
                     type="text"
                     placeholder="Search ID..."
-                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                    className={`w-full pl-10 pr-4 py-2 rounded-xl border font-bold text-sm outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                     value={ain}
                     onChange={(e) => handleAinChange(e.target.value)}
                   />
@@ -448,7 +448,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 <input
                   type="text"
                   readOnly
-                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-500" : "bg-slate-50 border-slate-200 text-slate-500"}`}
+                  className={`w-full px-4 py-2 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-500" : "bg-slate-50 border-slate-200 text-slate-500"}`}
                   value={clientName}
                 />
               </div>
@@ -456,9 +456,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
             {/* Calculation Grid */}
             <div
-              className={`p-5 rounded-2xl border ${isDark ? "bg-slate-900/40 border-slate-700" : "bg-purple-50/20 border-purple-100"}`}
+              className={`p-4 rounded-2xl border ${isDark ? "bg-slate-900/40 border-slate-700" : "bg-purple-50/20 border-purple-100"}`}
             >
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-end">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 items-end">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase">
                     Number of B/E
@@ -467,7 +467,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     ref={beCountRef}
                     type="number"
                     placeholder="0"
-                    className={`w-full px-4 py-2.5 rounded-xl border font-bold text-lg text-center outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-purple-200 text-slate-800"}`}
+                    className={`w-full px-4 py-2 rounded-xl border font-bold text-base text-center outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-purple-200 text-slate-800"}`}
                     value={nosOfBe}
                     onChange={(e) => setNosOfBe(e.target.value)}
                   />
@@ -478,14 +478,14 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   </label>
                   <input
                     type="number"
-                    className={`w-full px-4 py-2.5 rounded-xl border font-bold text-lg text-center outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-purple-200 text-slate-800"}`}
+                    className={`w-full px-4 py-2 rounded-xl border font-bold text-base text-center outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-purple-200 text-slate-800"}`}
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
                   />
                 </div>
                 <button
                   onClick={handleAddOrUpdate}
-                  className="h-[48px] bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl uppercase tracking-widest text-xs shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
+                  className="h-[44px] bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl uppercase tracking-widest text-xs shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
                 >
                   Add to Queue
                 </button>
@@ -505,9 +505,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
         {/* Right: Live Queue Preview - Updated Design */}
         <div
-          className={`lg:col-span-1 rounded-[1.5rem] shadow-sm overflow-hidden flex flex-col h-full min-h-[400px] border ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
+          className={`lg:col-span-1 rounded-[1.5rem] shadow-sm overflow-hidden flex flex-col h-full min-h-[340px] border ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
         >
-          <div className="p-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white flex justify-between items-center">
+          <div className="p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white flex justify-between items-center">
             <div>
               <h4 className="font-bold text-sm uppercase tracking-widest">
                 Assessment Queue
@@ -521,9 +521,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             </div>
           </div>
 
-          <div className="flex-grow p-4 space-y-3 overflow-y-auto max-h-[400px]">
+          <div className="flex-grow p-3 space-y-2.5 overflow-y-auto max-h-[320px]">
             {queue.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 opacity-50 gap-3 min-h-[200px]">
+              <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 opacity-50 gap-2 min-h-[160px]">
                 <i className="fas fa-inbox text-4xl"></i>
                 <p className="text-[10px] font-bold uppercase">Queue Empty</p>
               </div>
@@ -531,7 +531,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               queue.map((item, idx) => (
                 <div
                   key={item.id}
-                  className={`p-4 rounded-xl border flex justify-between items-center relative group ${isDark ? "bg-slate-800 border-slate-700 hover:border-slate-600" : "bg-slate-50 border-slate-300 hover:border-slate-200"}`}
+                  className={`p-3 rounded-xl border flex justify-between items-center relative group ${isDark ? "bg-slate-800 border-slate-700 hover:border-slate-600" : "bg-slate-50 border-slate-300 hover:border-slate-200"}`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] font-bold text-slate-400 w-5">
@@ -562,7 +562,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           </div>
 
           <div
-            className={`p-6 border-t space-y-4 ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-300"}`}
+            className={`p-4 border-t space-y-3 ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-300"}`}
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500 uppercase">
@@ -583,7 +583,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               <input
                 type="number"
                 placeholder="0"
-                className={`w-24 px-3 py-1.5 rounded-lg text-right font-bold border outline-none focus:border-red-500 text-red-500 ${isDark ? "bg-slate-900 border-slate-600" : "bg-white border-slate-200"}`}
+                className={`w-24 px-3 py-1 rounded-lg text-right font-bold border outline-none focus:border-red-500 text-red-500 ${isDark ? "bg-slate-900 border-slate-600" : "bg-white border-slate-200"}`}
                 value={batchDiscount}
                 onChange={(e) => setBatchDiscount(e.target.value)}
               />
@@ -603,7 +603,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             <button
               onClick={submitQueue}
               disabled={queue.length === 0}
-              className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-4 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
+              className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-3 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
             >
               Submit Queue
             </button>
