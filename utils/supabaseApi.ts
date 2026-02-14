@@ -275,6 +275,36 @@ export async function updateStaffUser(
   return data;
 }
 
+export async function insertStaffUser(
+  supabase: SupabaseClient,
+  payload: Omit<StaffUser, "id">,
+): Promise<StaffUser | null> {
+  const dbPayload = {
+    name: payload.name,
+    role: payload.role,
+    permissions: payload.permissions,
+    last_active: payload.lastActive,
+    active: payload.active,
+  };
+  const { data, error } = await supabase
+    .from("staff_users")
+    .insert(dbPayload)
+    .select()
+    .single();
+  if (error) {
+    console.error("insertStaffUser error", error);
+    return null;
+  }
+  return {
+    id: data.id,
+    name: data.name ?? "",
+    role: data.role ?? "User",
+    permissions: data.permissions ?? {},
+    lastActive: data.lastActive ?? data.last_active ?? "",
+    active: Boolean(data.active),
+  };
+}
+
 // System Settings
 export async function fetchSystemSettings(
   supabase: SupabaseClient,
