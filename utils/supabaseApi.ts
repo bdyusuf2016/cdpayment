@@ -346,9 +346,16 @@ export async function fetchSystemSettings(
     defaultRate: Number(data.defaultRate ?? data.default_rate ?? 0),
     agencyName: data.agencyName ?? data.agency_name ?? "",
     agencyAddress: data.agencyAddress ?? data.agency_address ?? "",
+    developerCreditName:
+      data.developerCreditName ?? data.developer_credit_name ?? "",
+    developerCreditUrl:
+      data.developerCreditUrl ?? data.developer_credit_url ?? "",
+    showDeveloperCredit:
+      data.showDeveloperCredit ?? data.show_developer_credit ?? false,
     autoInvoice: data.autoInvoice ?? data.auto_invoice ?? true,
     currency: data.currency ?? "BDT",
     theme: data.theme ?? "light",
+    themeTemplate: data.themeTemplate ?? data.theme_template ?? "soft",
     language: data.language ?? "en",
     paymentMethods: data.paymentMethods ?? data.payment_methods ?? [],
     supabaseUrl: data.supabaseUrl,
@@ -365,10 +372,14 @@ export async function updateSystemSettings(
   const dbPatch = {
     agency_name: patch.agencyName,
     agency_address: patch.agencyAddress,
+    developer_credit_name: patch.developerCreditName,
+    developer_credit_url: patch.developerCreditUrl,
+    show_developer_credit: patch.showDeveloperCredit,
     default_rate: patch.defaultRate,
     auto_invoice: patch.autoInvoice,
     currency: patch.currency,
     theme: patch.theme,
+    theme_template: patch.themeTemplate,
     language: patch.language,
     payment_methods: patch.paymentMethods,
   } as Record<string, unknown>;
@@ -391,9 +402,16 @@ export async function updateSystemSettings(
     defaultRate: Number(data.defaultRate ?? data.default_rate ?? 0),
     agencyName: data.agencyName ?? data.agency_name ?? "",
     agencyAddress: data.agencyAddress ?? data.agency_address ?? "",
+    developerCreditName:
+      data.developerCreditName ?? data.developer_credit_name ?? "",
+    developerCreditUrl:
+      data.developerCreditUrl ?? data.developer_credit_url ?? "",
+    showDeveloperCredit:
+      data.showDeveloperCredit ?? data.show_developer_credit ?? false,
     autoInvoice: data.autoInvoice ?? data.auto_invoice ?? true,
     currency: data.currency ?? "BDT",
     theme: data.theme ?? "light",
+    themeTemplate: data.themeTemplate ?? data.theme_template ?? "soft",
     language: data.language ?? "en",
     paymentMethods: data.paymentMethods ?? data.payment_methods ?? [],
     supabaseUrl: data.supabaseUrl,
