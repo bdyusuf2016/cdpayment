@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 import {
   StaffUser,
   SystemConfig,
@@ -96,6 +97,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showAddUser, setShowAddUser] = useState(false);
   const [newMethod, setNewMethod] = useState("");
   const [optimizing, setOptimizing] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
+  const [testingConnection, setTestingConnection] = useState(false);
+
 
   // Backup Restore Refs
   const restoreFileRef = useRef<HTMLInputElement>(null);
@@ -112,6 +116,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const updateConfig = (key: keyof SystemConfig, value: any) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
+
+  const handleTestConnection = async () => {
+    if (!config.supabaseUrl || !config.supabaseKey) {
+      setConnectionStatus("Error: URL and Key cannot be empty.");
+      return;
+    }
+    setTestingConnection(true);
+    setConnectionStatus("Testing connection...");
+    try {
+      const tempClient = createClient(config.supabaseUrl, config.supabaseKey);
+      const { error } = await tempClient.from("clients").select("ain").limit(1);
+      if (error) {
+        throw error;
+      }
+      setConnectionStatus("Success! Connection to Supabase is working.");
+    } catch (error: any) {
+      console.error("Supabase connection test failed:", error);
+      setConnectionStatus(`Error: ${error.message}`);
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
 
   const addPaymentMethod = () => {
     if (!newMethod) return;
@@ -308,6 +335,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   value={config.supabaseKey || ""}
                   onChange={(e) => updateConfig("supabaseKey", e.target.value)}
                 />
+                 <button
+                    onClick={handleTestConnection}
+                    disabled={testingConnection}
+                    className="w-full mt-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg bg-blue-600 text-white disabled:bg-blue-400 disabled:cursor-not-allowed"
+                    >
+                    {testingConnection ? "Testing..." : "Test Connection"}
+                </button>
+                {connectionStatus && (
+                <p className={`text-xs mt-2 ${connectionStatus.startsWith("Error") ? 'text-red-500' : 'text-green-500'}`}>
+                    {connectionStatus}
+                </p>
+                )}
               </div>
             </div>
 
