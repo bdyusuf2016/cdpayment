@@ -72,19 +72,21 @@ export function printElement(
     }
 
     const totalRow = document.createElement("tr");
-    const labelCell = document.createElement("td");
-    labelCell.colSpan = colCount - 1;
-    labelCell.style.textAlign = "right";
-    labelCell.style.fontWeight = "700";
-    labelCell.textContent = options.grandTotal.label || "Grand Total";
-
-    const valueCell = document.createElement("td");
-    valueCell.style.fontWeight = "800";
-    valueCell.style.textAlign = "right";
-    valueCell.textContent = String(options.grandTotal.value);
-
-    totalRow.appendChild(labelCell);
-    totalRow.appendChild(valueCell);
+    for (let i = 0; i < colCount; i += 1) {
+      const cell = document.createElement("td");
+      if (i === colCount - 2) {
+        cell.style.textAlign = "right";
+        cell.style.fontWeight = "700";
+        cell.textContent = options.grandTotal.label || "Grand Total";
+      } else if (i === colCount - 1) {
+        cell.style.fontWeight = "800";
+        cell.style.textAlign = "right";
+        cell.textContent = String(options.grandTotal.value);
+      } else {
+        cell.textContent = "";
+      }
+      totalRow.appendChild(cell);
+    }
     tfoot.appendChild(totalRow);
   }
 
