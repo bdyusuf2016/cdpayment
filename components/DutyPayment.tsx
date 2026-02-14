@@ -152,25 +152,39 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const submitQueue = async () => {
-    if (queue.length === 0 || !supabase) return;
+    if (queue.length === 0) return;
 
-    const newRecords: Omit<PaymentRecord, "id" | "created_at">[] = queue.map(
-      (item) => ({
-        date: new Date().toLocaleDateString("en-GB"),
-        ain,
-        clientName,
-        phone,
-        beYear: `${item.beNumber}(${item.year})`,
-        duty: item.duty,
-        received: 0,
-        status: "New",
-        profit: 0,
-      }),
-    );
+    const newRecords: PaymentRecord[] = queue.map((item) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      date: new Date().toLocaleDateString("en-GB"),
+      ain,
+      clientName,
+      phone,
+      beYear: `${item.beNumber}(${item.year})`,
+      duty: item.duty,
+      received: 0,
+      status: "New",
+      profit: 0,
+    }));
 
-    for (const record of newRecords) {
-      const res = await insertDuty(supabase, record);
-      if (res) setInsertedRecords((prev) => [res, ...prev]);
+    if (supabase) {
+      for (const record of newRecords) {
+        const res = await insertDuty(supabase, {
+          date: record.date,
+          ain: record.ain,
+          clientName: record.clientName,
+          phone: record.phone,
+          beYear: record.beYear,
+          duty: record.duty,
+          received: record.received,
+          status: record.status,
+          profit: record.profit,
+        });
+        if (res) setInsertedRecords((prev) => [res, ...prev]);
+      }
+    } else {
+      // No supabase client — render locally
+      setInsertedRecords((prev) => [...newRecords, ...prev]);
     }
 
     setQueue([]);
