@@ -227,7 +227,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         console.debug("insertAssessment result:", res, rec);
         if (res) inserted.push(res);
         else {
-          console.warn("insertAssessment returned null — rendering local record instead.");
+          console.warn(
+            "insertAssessment returned null — rendering local record instead.",
+          );
           inserted.push(rec as AssessmentRecord);
         }
       }
