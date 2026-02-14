@@ -1,11 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Client, SystemConfig } from "../types";
 import { SupabaseClient } from "@supabase/supabase-js";
-import {
-  insertClient,
-  updateClient,
-  deleteClient,
-} from "../utils/supabaseApi";
+import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
 
 interface AinDatabaseProps {
   clients: Client[];
@@ -72,11 +68,18 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       phone: formPhone.trim(),
       active: true,
     };
-
     if (editingClient) {
+      // If changing the AIN, ensure the new AIN is not already used by another record
+      if (
+        clientData.ain !== editingClient.ain &&
+        clients.some((c) => c.ain === clientData.ain)
+      ) {
+        alert("This AIN already exists! Choose a different AIN.");
+        return;
+      }
       await updateClient(supabase, editingClient.ain, clientData);
     } else {
-      if (clients.some((c) => c.ain === formAin)) {
+      if (clients.some((c) => c.ain === clientData.ain)) {
         alert("This AIN already exists!");
         return;
       }
@@ -409,8 +412,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                   </label>
                   <input
                     type="text"
-                    disabled={!!editingClient}
-                    className={`w-full px-6 py-4 rounded-2xl border-2 outline-none font-black text-lg transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200 disabled:opacity-50" : "bg-slate-50 border-slate-50 text-slate-800 disabled:text-slate-400"} ${!editingClient ? "focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5" : "cursor-not-allowed"}`}
+                    className={`w-full px-6 py-4 rounded-2xl border-2 outline-none font-black text-lg transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-50 text-slate-800"} focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5`}
                     placeholder="8031XXXXX"
                     value={formAin}
                     onChange={(e) => setFormAin(e.target.value)}
