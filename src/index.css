@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html.light-soft,
+  html.light-soft body {
+    background-color: #eef3f8;
+    color: #0f172a;
+  }
+
+  html.light-soft .bg-white {
+    background-color: #f4f7fb !important;
+  }
+
+  html.light-soft .bg-slate-50,
+  html.light-soft .bg-slate-50\/50 {
+    background-color: #eaf0f6 !important;
+  }
+
+  html.light-soft .border-slate-100,
+  html.light-soft .border-slate-200,
+  html.light-soft .border-slate-300 {
+    border-color: #d6e0ea !important;
+  }
+}
