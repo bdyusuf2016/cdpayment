@@ -803,7 +803,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <tr
                 className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
               >
-                <th className="px-6 py-4 w-12 text-center">
+                <th className="px-6 py-3 w-12 text-center">
                   <input
                     type="checkbox"
                     className="w-4 h-4 rounded cursor-pointer accent-blue-600"
@@ -820,28 +820,28 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     }
                   />
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Date
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Client Information
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   B/E Reference
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
                   Amount
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
                   Received
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   Status
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
                   Profit
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   Controls
                 </th>
               </tr>
@@ -854,7 +854,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   key={rec.id}
                   className={`group transition-all ${getRowBackground(rec.status)} ${selectedIds.includes(rec.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""}`}
                 >
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-6 py-3 text-center">
                     <input
                       type="checkbox"
                       className="w-4 h-4 rounded cursor-pointer accent-blue-600"
@@ -869,11 +869,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     />
                   </td>
                   <td
-                    className={`px-6 py-4 text-sm font-bold ${isDark ? "text-slate-400" : "text-slate-900"}`}
+                    className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-400" : "text-slate-900"}`}
                   >
                     {rec.date}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-3">
                     <p
                       className={`text-base font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}
                     >
@@ -897,23 +897,23 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     </div>
                   </td>
                   <td
-                    className={`px-6 py-4 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-900"}`}
+                    className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-900"}`}
                   >
                     {rec.beYear}
                   </td>
                   <td
-                    className={`px-6 py-4 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
+                    className={`px-6 py-3 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
                   >
                     ৳{rec.duty.toLocaleString()}
                   </td>
                   <td
-                    className={`px-6 py-4 text-sm font-bold text-right ${rec.received > 0 ? "text-green-600" : "text-slate-400"}`}
+                    className={`px-6 py-3 text-sm font-bold text-right ${rec.received > 0 ? "text-green-600" : "text-slate-400"}`}
                   >
                     {rec.received > 0
                       ? `৳${rec.received.toLocaleString()}`
                       : "-"}
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-6 py-3 text-center">
                     <span
                       className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
                         rec.status === "Paid"
@@ -926,12 +926,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                       {rec.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-bold text-right text-blue-600">
+                  <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
                     {rec.status === "Paid"
                       ? `৳${rec.profit.toLocaleString()}`
                       : "-"}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-3">
                     <div className="flex justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
                       {/* Workflow Action Buttons */}
                       {rec.status === "New" && (
@@ -1101,7 +1101,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             </p>
             <div className="flex flex-col gap-3 mt-8">
               <button
-                onClick={executeDelete}
+                onClick={() => executeDelete()}
                 className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-xl shadow-red-100 transition-all active:scale-95 uppercase text-[10px] tracking-widest"
               >
                 Yes, Delete Permanently

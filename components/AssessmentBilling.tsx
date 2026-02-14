@@ -704,7 +704,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               <tr
                 className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
               >
-                <th className="px-6 py-4 w-10 text-center">
+                <th className="px-6 py-3 w-10 text-center">
                   <input
                     type="checkbox"
                     className="w-4 h-4 rounded cursor-pointer accent-purple-600"
@@ -721,16 +721,16 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     }
                   />
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Client & AIN
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
                   Net Value
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   Status
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   Actions
                 </th>
               </tr>
@@ -743,7 +743,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   key={rec.id}
                   className={`group hover:bg-purple-50/30 dark:hover:bg-slate-700/30 transition-all ${index % 2 === 0 && !isDark ? "bg-white" : !isDark ? "bg-slate-50/40" : ""}`}
                 >
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-6 py-3 text-center">
                     <input
                       type="checkbox"
                       className="w-4 h-4 cursor-pointer"
@@ -757,7 +757,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                       }
                     />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-3">
                     <p
                       className={`text-base font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}
                     >
@@ -784,18 +784,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     </div>
                   </td>
                   <td
-                    className={`px-6 py-4 text-right text-sm font-bold ${isDark ? "text-slate-200" : "text-slate-900"}`}
+                    className={`px-6 py-3 text-right text-sm font-bold ${isDark ? "text-slate-200" : "text-slate-900"}`}
                   >
                     ৳{rec.net.toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-6 py-3 text-center">
                     <span
                       className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${rec.status === "Paid" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
                     >
                       {rec.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-6 py-3 text-center">
                     <div className="flex justify-center gap-2 opacity-60 group-hover:opacity-100 transition-all">
                       {(rec.status === "New" || rec.status === "Pending") && (
                         <button

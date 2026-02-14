@@ -201,19 +201,19 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
               <tr
                 className={`${isDark ? "bg-slate-900" : "bg-slate-50"}`}
               >
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Timestamp
                 </th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Initiator
                 </th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Action
                 </th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Module
                 </th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Activity Detail
                 </th>
               </tr>
@@ -242,10 +242,10 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
                         : "hover:bg-slate-50/50"
                     }`}
                   >
-                    <td className="px-8 py-6 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
+                    <td className="px-8 py-4 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
                       {log.timestamp}
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-8 py-4">
                       <span
                         className={`text-[11px] font-black uppercase tracking-tight ${
                           isDark ? "text-slate-200" : "text-slate-900"
@@ -254,7 +254,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
                         {log.user}
                       </span>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-8 py-4">
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-2 h-2 rounded-full ${
@@ -276,7 +276,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-8 py-4">
                       <span
                         className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-tighter ${
                           isDark
@@ -287,7 +287,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
                         {log.module}
                       </span>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-8 py-4">
                       <p
                         className={`text-[11px] font-bold leading-snug transition-colors ${
                           isDark
