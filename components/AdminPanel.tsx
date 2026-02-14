@@ -8,91 +8,30 @@ import {
   PaymentRecord,
   AssessmentRecord,
 } from "../types";
+import { updateStaffUser, updateSystemSettings } from "../utils/supabaseApi";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 interface AdminPanelProps {
   config: SystemConfig;
   setConfig: React.Dispatch<React.SetStateAction<SystemConfig>>;
-
-  // Data for Backup/Restore
   clients: Client[];
-  setClients: React.Dispatch<React.SetStateAction<Client[]>>;
   dutyHistory: PaymentRecord[];
-  setDutyHistory: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
   assessmentHistory: AssessmentRecord[];
-  setAssessmentHistory: React.Dispatch<
-    React.SetStateAction<AssessmentRecord[]>
-  >;
+  users: StaffUser[];
+  supabase: SupabaseClient | null;
 }
 
-const initialPermissions: GranularPermissions = {
-  bill_add: false,
-  bill_edit: false,
-  bill_delete: false,
-  bill_bulk_pay: false,
-  bill_export: false,
-  bill_wa_share: false,
-  invoice_print: false,
-  ain_view: false,
-  ain_add: false,
-  ain_delete: false,
-  ain_import: false,
-  ain_export: false,
-  user_manage: false,
-  user_reset_pass: false,
-  view_logs: false,
-  settings_manage: false,
-};
 
-const fullPermissions: GranularPermissions = {
-  bill_add: true,
-  bill_edit: true,
-  bill_delete: true,
-  bill_bulk_pay: true,
-  bill_export: true,
-  bill_wa_share: true,
-  invoice_print: true,
-  ain_view: true,
-  ain_add: true,
-  ain_delete: true,
-  ain_import: true,
-  ain_export: true,
-  user_manage: true,
-  user_reset_pass: true,
-  view_logs: true,
-  settings_manage: true,
-};
-
-const PERMISSION_ITEMS = [
-  { key: "bill_add", label: "Add Bill", code: "BILL_ADD" },
-  { key: "bill_edit", label: "Edit Bill", code: "BILL_EDIT" },
-  { key: "bill_delete", label: "Delete Bill", code: "BILL_DELETE" },
-  { key: "bill_bulk_pay", label: "Bulk Pay", code: "BILL_BULK_PAY" },
-  { key: "bill_export", label: "Export Report", code: "BILL_EXPORT" },
-  { key: "bill_wa_share", label: "WhatsApp Share", code: "BILL_WA_SHARE" },
-  { key: "invoice_print", label: "Invoice Print", code: "INVOICE_PRINT" },
-  { key: "ain_view", label: "AIN View", code: "AIN_VIEW" },
-  { key: "ain_add", label: "AIN Add/Edit", code: "AIN_ADD" },
-  { key: "ain_delete", label: "AIN Delete", code: "AIN_DELETE" },
-  { key: "ain_import", label: "AIN Import", code: "AIN_IMPORT" },
-  { key: "ain_export", label: "AIN Export", code: "AIN_EXPORT" },
-  { key: "user_manage", label: "User Manage", code: "USER_MANAGE" },
-  { key: "user_reset_pass", label: "Reset Password", code: "USER_RESET_PASS" },
-  { key: "view_logs", label: "View Logs", code: "VIEW_LOGS" },
-  { key: "settings_manage", label: "Manage Settings", code: "SETTINGS_MANAGE" },
-];
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
   config,
   setConfig,
   clients,
-  setClients,
   dutyHistory,
-  setDutyHistory,
   assessmentHistory,
-  setAssessmentHistory,
+  users,
+  supabase,
 }) => {
-  const [users, setUsers] = useState<StaffUser[]>([]);
-
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
   const [newMethod, setNewMethod] = useState("");
@@ -114,6 +53,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   });
 
   const updateConfig = (key: keyof SystemConfig, value: any) => {
+    if (supabase) {
+      updateSystemSettings(supabase, { [key]: value });
+    }
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -142,15 +84,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const addPaymentMethod = () => {
     if (!newMethod) return;
-    updateConfig("paymentMethods", [...config.paymentMethods, newMethod]);
+    const updatedMethods = [...config.paymentMethods, newMethod];
+    updateConfig("paymentMethods", updatedMethods);
     setNewMethod("");
   };
 
   const removePaymentMethod = (method: string) => {
-    updateConfig(
-      "paymentMethods",
-      config.paymentMethods.filter((m) => m !== method),
-    );
+    const updatedMethods = config.paymentMethods.filter((m) => m !== method);
+    updateConfig("paymentMethods", updatedMethods);
   };
 
   const handleOpenUserModal = (user?: StaffUser) => {
@@ -159,7 +100,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setUserName(user.name);
       setUserRole(user.role);
       setUserActive(user.active ? "Yes" : "No");
-      setPermissions({ ...user.permissions });
+      setPermissions(user.permissions);
     } else {
       setEditingUserId(null);
       setUserName("");
@@ -170,24 +111,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setShowAddUser(true);
   };
 
-  const handleSaveUser = () => {
-    if (!userName) return;
-
-    const newUser: StaffUser = {
-      id: editingUserId || Math.random().toString(36).substr(2, 9),
-      name: userName,
-      role: userRole,
-      permissions: permissions,
-      lastActive: editingUserId
-        ? users.find((u) => u.id === editingUserId)?.lastActive || "Never"
-        : "Never",
-      active: userActive === "Yes",
-    };
+  const handleSaveUser = async () => {
+    if (!userName || !supabase) return;
 
     if (editingUserId) {
-      setUsers(users.map((u) => (u.id === editingUserId ? newUser : u)));
+      const updatedUser: Partial<StaffUser> = {
+        name: userName,
+        role: userRole,
+        permissions: permissions,
+        active: userActive === "Yes",
+      };
+      await updateStaffUser(supabase, editingUserId, updatedUser);
     } else {
-      setUsers([...users, newUser]);
+      // Note: Creating a new auth user should be handled here
+      // For now, we are just creating a record in staff_users
+      // This will not work without a corresponding auth.users entry
+      console.warn("User creation without auth is not fully implemented.");
     }
     setShowAddUser(false);
   };
@@ -204,47 +143,52 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       clients,
       dutyHistory,
       assessmentHistory,
-      users, // In a real app, users might need special handling
+      users,
     };
-
     const blob = new Blob([JSON.stringify(backupData, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `backup_${config.agencyName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.json`;
+    link.download = `backup_${config.agencyName.replace(
+      /\s+/g,
+      "_",
+    )}_${new Date().toISOString().split("T")[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     updateConfig("lastBackup", new Date().toLocaleString());
   };
 
   const handleRestoreClick = () => {
     if (
-      window.confirm("Restoring will overwrite current data. Are you sure?")
+      window.confirm(
+        "Restoring will overwrite current data. Are you sure? This is irreversible.",
+      )
     ) {
       restoreFileRef.current?.click();
     }
   };
 
-  const handleRestoreFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRestoreFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !supabase) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        if (data.config) setConfig(data.config);
-        if (data.clients) setClients(data.clients);
-        if (data.dutyHistory) setDutyHistory(data.dutyHistory);
-        if (data.assessmentHistory)
-          setAssessmentHistory(data.assessmentHistory);
-        // Note: Restoring users typically requires careful handling in real auth systems
-
-        alert("System restored successfully from backup.");
+        if (data.config) {
+          await updateSystemSettings(supabase, data.config);
+        }
+        // Restoring clients, duty history, etc., would require clearing existing
+        // and inserting new, which can be complex. Skipping for now.
+        alert(
+          "System settings restored. Full data restore is not yet implemented.",
+        );
       } catch (error) {
         alert("Invalid backup file format.");
         console.error(error);

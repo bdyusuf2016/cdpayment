@@ -1,20 +1,21 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import { DutyItem, PaymentRecord, Client, SystemConfig } from "../types";
-import { insertDuties, updateDuty, deleteDuty } from "../utils/supabaseApi";
+import { insertDuty, updateDuty, deleteDuty } from "../utils/supabaseApi";
 import { printElement } from "../utils/printTable";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 interface DutyPaymentProps {
   clients: Client[];
   history: PaymentRecord[];
-  setHistory: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
   systemConfig: SystemConfig;
+  supabase: SupabaseClient | null;
 }
 
 const DutyPayment: React.FC<DutyPaymentProps> = ({
   clients,
   history,
-  setHistory,
   systemConfig,
+  supabase,
 }) => {
   const [ain, setAin] = useState("");
   const [clientName, setClientName] = useState("");
@@ -103,24 +104,20 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const client = clients.find((c) => c.ain === val);
     if (client) {
       setClientName(client.name);
-      setPhone(client.phone);
+      setPhone(client.phone || "");
     } else {
       setClientName("");
       setPhone("");
     }
   };
 
-  const handleAddOrUpdate = () => {
-    if (!beNumber || !dutyAmount || !beYear) return;
+  const handleAddOrUpdate = async () => {
+    if (!beNumber || !dutyAmount || !beYear || !supabase) return;
 
-    // Auto prefix with C-
     let formattedBe = beNumber.trim().toUpperCase();
     if (!formattedBe.startsWith("C-")) {
       formattedBe = `C-${formattedBe}`;
     }
-
-    const url = systemConfig.supabaseUrl;
-    const key = systemConfig.supabaseKey;
 
     if (editingId) {
       const updatedRec: Partial<PaymentRecord> = {
@@ -130,29 +127,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         beYear: `${formattedBe}(${beYear})`,
         duty: parseFloat(dutyAmount),
       };
-
-      if (url && key) {
-        (async () => {
-          const res = await updateDuty(url, key, editingId, updatedRec);
-          if (res) {
-            setHistory((prev) =>
-              prev.map((rec) => (rec.id === editingId ? res : rec)),
-            );
-          } else {
-            setHistory((prev) =>
-              prev.map((rec) =>
-                rec.id === editingId ? { ...rec, ...(updatedRec as any) } : rec,
-              ),
-            );
-          }
-        })();
-      } else {
-        setHistory((prev) =>
-          prev.map((rec) =>
-            rec.id === editingId ? { ...rec, ...(updatedRec as any) } : rec,
-          ),
-        );
-      }
+      await updateDuty(supabase, editingId, updatedRec);
       setEditingId(null);
     } else {
       setQueue([
@@ -170,35 +145,27 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     beInputRef.current?.focus();
   };
 
-  const submitQueue = () => {
-    if (queue.length === 0) return;
-    const newRecords: PaymentRecord[] = queue.map((item) => ({
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toLocaleDateString("en-GB"),
-      ain,
-      clientName,
-      phone,
-      beYear: `${item.beNumber}(${item.year})`,
-      duty: item.duty,
-      received: 0,
-      status: "New",
-      profit: 0,
-    }));
-    const url = systemConfig.supabaseUrl;
-    const key = systemConfig.supabaseKey;
+  const submitQueue = async () => {
+    if (queue.length === 0 || !supabase) return;
 
-    if (url && key) {
-      (async () => {
-        const inserted = await insertDuties(url, key, newRecords);
-        if (inserted.length > 0) {
-          setHistory([...inserted, ...history]);
-        } else {
-          setHistory([...newRecords, ...history]);
-        }
-      })();
-    } else {
-      setHistory([...newRecords, ...history]);
+    const newRecords: Omit<PaymentRecord, "id" | "created_at">[] = queue.map(
+      (item) => ({
+        date: new Date().toLocaleDateString("en-GB"),
+        ain,
+        clientName,
+        phone,
+        beYear: `${item.beNumber}(${item.year})`,
+        duty: item.duty,
+        received: 0,
+        status: "New",
+        profit: 0,
+      }),
+    );
+
+    for (const record of newRecords) {
+      await insertDuty(supabase, record);
     }
+
     setQueue([]);
     setAin("");
     setClientName("");
@@ -289,42 +256,25 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     setShowPaymentModal(true);
   };
 
-  const processPayment = () => {
+  const processPayment = async () => {
+    if (!supabase) return;
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount)) return;
-    const url = systemConfig.supabaseUrl;
-    const key = systemConfig.supabaseKey;
 
-    const updateLocal = (updated: PaymentRecord) => {
-      setHistory((prev) =>
-        prev.map((rec) => (rec.id === updated.id ? updated : rec)),
-      );
-    };
+    for (const rec of history.filter((r) => paymentIds.includes(r.id))) {
+      const splitAmount = amount / paymentIds.length;
+      const patched: Partial<PaymentRecord> = {
+        status: "Paid",
+        received: splitAmount,
+        profit: splitAmount - rec.duty,
+        paymentMethod: paymentMethod,
+      };
+      await updateDuty(supabase, rec.id, patched);
+    }
 
-    const applyUpdates = async () => {
-      for (const rec of history.filter((r) => paymentIds.includes(r.id))) {
-        const splitAmount = amount / paymentIds.length;
-        const patched: Partial<PaymentRecord> = {
-          status: "Paid",
-          received: splitAmount,
-          profit: splitAmount - rec.duty,
-          paymentMethod: paymentMethod,
-        };
-        if (url && key) {
-          const res = await updateDuty(url, key, rec.id, patched);
-          if (res) updateLocal(res);
-          else updateLocal({ ...rec, ...(patched as any) });
-        } else {
-          updateLocal({ ...rec, ...(patched as any) });
-        }
-      }
-    };
-
-    applyUpdates().then(() => {
-      setShowPaymentModal(false);
-      setSelectedIds([]);
-      setPaymentIds([]);
-    });
+    setShowPaymentModal(false);
+    setSelectedIds([]);
+    setPaymentIds([]);
   };
 
   // Trigger Delete Confirmation
@@ -335,58 +285,26 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   // Execute Delete
-  const executeDelete = () => {
-    const url = systemConfig.supabaseUrl;
-    const key = systemConfig.supabaseKey;
-
-    if (url && key) {
-      (async () => {
-        for (const id of deleteConfirm.ids) {
-          await deleteDuty(url, key, id);
-        }
-        setHistory((prev) =>
-          prev.filter((rec) => !deleteConfirm.ids.includes(rec.id)),
-        );
-        setSelectedIds([]);
-        setDeleteConfirm({ show: false, ids: [] });
-      })();
-    } else {
-      setHistory((prev) =>
-        prev.filter((rec) => !deleteConfirm.ids.includes(rec.id)),
-      );
-      setSelectedIds([]); // Clear selections
-      setDeleteConfirm({ show: false, ids: [] });
+  const executeDelete = async () => {
+    if (!supabase) return;
+    for (const id of deleteConfirm.ids) {
+      await deleteDuty(supabase, id);
     }
+    setSelectedIds([]);
+    setDeleteConfirm({ show: false, ids: [] });
   };
 
-  const handleStatusUpdate = (
+  const handleStatusUpdate = async (
     status: "Completed" | "Pending",
     targetId?: string,
   ) => {
+    if (!supabase) return;
     const idsToUpdate = targetId ? [targetId] : selectedIds;
     if (idsToUpdate.length === 0) return;
-    const url = systemConfig.supabaseUrl;
-    const key = systemConfig.supabaseKey;
 
-    const apply = async () => {
-      for (const id of idsToUpdate) {
-        if (url && key) {
-          const res = await updateDuty(url, key, id, { status });
-          if (res)
-            setHistory((prev) => prev.map((r) => (r.id === id ? res : r)));
-          else
-            setHistory((prev) =>
-              prev.map((r) => (r.id === id ? { ...r, status } : r)),
-            );
-        } else {
-          setHistory((prev) =>
-            prev.map((r) => (r.id === id ? { ...r, status } : r)),
-          );
-        }
-      }
-    };
-
-    apply();
+    for (const id of idsToUpdate) {
+      await updateDuty(supabase, id, { status });
+    }
   };
 
   const handleEdit = (id: string) => {
@@ -395,7 +313,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       setEditingId(rec.id);
       setAin(rec.ain);
       setClientName(rec.clientName);
-      setPhone(rec.phone);
+      setPhone(rec.phone || "");
       const [num, yearPart] = rec.beYear.split("(");
       setBeNumber(num.replace("C-", ""));
       setBeYear(yearPart?.replace(")", "") || "");
