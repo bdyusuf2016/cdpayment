@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { LogEntry, SystemConfig } from "../types";
 import { printElement } from "../utils/printTable";
 import { fetchData } from "../utils/supabaseApi";
@@ -16,27 +16,29 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
 
   const [filter, setFilter] = useState("");
 
+  const mapLog = (d: any): LogEntry => ({
+    id: d.id,
+    timestamp: d.timestamp || d.created_at || new Date().toLocaleString(),
+    user: d.user_name ?? d.user ?? "system",
+    action: d.action || "",
+    module: d.module || "",
+    details: d.details || "",
+    type: d.type || "info",
+  });
+
   const filteredLogs = logs.filter(
     (l) =>
       (l.details && l.details.toLowerCase().includes(filter.toLowerCase())) ||
       l.action.toLowerCase().includes(filter.toLowerCase()),
   );
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     if (supabase) {
       setLoading(true);
       setError(null);
       try {
         const data = await fetchData<LogEntry>(supabase, "audit_logs");
-        const mapped: LogEntry[] = (data || []).map((d: any) => ({
-          id: d.id,
-          timestamp: d.timestamp || d.created_at || new Date().toLocaleString(),
-          user: d.user_name ?? d.user ?? "system",
-          action: d.action || "",
-          module: d.module || "",
-          details: d.details || "",
-          type: d.type || "info",
-        }));
+        const mapped: LogEntry[] = (data || []).map((d: any) => mapLog(d));
         setLogs(mapped);
       } catch (err) {
         console.error("Failed to load audit logs", err);
@@ -45,11 +47,37 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase }) => {
         setLoading(false);
       }
     }
-  };
+  }, [supabase]);
 
   useEffect(() => {
     loadLogs();
-  }, [supabase]);
+
+    if (!supabase) return;
+    const channel = supabase
+      .channel("public:audit_logs")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "audit_logs" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const rec = mapLog(payload.new);
+            setLogs((prev) => [rec, ...prev.filter((p) => p.id !== rec.id)]);
+          }
+          if (payload.eventType === "UPDATE") {
+            const rec = mapLog(payload.new);
+            setLogs((prev) => prev.map((p) => (p.id === rec.id ? rec : p)));
+          }
+          if (payload.eventType === "DELETE") {
+            setLogs((prev) => prev.filter((p) => p.id !== payload.old.id));
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, loadLogs]);
 
   function exportCSV() {
     if (!logs || logs.length === 0) return;
