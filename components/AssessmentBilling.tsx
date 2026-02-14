@@ -505,9 +505,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
         {/* Right: Live Queue Preview - Updated Design */}
         <div
-          className={`lg:col-span-1 rounded-[1.5rem] shadow-sm overflow-hidden flex flex-col h-full min-h-[340px] border ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
+          className={`lg:col-span-1 rounded-[1.5rem] shadow-sm overflow-hidden flex flex-col h-full min-h-[300px] border ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
         >
-          <div className="p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white flex justify-between items-center">
+          <div className="p-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white flex justify-between items-center">
             <div>
               <h4 className="font-bold text-sm uppercase tracking-widest">
                 Assessment Queue
@@ -521,9 +521,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             </div>
           </div>
 
-          <div className="flex-grow p-3 space-y-2.5 overflow-y-auto max-h-[320px]">
+          <div className="flex-grow p-2.5 space-y-2 overflow-y-auto max-h-[280px]">
             {queue.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 opacity-50 gap-2 min-h-[160px]">
+              <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 opacity-50 gap-1.5 min-h-[130px]">
                 <i className="fas fa-inbox text-4xl"></i>
                 <p className="text-[10px] font-bold uppercase">Queue Empty</p>
               </div>
@@ -531,9 +531,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               queue.map((item, idx) => (
                 <div
                   key={item.id}
-                  className={`p-3 rounded-xl border flex justify-between items-center relative group ${isDark ? "bg-slate-800 border-slate-700 hover:border-slate-600" : "bg-slate-50 border-slate-300 hover:border-slate-200"}`}
+                  className={`p-2.5 rounded-xl border flex justify-between items-center relative group ${isDark ? "bg-slate-800 border-slate-700 hover:border-slate-600" : "bg-slate-50 border-slate-300 hover:border-slate-200"}`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-slate-400 w-5">
                       #{idx + 1}
                     </span>
@@ -562,7 +562,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           </div>
 
           <div
-            className={`p-4 border-t space-y-3 ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-300"}`}
+            className={`p-3 border-t space-y-2.5 ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-300"}`}
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500 uppercase">
@@ -603,7 +603,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             <button
               onClick={submitQueue}
               disabled={queue.length === 0}
-              className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-3 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
+              className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-2.5 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
             >
               Submit Queue
             </button>
