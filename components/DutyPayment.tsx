@@ -870,11 +870,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   {
                     autoExcludeControls: true,
                     replaceTakaWithBDT: true,
+                    showCurrencyInHeader: true,
                     grandTotal: {
                       label: "Grand Total",
-                      value: `BDT ${filteredHistory
+                      value: filteredHistory
                         .reduce((sum, rec) => sum + rec.duty, 0)
-                        .toLocaleString()}`,
+                        .toLocaleString(),
+                    },
+                    totalRecordCount: {
+                      label: "Total Record Count",
+                      value: filteredHistory.length,
                     },
                   },
                 )
