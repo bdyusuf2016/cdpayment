@@ -331,15 +331,10 @@ const App: React.FC = () => {
           (acc, r) => acc + r.received,
           0,
         );
-        const paidCount = assessmentHistory.filter(
-          (r) => r.status === "Paid",
-        ).length;
-        const pendingCount = assessmentHistory.filter(
-          (r) => r.status === "Pending" || r.status === "Completed",
-        ).length;
-        const newCount = assessmentHistory.filter(
-          (r) => r.status === "New",
-        ).length;
+        const totalBeCount = assessmentHistory.reduce(
+          (acc, r) => acc + Number(r.nosOfBe || 0),
+          0,
+        );
         const outstanding = totalNet - totalReceived;
         return [
           {
@@ -358,8 +353,8 @@ const App: React.FC = () => {
               color: "#ef4444",
             },
             {
-              label: "Report Status",
-              value: `T:${assessmentHistory.length} P:${paidCount} N:${newCount + pendingCount}`,
+              label: "Total B/E",
+              value: totalBeCount.toLocaleString(),
               color: "#f59e0b",
             },
           ];
