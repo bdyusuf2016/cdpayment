@@ -231,8 +231,10 @@ const App: React.FC = () => {
   useEffect(() => {
     if (config.theme === "dark") {
       document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light-soft");
     } else {
       document.documentElement.classList.remove("dark");
+      document.documentElement.classList.add("light-soft");
     }
   }, [config.theme]);
 
