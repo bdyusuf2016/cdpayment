@@ -381,6 +381,57 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     if (isNaN(amount)) return;
     const url = systemConfig.supabaseUrl;
     const key = systemConfig.supabaseKey;
+    const targetRecords = allHistory.filter((r) => paymentIds.includes(r.id));
+    if (targetRecords.length === 0) return;
+
+    const allocateByWeight = (
+      records: AssessmentRecord[],
+      totalAmount: number,
+      getWeight: (r: AssessmentRecord) => number,
+    ) => {
+      const n = records.length;
+      if (n === 0) return {} as Record<string, number>;
+      const totalCents = Math.max(0, Math.round(totalAmount * 100));
+      const weights = records.map((r) => Math.max(0, getWeight(r)));
+      const weightSum = weights.reduce((a, b) => a + b, 0);
+
+      const centsById: Record<string, number> = {};
+      if (weightSum <= 0) {
+        const base = Math.floor(totalCents / n);
+        let rem = totalCents - base * n;
+        records.forEach((r) => {
+          centsById[r.id] = base + (rem > 0 ? 1 : 0);
+          if (rem > 0) rem -= 1;
+        });
+      } else {
+        const raw = records.map((r, i) => {
+          const exact = (totalCents * weights[i]) / weightSum;
+          const floor = Math.floor(exact);
+          return { id: r.id, floor, frac: exact - floor };
+        });
+        let used = 0;
+        raw.forEach((x) => {
+          centsById[x.id] = x.floor;
+          used += x.floor;
+        });
+        let rem = totalCents - used;
+        raw
+          .sort((a, b) => b.frac - a.frac)
+          .forEach((x) => {
+            if (rem <= 0) return;
+            centsById[x.id] += 1;
+            rem -= 1;
+          });
+      }
+
+      const amountById: Record<string, number> = {};
+      Object.keys(centsById).forEach((id) => {
+        amountById[id] = centsById[id] / 100;
+      });
+      return amountById;
+    };
+
+    const receivedById = allocateByWeight(targetRecords, amount, (r) => r.net);
 
     const apply = async () => {
       setHistory((prev) =>
@@ -389,17 +440,17 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             ? ({
                 ...rec,
                 status: "Paid",
-                received: amount / paymentIds.length,
+                received: receivedById[rec.id] ?? 0,
                 paymentMethod,
               } as AssessmentRecord)
             : rec,
         ),
       );
-      for (const rec of allHistory.filter((r) => paymentIds.includes(r.id))) {
-        const splitAmount = amount / paymentIds.length;
+      for (const rec of targetRecords) {
+        const received = receivedById[rec.id] ?? 0;
         const patched: Partial<AssessmentRecord> = {
           status: "Paid",
-          received: splitAmount,
+          received,
           paymentMethod: paymentMethod,
         };
         if (supabase) {
