@@ -595,7 +595,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: "soft", label: "Soft Blue" },
-                  { id: "paper", label: "Paper Gray" },
+                  { id: "paper", label: "Mint Paper" },
                   { id: "sand", label: "Warm Sand" },
                   { id: "ink", label: "Dark Ink" },
                 ].map((tpl) => (
