@@ -786,6 +786,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 printElement(
                   document.getElementById("assessment-table"),
                   "Billing History",
+                  {
+                    autoExcludeControls: true,
+                    grandTotal: {
+                      label: "Grand Total",
+                      value: filteredHistory
+                        .reduce((sum, rec) => sum + rec.net, 0)
+                        .toLocaleString(),
+                    },
+                  },
                 )
               }
               title="Print table"

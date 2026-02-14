@@ -1,6 +1,10 @@
 type PrintOptions = {
   excludeColumnIndexes?: number[];
   autoExcludeControls?: boolean;
+  grandTotal?: {
+    label?: string;
+    value: string | number;
+  };
 };
 
 export function printElement(
@@ -60,11 +64,17 @@ export function printElement(
           th { background: #f8fafc; font-weight: 700; text-align: left; }
           thead tr { background: #f1f5f9; }
           .title { font-size: 16px; font-weight: 800; margin-bottom: 12px; }
+          .grand-total { margin-top: 12px; text-align: right; font-size: 15px; font-weight: 800; }
         </style>
       </head>
       <body>
         ${title ? `<div class="title">${title}</div>` : ""}
         ${table.outerHTML}
+        ${
+          options.grandTotal
+            ? `<div class="grand-total">${options.grandTotal.label || "Grand Total"}: ${options.grandTotal.value}</div>`
+            : ""
+        }
       </body>
     </html>
   `;
