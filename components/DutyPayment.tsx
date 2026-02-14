@@ -304,26 +304,47 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount)) return;
 
-    for (const rec of allHistory.filter((r) => paymentIds.includes(r.id))) {
-      const splitAmount = amount / paymentIds.length;
-      const patched: Partial<PaymentRecord> = {
-        status: "Paid",
-        received: splitAmount,
-        profit: splitAmount - rec.duty,
-        paymentMethod: paymentMethod,
-      };
-      if (supabase) {
-        const res = await updateDuty(supabase, rec.id, patched);
-        setUpdatedRecords((prev) => ({
-          ...prev,
-          [rec.id]: (res as PaymentRecord) || ({ ...rec, ...patched } as PaymentRecord),
-        }));
-      } else {
-        setUpdatedRecords((prev) => ({
-          ...prev,
-          [rec.id]: { ...rec, ...patched } as PaymentRecord,
-        }));
+    const targetRecords = allHistory.filter((r) => paymentIds.includes(r.id));
+    if (targetRecords.length === 0) return;
+
+    const splitAmount = amount / paymentIds.length;
+
+    // Optimistic UI update first
+    setUpdatedRecords((prev) => {
+      const next = { ...prev };
+      for (const rec of targetRecords) {
+        const patched: Partial<PaymentRecord> = {
+          status: "Paid",
+          received: splitAmount,
+          profit: splitAmount - rec.duty,
+          paymentMethod: paymentMethod,
+        };
+        next[rec.id] = { ...rec, ...patched } as PaymentRecord;
       }
+      return next;
+    });
+
+    // Then sync with server in parallel
+    if (supabase) {
+      const results = await Promise.all(
+        targetRecords.map(async (rec) => {
+          const patched: Partial<PaymentRecord> = {
+            status: "Paid",
+            received: splitAmount,
+            profit: splitAmount - rec.duty,
+            paymentMethod: paymentMethod,
+          };
+          const res = await updateDuty(supabase, rec.id, patched);
+          return { id: rec.id, res };
+        }),
+      );
+      setUpdatedRecords((prev) => {
+        const next = { ...prev };
+        for (const { id, res } of results) {
+          if (res) next[id] = res;
+        }
+        return next;
+      });
     }
 
     setShowPaymentModal(false);
@@ -360,23 +381,34 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const idsToUpdate = targetId ? [targetId] : selectedIds;
     if (idsToUpdate.length === 0) return;
 
-    for (const id of idsToUpdate) {
-      const currentRec = allHistory.find((r) => r.id === id);
-      if (!currentRec) continue;
-      const patched: Partial<PaymentRecord> = { status };
-      if (supabase) {
-        const res = await updateDuty(supabase, id, patched);
-        setUpdatedRecords((prev) => ({
-          ...prev,
-          [id]: (res as PaymentRecord) || ({ ...currentRec, ...patched } as PaymentRecord),
-        }));
-      } else {
-        setUpdatedRecords((prev) => ({
-          ...prev,
-          [id]: { ...currentRec, ...patched } as PaymentRecord,
-        }));
+    const targetRecords = allHistory.filter((r) => idsToUpdate.includes(r.id));
+
+    // Optimistic update first for instant UI response
+    setUpdatedRecords((prev) => {
+      const next = { ...prev };
+      for (const rec of targetRecords) {
+        next[rec.id] = { ...rec, status } as PaymentRecord;
       }
+      return next;
+    });
+
+    // Sync with server in parallel
+    if (supabase) {
+      const results = await Promise.all(
+        idsToUpdate.map(async (id) => {
+          const res = await updateDuty(supabase, id, { status });
+          return { id, res };
+        }),
+      );
+      setUpdatedRecords((prev) => {
+        const next = { ...prev };
+        for (const { id, res } of results) {
+          if (res) next[id] = res;
+        }
+        return next;
+      });
     }
+
   };
 
   const handleEdit = (id: string) => {
