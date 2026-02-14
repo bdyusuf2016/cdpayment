@@ -878,8 +878,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                         .toLocaleString(),
                     },
                     totalRecordCount: {
-                      label: "Total Record Count",
+                      label: "Total",
                       value: filteredHistory.length,
+                      labelColumnHeader: "Client Information",
+                      valueColumnHeader: "B/E Reference",
                     },
                   },
                 )
