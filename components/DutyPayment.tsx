@@ -867,7 +867,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 printElement(
                   document.getElementById("duty-table"),
                   "Transaction History",
-                  { autoExcludeControls: true },
+                  {
+                    autoExcludeControls: true,
+                    grandTotal: {
+                      label: "Grand Total",
+                      value: filteredHistory
+                        .reduce((sum, rec) => sum + rec.duty, 0)
+                        .toLocaleString(),
+                    },
+                  },
                 )
               }
               title="Print table"
