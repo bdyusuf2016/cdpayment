@@ -224,8 +224,12 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       const inserted: AssessmentRecord[] = [];
       for (const rec of newRecords) {
         const res = await insertAssessment(supabase, rec as any);
+        console.debug("insertAssessment result:", res, rec);
         if (res) inserted.push(res);
-        else inserted.push(rec as AssessmentRecord);
+        else {
+          console.warn("insertAssessment returned null — rendering local record instead.");
+          inserted.push(rec as AssessmentRecord);
+        }
       }
       if (inserted.length > 0)
         setInsertedRecords((prev) => [...inserted, ...prev]);

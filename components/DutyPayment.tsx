@@ -180,7 +180,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           status: record.status,
           profit: record.profit,
         });
+        console.debug("insertDuty result:", res, record);
         if (res) setInsertedRecords((prev) => [res, ...prev]);
+        else {
+          // If insert failed or returned null, still render locally so UX reflects the queue
+          console.warn(
+            "insertDuty returned null — rendering local record instead.",
+          );
+          setInsertedRecords((prev) => [record, ...prev]);
+        }
       }
     } else {
       // No supabase client — render locally
