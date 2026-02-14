@@ -105,9 +105,11 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       const recDate = parseDate(rec.date);
       const recClientName = (rec.clientName || "").toLowerCase();
       const recAin = rec.ain || "";
+      const recBeCount = String(rec.nosOfBe ?? "");
       const matchesSearch =
         recClientName.includes(filterSearch.toLowerCase()) ||
-        recAin.includes(filterSearch);
+        recAin.includes(filterSearch) ||
+        recBeCount.includes(filterSearch);
       const matchesStatus =
         filterStatus === "All" || rec.status === filterStatus;
       const matchesMethod =
@@ -711,7 +713,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             )}
           </div>
 
-          <div className="flex gap-2 flex-wrap items-center">
+          <div className="flex gap-3 items-center flex-wrap">
+            <div className="relative">
+              <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input
+                type="text"
+                placeholder="Search..."
+                className={`pl-9 pr-4 py-2 rounded-lg border text-xs font-bold outline-none w-32 focus:w-48 transition-all ${isDark ? "bg-slate-900 border-slate-600 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
+              />
+            </div>
+
             <select
               className={`px-3 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-600 text-white" : "bg-slate-50 border-slate-200"}`}
               value={filterPaymentMethod}
@@ -724,6 +737,25 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 </option>
               ))}
             </select>
+
+            <div
+              className={`flex items-center gap-2 px-2 rounded-lg border ${isDark ? "border-slate-600" : "border-slate-200"}`}
+            >
+              <input
+                type="date"
+                className={`py-1.5 bg-transparent text-xs font-bold outline-none ${isDark ? "text-white" : "text-slate-700"}`}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <span className="text-slate-400 text-[10px]">TO</span>
+              <input
+                type="date"
+                className={`py-1.5 bg-transparent text-xs font-bold outline-none ${isDark ? "text-white" : "text-slate-700"}`}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+
             <button
               onClick={() => {
                 setStartDate(new Date().toISOString().split("T")[0]);
@@ -737,6 +769,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               onClick={() => {
                 setStartDate("");
                 setEndDate("");
+                setFilterSearch("");
               }}
               className="bg-slate-100 text-slate-900 px-4 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-200"
             >
