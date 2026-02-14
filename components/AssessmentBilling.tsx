@@ -49,6 +49,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const [updatedRecords, setUpdatedRecords] = useState<
     Record<string, AssessmentRecord>
   >({});
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Payment Modal
@@ -89,10 +90,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       (v, i, a) => a.findIndex((x) => x.id === v.id) === i,
     );
     // Apply any local updates
-    return combined.map((rec) =>
-      updatedRecords[rec.id] ? updatedRecords[rec.id] : rec,
-    );
-  }, [history, insertedRecords, updatedRecords]);
+    return combined
+      .map((rec) => (updatedRecords[rec.id] ? updatedRecords[rec.id] : rec))
+      .filter((rec) => !deletedIds.includes(rec.id));
+  }, [history, insertedRecords, updatedRecords, deletedIds]);
 
   const filteredHistory = useMemo(() => {
     const applied = allHistory;
@@ -382,21 +383,39 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   };
 
   const executeDelete = async () => {
-    for (const id of deleteConfirm.ids) {
-      setInsertedRecords((prev) => prev.filter((r) => r.id !== id));
-      setUpdatedRecords((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      if (supabase) {
-        await deleteAssessment(supabase, id);
-      }
-    }
+    const idsToDelete = [...deleteConfirm.ids];
+    if (idsToDelete.length === 0) return;
+
+    // Optimistic remove for instant UI feedback
+    setDeletedIds((prev) => Array.from(new Set([...prev, ...idsToDelete])));
+    setInsertedRecords((prev) =>
+      prev.filter((r) => !idsToDelete.includes(r.id)),
+    );
+    setUpdatedRecords((prev) => {
+      const next = { ...prev };
+      idsToDelete.forEach((id) => delete next[id]);
+      return next;
+    });
     setSelectedIds((prev) =>
-      prev.filter((itemId) => !deleteConfirm.ids.includes(itemId)),
+      prev.filter((itemId) => !idsToDelete.includes(itemId)),
     );
     setDeleteConfirm({ show: false, ids: [] });
+
+    if (!supabase) return;
+
+    const results = await Promise.all(
+      idsToDelete.map(async (id) => {
+        const res = await deleteAssessment(supabase, id);
+        return { id, ok: Boolean(res) };
+      }),
+    );
+
+    const failedIds = results.filter((r) => !r.ok).map((r) => r.id);
+    if (failedIds.length > 0) {
+      // Roll back only failed deletions
+      setDeletedIds((prev) => prev.filter((id) => !failedIds.includes(id)));
+      console.error("Failed to delete some assessment rows:", failedIds);
+    }
   };
 
   const isDark = systemConfig.theme === "dark";
