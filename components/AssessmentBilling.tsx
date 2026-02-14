@@ -797,8 +797,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                         .toLocaleString(),
                     },
                     totalRecordCount: {
-                      label: "Total Record Count",
+                      label: "Total",
                       value: filteredHistory.length,
+                      labelColumnHeader: "Client & AIN",
+                      valueColumnHeader: "Count of B/E",
                     },
                   },
                 )

@@ -10,6 +10,8 @@ type PrintOptions = {
   totalRecordCount?: {
     label?: string;
     value: number;
+    labelColumnHeader?: string;
+    valueColumnHeader?: string;
   };
 };
 
@@ -24,6 +26,7 @@ export function printElement(
 
   const table = el.cloneNode(true) as HTMLElement;
   const excluded = new Set<number>(options.excludeColumnIndexes || []);
+  const getHeaderCells = () => Array.from(table.querySelectorAll("thead th"));
 
   if (options.autoExcludeControls) {
     const headerCells = Array.from(table.querySelectorAll("thead th"));
@@ -71,6 +74,7 @@ export function printElement(
   }
 
   if (options.showCurrencyInHeader) {
+    const currencyColIndexes: number[] = [];
     const currencyHeaderKeywords = [
       "amount",
       "net",
@@ -80,7 +84,7 @@ export function printElement(
       "total",
       "value",
     ];
-    table.querySelectorAll("thead th").forEach((th) => {
+    getHeaderCells().forEach((th, idx) => {
       const text = (th.textContent || "").trim();
       const lower = text.toLowerCase();
       const isCurrencyCol = currencyHeaderKeywords.some((k) =>
@@ -89,7 +93,36 @@ export function printElement(
       if (isCurrencyCol && !lower.includes("bdt")) {
         th.textContent = `${text} (BDT)`;
       }
+      if (isCurrencyCol) currencyColIndexes.push(idx);
     });
+
+    const formatTwoDecimals = (raw: string) => {
+      const cleaned = raw.replace(/[^\d.-]/g, "");
+      const num = Number(cleaned);
+      if (Number.isNaN(num)) return raw;
+      return num.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    };
+
+    if (currencyColIndexes.length > 0) {
+      table.querySelectorAll("thead th").forEach((th, idx) => {
+        if (currencyColIndexes.includes(idx)) {
+          (th as HTMLElement).style.textAlign = "right";
+        }
+      });
+
+      table.querySelectorAll("tbody tr").forEach((tr) => {
+        const cells = Array.from(tr.querySelectorAll("td"));
+        currencyColIndexes.forEach((colIdx) => {
+          const td = cells[colIdx];
+          if (!td) return;
+          td.style.textAlign = "right";
+          td.textContent = formatTwoDecimals((td.textContent || "").trim());
+        });
+      });
+    }
   }
 
   if (options.grandTotal) {
@@ -123,7 +156,8 @@ export function printElement(
   }
 
   if (options.totalRecordCount) {
-    const headerCount = table.querySelectorAll("thead th").length;
+    const headers = getHeaderCells();
+    const headerCount = headers.length;
     const colCount = Math.max(headerCount, 2);
     let tfoot = table.querySelector("tfoot");
     if (!tfoot) {
@@ -131,14 +165,31 @@ export function printElement(
       table.appendChild(tfoot);
     }
 
+    const resolveHeaderIndex = (name?: string) => {
+      if (!name) return -1;
+      const target = name.trim().toLowerCase();
+      return headers.findIndex(
+        (th) => (th.textContent || "").trim().toLowerCase() === target,
+      );
+    };
+
+    const labelIdx = (() => {
+      const resolved = resolveHeaderIndex(options.totalRecordCount?.labelColumnHeader);
+      return resolved >= 0 ? resolved : Math.max(colCount - 2, 0);
+    })();
+    const valueIdx = (() => {
+      const resolved = resolveHeaderIndex(options.totalRecordCount?.valueColumnHeader);
+      return resolved >= 0 ? resolved : colCount - 1;
+    })();
+
     const countRow = document.createElement("tr");
     for (let i = 0; i < colCount; i += 1) {
       const cell = document.createElement("td");
-      if (i === colCount - 2) {
+      if (i === labelIdx) {
         cell.style.textAlign = "right";
         cell.style.fontWeight = "700";
-        cell.textContent = options.totalRecordCount.label || "Total Records";
-      } else if (i === colCount - 1) {
+        cell.textContent = options.totalRecordCount.label || "Total";
+      } else if (i === valueIdx) {
         cell.style.fontWeight = "800";
         cell.style.textAlign = "right";
         cell.textContent = String(options.totalRecordCount.value);
