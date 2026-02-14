@@ -292,8 +292,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       ? "Paid"
       : "Payable";
     const subtotal = recs.reduce((a, b) => a + b.duty, 0);
-    const discount = 0;
-    const payable = subtotal - discount;
+    const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
+    const due = Math.max(0, subtotal - totalReceived);
+    const settlementValue =
+      settlementLabel === "Paid" ? Math.max(totalReceived, subtotal) : due;
     const items = recs
       .map(
         (r, i) => `
@@ -320,8 +322,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           <table><thead><tr><th>SL</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${items}</tbody></table>
           <div class="summary">
             <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
-            <div class="summary-row"><span>Discount</span><span>${fmt(discount)}</span></div>
-            <div class="summary-row total"><span>${settlementLabel}</span><span>${fmt(payable)}</span></div>
+            <div class="summary-row"><span>Due</span><span>${fmt(due)}</span></div>
+            <div class="summary-row total"><span>${settlementLabel}</span><span>${fmt(settlementValue)}</span></div>
           </div>
         </body>
       </html>
