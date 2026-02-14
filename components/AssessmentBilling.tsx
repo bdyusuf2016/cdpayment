@@ -790,17 +790,19 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     autoExcludeControls: true,
                     replaceTakaWithBDT: true,
                     showCurrencyInHeader: true,
-                    grandTotal: {
-                      label: "Grand Total",
-                      value: filteredHistory
-                        .reduce((sum, rec) => sum + rec.net, 0)
-                        .toLocaleString(),
-                    },
                     totalRecordCount: {
                       label: "Total",
                       value: filteredHistory.length,
                       labelColumnHeader: "Client & AIN",
                       valueColumnHeader: "Count of B/E",
+                      additionalValuesByHeader: {
+                        "Net Value": filteredHistory
+                          .reduce((sum, rec) => sum + rec.net, 0)
+                          .toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }),
+                      },
                     },
                   },
                 )
