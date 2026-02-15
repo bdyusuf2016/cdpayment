@@ -51,19 +51,24 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
           ? supabaseDefault
           : createClient(supabaseUrl, supabaseKey);
 
+      const normalizedEmail = email.trim();
+      if (!normalizedEmail) {
+        throw new Error("Please enter a valid email address");
+      }
+
       let result;
       if (isLogin) {
         result = await supabase.auth.signInWithPassword({
-          email,
+          email: normalizedEmail,
           password,
         });
       } else {
         result = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: {
             data: {
-              full_name: email.split("@")[0], // Default name from email
+              full_name: normalizedEmail.split("@")[0], // Default name from email
             },
           },
         });
@@ -229,3 +234,4 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
 };
 
 export default Auth;
+
