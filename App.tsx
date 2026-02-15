@@ -648,7 +648,9 @@ const App: React.FC = () => {
       }
       default: {
         const rows = visibleDutyRows;
-        const paidRows = rows.filter((r) => r.status === "Paid");
+        const paidRows = rows.filter(
+          (r) => String(r.status || "").trim().toLowerCase() === "paid",
+        );
         const grossDuty = rows.reduce((acc, r) => acc + r.duty, 0);
         const collection = rows.reduce(
           (acc, r) => acc + r.received,
