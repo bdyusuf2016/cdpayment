@@ -739,16 +739,16 @@ const App: React.FC = () => {
     >
       {/* Top Navigation Bar */}
       <header
-        className={`px-4 md:px-6 py-4 sticky top-0 z-[60] shadow-sm backdrop-blur-md border-b transition-colors ${config.theme === "dark" ? "bg-[#1e293b]/80 border-slate-700" : "bg-white/80 border-slate-100"}`}
+        className={`px-3 md:px-5 py-3 sticky top-0 z-[60] shadow-sm backdrop-blur-md border-b transition-colors ${config.theme === "dark" ? "bg-[#1e293b]/80 border-slate-700" : "bg-white/80 border-slate-100"}`}
       >
         <div className="max-w-[1600px] mx-auto w-full">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <i className="fas fa-cube text-white text-lg"></i>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i className="fas fa-cube text-white text-base"></i>
               </div>
               <div className="flex flex-col">
-                <h1 className="text-lg font-black tracking-tight leading-none">
+                <h1 className="text-base md:text-lg font-black tracking-tight leading-none">
                   {config.agencyName}
                 </h1>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -760,7 +760,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <div className="hidden lg:flex flex-col items-end mr-2">
                 <span className="text-xs font-bold dark:text-white">
                   {session.user.email}
@@ -770,16 +770,16 @@ const App: React.FC = () => {
                 </span>
               </div>
 
-              <div className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg mr-2 border border-slate-200 dark:border-slate-700">
+              <div className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg mr-1 border border-slate-200 dark:border-slate-700">
                 <button
                   onClick={() => setConfig((prev) => ({ ...prev, language: "en" }))}
-                  className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${config.language === "en" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
+                  className={`px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${config.language === "en" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
                 >
                   ENG
                 </button>
                 <button
                   onClick={() => setConfig((prev) => ({ ...prev, language: "bn" }))}
-                  className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${config.language === "bn" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
+                  className={`px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${config.language === "bn" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
                 >
                   BAN
                 </button>
@@ -801,48 +801,48 @@ const App: React.FC = () => {
               {isAdminUser && (
                 <button
                   onClick={() => setActiveTab("admin")}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 border ${activeTab === "admin" ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500"}`}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-sm active:scale-95 border ${activeTab === "admin" ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500"}`}
                 >
-                  <i className="fas fa-cog text-sm"></i>
+                  <i className="fas fa-cog text-xs"></i>
                 </button>
               )}
               <button
                 onClick={handleOpenProfileModal}
-                className="bg-white dark:bg-slate-800 text-slate-500 hover:text-blue-600 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm border border-slate-200 dark:border-slate-700"
+                className="bg-white dark:bg-slate-800 text-slate-500 hover:text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm border border-slate-200 dark:border-slate-700"
                 title="Profile"
               >
-                <i className="fas fa-user text-sm"></i>
+                <i className="fas fa-user text-xs"></i>
               </button>
               <button
                 onClick={handleLogout}
-                className="bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-600 hover:text-white w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm border border-red-100 dark:border-red-900/30"
+                className="bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-600 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm border border-red-100 dark:border-red-900/30"
               >
-                <i className="fas fa-power-off text-sm"></i>
+                <i className="fas fa-power-off text-xs"></i>
               </button>
             </div>
           </div>
 
           {/* Header Flow Navigation */}
-          <div className="mt-3">
+          <div className="mt-2.5">
             {/* Mobile Navigation (Dropdown Style) */}
             <div className="md:hidden relative z-50">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className={`w-full p-3 rounded-2xl border shadow-sm flex items-center justify-between transition-all active:scale-[0.99] ${config.theme === "dark" ? "bg-[#0f172a]/70 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                className={`w-full p-2.5 rounded-xl border shadow-sm flex items-center justify-between transition-all active:scale-[0.99] ${config.theme === "dark" ? "bg-[#0f172a]/70 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-lg ${config.theme === "dark" ? "bg-slate-700 text-white" : "bg-blue-600 text-white"}`}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === "dark" ? "bg-slate-700 text-white" : "bg-blue-600 text-white"}`}
                   >
                     <i
                       className={`fas ${navTabs.find((t) => t.id === activeTab)?.icon}`}
                     ></i>
                   </div>
-                  <div className="text-left">
+                  <div className="text-left leading-tight">
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
                       Current View
                     </p>
-                    <p className="text-sm font-black uppercase tracking-widest">
+                    <p className="text-xs font-black uppercase tracking-widest">
                       {navTabs.find((t) => t.id === activeTab)?.label}
                     </p>
                   </div>
@@ -895,13 +895,13 @@ const App: React.FC = () => {
             {/* Desktop Navigation (Segmented Control) */}
             <div className="hidden md:flex justify-center">
               <nav
-                className={`flex p-1.5 rounded-2xl shadow-sm border overflow-x-auto no-scrollbar transition-colors ${config.theme === "dark" ? "bg-[#0f172a]/70 border-slate-700" : "bg-white border-slate-200"}`}
+                className={`mx-auto flex p-1 rounded-xl shadow-sm border overflow-x-auto no-scrollbar transition-colors ${config.theme === "dark" ? "bg-[#0f172a]/70 border-slate-700" : "bg-white border-slate-200"}`}
               >
                 {navTabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as TabType)}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[11px] font-black transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap ${
                       activeTab === tab.id
                         ? "bg-slate-900 dark:bg-blue-600 text-white shadow-lg"
                         : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
