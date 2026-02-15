@@ -1056,18 +1056,43 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       </div>
 
       {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
-        <div className="fixed bottom-4 right-4 z-[90] max-w-[calc(100vw-2rem)]">
+        <div className="fixed top-[78px] md:top-[86px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)]">
           <div
-            className={`rounded-xl border px-4 py-3 shadow-xl text-xs font-black uppercase tracking-wider ${
+            className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-xl backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
               isDark
-                ? "bg-slate-900 border-slate-700 text-slate-100"
-                : "bg-white border-slate-200 text-slate-700"
+                ? "bg-slate-900/95 border-slate-700 text-slate-100"
+                : "bg-white/95 border-slate-200 text-slate-700"
             }`}
           >
-            <div>Total ৳{selectedTotalAmount.toLocaleString()}</div>
-            <div className="mt-1 text-red-500">
-              Due ৳{selectedDueAmount.toLocaleString()}
-            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider">
+              Selected {selectedIds.length}
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-wider">
+              Total ৳{selectedTotalAmount.toLocaleString()}
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-red-500">
+              Settlement ৳{selectedDueAmount.toLocaleString()}
+            </span>
+            <button
+              onClick={() => initiatePayment(selectedIds)}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
+            >
+              Bulk Pay
+            </button>
+            <button
+              onClick={() => handleDeleteRecord()}
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
+            >
+              Delete
+            </button>
+            <button
+              onClick={() =>
+                shareWhatsApp(allHistory.filter((h) => selectedIds.includes(h.id)))
+              }
+              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
+            >
+              <i className="fab fa-whatsapp"></i> Summary
+            </button>
           </div>
         </div>
       )}
