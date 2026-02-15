@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { LogEntry, SystemConfig } from "../types";
 import { printElement } from "../utils/printTable";
 import { fetchData } from "../utils/supabaseApi";
@@ -16,6 +16,10 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
   const [error, setError] = useState<string | null>(null);
 
   const [filter, setFilter] = useState("");
+  const [sortKey, setSortKey] = useState<
+    "timestamp" | "user" | "action" | "module" | "details"
+  >("timestamp");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const mapLog = (d: any): LogEntry => ({
     id: d.id,
@@ -34,6 +38,71 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
       (l.details && l.details.toLowerCase().includes(filter.toLowerCase())) ||
       l.action.toLowerCase().includes(filter.toLowerCase()),
   );
+
+  const parseTimestamp = (value: string) => {
+    if (!value) return 0;
+    const normalized = value.trim();
+    if (normalized.includes("/") && normalized.includes(",")) {
+      const [datePart, timePart] = normalized.split(",");
+      const [day, month, year] = datePart.trim().split("/");
+      const parsed = new Date(
+        `${year}-${month}-${day}T${(timePart || "00:00:00").trim()}`,
+      ).getTime();
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    const parsed = new Date(normalized).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const sortedLogs = useMemo(() => {
+    const rows = [...filteredLogs];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "timestamp") {
+        left = parseTimestamp(a.timestamp);
+        right = parseTimestamp(b.timestamp);
+      } else if (sortKey === "user") {
+        left = (a.user || "").toLowerCase();
+        right = (b.user || "").toLowerCase();
+      } else if (sortKey === "action") {
+        left = (a.action || "").toLowerCase();
+        right = (b.action || "").toLowerCase();
+      } else if (sortKey === "module") {
+        left = (a.module || "").toLowerCase();
+        right = (b.module || "").toLowerCase();
+      } else {
+        left = (a.details || "").toLowerCase();
+        right = (b.details || "").toLowerCase();
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredLogs, sortDir, sortKey]);
+
+  const toggleSort = (
+    key: "timestamp" | "user" | "action" | "module" | "details",
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "timestamp" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "timestamp" | "user" | "action" | "module" | "details",
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-500"
+      : "fa-sort-down text-blue-500";
+  };
 
   const loadLogs = useCallback(async () => {
     if (supabase) {
@@ -206,19 +275,51 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                 className={`${isDark ? "bg-slate-900" : "bg-slate-50"}`}
               >
                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Timestamp
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("timestamp")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Timestamp{" "}
+                    <i className={`fas ${getSortIcon("timestamp")}`}></i>
+                  </button>
                 </th>
                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Initiator
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("user")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Initiator <i className={`fas ${getSortIcon("user")}`}></i>
+                  </button>
                 </th>
                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Action
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("action")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Action <i className={`fas ${getSortIcon("action")}`}></i>
+                  </button>
                 </th>
                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Module
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("module")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Module <i className={`fas ${getSortIcon("module")}`}></i>
+                  </button>
                 </th>
                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Activity Detail
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("details")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Activity Detail{" "}
+                    <i className={`fas ${getSortIcon("details")}`}></i>
+                  </button>
                 </th>
               </tr>
             </thead>
@@ -227,7 +328,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                 isDark ? "divide-slate-700" : "divide-slate-300"
               }`}
             >
-              {filteredLogs.length === 0 ? (
+              {sortedLogs.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
@@ -237,7 +338,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
+                sortedLogs.map((log) => (
                   <tr
                     key={log.id}
                     className={`transition-colors group ${

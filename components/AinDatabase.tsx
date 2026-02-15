@@ -27,6 +27,10 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   const [selectedAins, setSelectedAins] = useState<string[]>([]);
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const [pendingDeletedAins, setPendingDeletedAins] = useState<string[]>([]);
+  const [sortKey, setSortKey] = useState<"latest" | "ain" | "name" | "phone">(
+    "latest",
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // For Custom Confirmation
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -55,9 +59,62 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       c.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  const clientTime = (client: Client) => {
+    const raw = (client as any).created_at || (client as any).createdAt || "";
+    const t = new Date(raw).getTime();
+    return Number.isNaN(t) ? 0 : t;
+  };
+
+  const sortedClients = useMemo(() => {
+    const rows = [...filteredClients];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "latest") {
+        left = clientTime(a);
+        right = clientTime(b);
+        if (left === right) {
+          left = (a.ain || "").toLowerCase();
+          right = (b.ain || "").toLowerCase();
+        }
+      } else if (sortKey === "ain") {
+        left = (a.ain || "").toLowerCase();
+        right = (b.ain || "").toLowerCase();
+      } else if (sortKey === "name") {
+        left = (a.name || "").toLowerCase();
+        right = (b.name || "").toLowerCase();
+      } else {
+        left = (a.phone || "").toLowerCase();
+        right = (b.phone || "").toLowerCase();
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredClients, sortKey, sortDir]);
+
+  const toggleSort = (key: "latest" | "ain" | "name" | "phone") => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "latest" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (key: "latest" | "ain" | "name" | "phone") => {
+    if (sortKey !== key) return "fa-sort text-slate-400";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-600"
+      : "fa-sort-down text-blue-600";
+  };
+
   useEffect(() => {
-    onVisibleRowsChange(filteredClients);
-  }, [filteredClients, onVisibleRowsChange]);
+    onVisibleRowsChange(sortedClients);
+  }, [sortedClients, onVisibleRowsChange]);
 
   const handleOpenModal = (client?: Client) => {
     if (client) {
@@ -233,12 +290,12 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
   const toggleSelectAll = () => {
     if (
-      selectedAins.length === filteredClients.length &&
-      filteredClients.length > 0
+      selectedAins.length === sortedClients.length &&
+      sortedClients.length > 0
     ) {
       setSelectedAins([]);
     } else {
-      setSelectedAins(filteredClients.map((c) => c.ain));
+      setSelectedAins(sortedClients.map((c) => c.ain));
     }
   };
 
@@ -320,7 +377,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
           <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
             <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">
-              {filteredClients.length} Profiles
+              {sortedClients.length} Profiles
             </span>
           </div>
         </div>
@@ -334,20 +391,39 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                     type="checkbox"
                     className="w-5 h-5 rounded-lg border-2 border-slate-700 bg-transparent checked:bg-blue-500 checked:border-blue-500 transition-all cursor-pointer accent-blue-500"
                     checked={
-                      filteredClients.length > 0 &&
-                      selectedAins.length === filteredClients.length
+                      sortedClients.length > 0 &&
+                      selectedAins.length === sortedClients.length
                     }
                     onChange={toggleSelectAll}
                   />
                 </th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  AIN ID
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("ain")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    AIN ID <i className={`fas ${getSortIcon("ain")}`}></i>
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  Business Information
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("name")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Business Information{" "}
+                    <i className={`fas ${getSortIcon("name")}`}></i>
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  Communication
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("phone")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Communication <i className={`fas ${getSortIcon("phone")}`}></i>
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-right tracking-[0.2em] pr-12">
                   Action
@@ -357,7 +433,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
             <tbody
               className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-50"}`}
             >
-              {filteredClients.length === 0 ? (
+              {sortedClients.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center opacity-30">
@@ -367,7 +443,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredClients.map((client) => (
+                sortedClients.map((client) => (
                   <tr
                     key={client.ain}
                     className={`transition-all group ${selectedAins.includes(client.ain) ? "bg-blue-50/40 dark:bg-blue-900/10" : "hover:bg-slate-50/50 dark:hover:bg-slate-700/50"}`}

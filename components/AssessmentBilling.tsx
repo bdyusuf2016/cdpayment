@@ -44,6 +44,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const [filterPaymentMethod, setFilterPaymentMethod] = useState("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [sortKey, setSortKey] = useState<
+    "date" | "clientName" | "nosOfBe" | "net" | "status"
+  >("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [queue, setQueue] = useState<AssessmentItem[]>([]);
   const [insertedRecords, setInsertedRecords] = useState<AssessmentRecord[]>(
@@ -143,9 +147,59 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     endDate,
   ]);
 
+  const sortedHistory = useMemo(() => {
+    const rows = [...filteredHistory];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "date") {
+        left = parseDate(a.date).getTime();
+        right = parseDate(b.date).getTime();
+      } else if (sortKey === "clientName") {
+        left = (a.clientName || "").toLowerCase();
+        right = (b.clientName || "").toLowerCase();
+      } else if (sortKey === "nosOfBe") {
+        left = a.nosOfBe || 0;
+        right = b.nosOfBe || 0;
+      } else if (sortKey === "net") {
+        left = a.net || 0;
+        right = b.net || 0;
+      } else {
+        left = (a.status || "").toLowerCase();
+        right = (b.status || "").toLowerCase();
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredHistory, sortKey, sortDir]);
+
+  const toggleSort = (
+    key: "date" | "clientName" | "nosOfBe" | "net" | "status",
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "date" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "date" | "clientName" | "nosOfBe" | "net" | "status",
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400";
+    return sortDir === "asc"
+      ? "fa-sort-up text-purple-600"
+      : "fa-sort-down text-purple-600";
+  };
+
   useEffect(() => {
-    onVisibleRowsChange(filteredHistory);
-  }, [filteredHistory, onVisibleRowsChange]);
+    onVisibleRowsChange(sortedHistory);
+  }, [sortedHistory, onVisibleRowsChange]);
 
   const handleAinChange = (val: string) => {
     setAin(val);
@@ -931,29 +985,54 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     type="checkbox"
                     className="w-4 h-4 rounded cursor-pointer accent-purple-600"
                     checked={
-                      selectedIds.length === filteredHistory.length &&
-                      filteredHistory.length > 0
+                      selectedIds.length === sortedHistory.length &&
+                      sortedHistory.length > 0
                     }
                     onChange={() =>
                       setSelectedIds(
-                        selectedIds.length === filteredHistory.length
+                        selectedIds.length === sortedHistory.length
                           ? []
-                          : filteredHistory.map((h) => h.id),
+                          : sortedHistory.map((h) => h.id),
                       )
                     }
                   />
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  Client & AIN
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("clientName")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Client & AIN{" "}
+                    <i className={`fas ${getSortIcon("clientName")}`}></i>
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
-                  Count of B/E
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("nosOfBe")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Count of B/E <i className={`fas ${getSortIcon("nosOfBe")}`}></i>
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  Net Value
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("net")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Net Value <i className={`fas ${getSortIcon("net")}`}></i>
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
-                  Status
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("status")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Status <i className={`fas ${getSortIcon("status")}`}></i>
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   Actions
@@ -963,7 +1042,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             <tbody
               className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
             >
-              {filteredHistory.map((rec, index) => (
+              {sortedHistory.map((rec, index) => (
                 <tr
                   key={rec.id}
                   className={`group hover:bg-purple-50/30 dark:hover:bg-slate-700/30 transition-all ${index % 2 === 0 && !isDark ? "bg-white" : !isDark ? "bg-slate-50/40" : ""}`}
