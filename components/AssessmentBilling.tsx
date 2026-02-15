@@ -10,7 +10,6 @@ import {
   updateAssessment,
   deleteAssessment,
 } from "../utils/supabaseApi";
-import { printElement } from "../utils/printTable";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 interface AssessmentBillingProps {
@@ -769,40 +768,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               <i className="fas fa-history text-purple-500"></i> Billing History
             </h3>
             {selectedIds.length > 0 && (
-              <>
-                <span
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
-                    isDark
-                      ? "bg-slate-900 border-slate-600 text-slate-200"
-                      : "bg-purple-50 border-purple-200 text-purple-700"
-                  }`}
-                >
-                  Total ৳{selectedTotalAmount.toLocaleString()} | Due ৳
-                  {selectedDueAmount.toLocaleString()}
-                </span>
-                <button
-                  onClick={() => initiatePayment(selectedIds)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in"
-                >
-                  Bulk Pay ({selectedIds.length})
-                </button>
-                <button
-                  onClick={() => handleDeleteRecord()}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in"
-                >
-                  Delete ({selectedIds.length})
-                </button>
-                <button
-                  onClick={() =>
-                    shareWhatsApp(
-                      allHistory.filter((h) => selectedIds.includes(h.id)),
-                    )
-                  }
-                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in flex items-center gap-2"
-                >
-                  <i className="fab fa-whatsapp"></i> Summary
-                </button>
-              </>
+              <span
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                  isDark
+                    ? "bg-slate-900 border-slate-600 text-slate-300"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
+                }`}
+              >
+                Bulk actions moved to sticky top bar
+              </span>
             )}
           </div>
 
@@ -881,37 +855,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               Clear
             </button>
             <button
-              onClick={() =>
-                printElement(
-                  document.getElementById("assessment-table"),
-                  "Billing History",
-                  {
-                    autoExcludeControls: true,
-                    replaceTakaWithBDT: true,
-                    showCurrencyInHeader: true,
-                    centerColumnsByHeader: ["Count of B/E"],
-                    totalRecordCount: {
-                      label: "Total",
-                      value: filteredHistory.length,
-                      labelColumnHeader: "Client & AIN",
-                      valueColumnHeader: "Count of B/E",
-                      additionalValuesByHeader: {
-                        "Net Value": filteredHistory
-                          .reduce((sum, rec) => sum + rec.net, 0)
-                          .toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }),
-                      },
-                    },
-                  },
-                )
-              }
-              title="Print table"
+              onClick={() => {
+                if (selectedRecords.length === 0) {
+                  alert("Please select at least one item to print invoice.");
+                  return;
+                }
+                printAssessmentInvoice(selectedRecords);
+              }}
+              title="Print selected invoices"
               className="bg-white/80 text-slate-700 px-3 py-2 rounded-lg border shadow-sm hover:bg-slate-50 text-sm font-bold"
             >
               {" "}
-              <i className="fas fa-print"></i> Print
+              <i className="fas fa-print"></i> Print Selected
             </button>
           </div>
         </div>
@@ -1080,6 +1035,12 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               Bulk Pay
             </button>
             <button
+              onClick={() => printAssessmentInvoice(selectedRecords)}
+              className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
+            >
+              <i className="fas fa-print"></i> Invoice
+            </button>
+            <button
               onClick={() => handleDeleteRecord()}
               className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
             >
@@ -1222,3 +1183,4 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 };
 
 export default AssessmentBilling;
+

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import { DutyItem, PaymentRecord, Client, SystemConfig } from "../types";
 import { insertDuty, updateDuty, deleteDuty } from "../utils/supabaseApi";
-import { printElement } from "../utils/printTable";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 interface DutyPaymentProps {
@@ -849,41 +848,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <i className="fas fa-list text-blue-500"></i> Transaction History
             </h3>
             {selectedIds.length > 0 && (
-              <>
-                <span
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
-                    isDark
-                      ? "bg-slate-900 border-slate-600 text-slate-200"
-                      : "bg-blue-50 border-blue-200 text-blue-700"
-                  }`}
-                >
-                  Total ৳{selectedTotalAmount.toLocaleString()} | Due ৳
-                  {selectedDueAmount.toLocaleString()}
-                </span>
-                <button
-                  onClick={() => initiatePayment(selectedIds)}
-                  className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in"
-                >
-                  Bulk Settle ({selectedIds.length})
-                </button>
-                <button
-                  onClick={() => handleDeleteClick()}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in flex items-center gap-2"
-                >
-                  <i className="fas fa-trash-alt"></i> Delete (
-                  {selectedIds.length})
-                </button>
-                <button
-                  onClick={() =>
-                    shareWhatsApp(
-                      allHistory.filter((h) => selectedIds.includes(h.id)),
-                    )
-                  }
-                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in flex items-center gap-2"
-                >
-                  <i className="fab fa-whatsapp"></i> Summary
-                </button>
-              </>
+              <span
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                  isDark
+                    ? "bg-slate-900 border-slate-600 text-slate-300"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
+                }`}
+              >
+                Bulk actions moved to sticky top bar
+              </span>
             )}
           </div>
 
@@ -964,48 +937,18 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               Clear
             </button>
             <button
-              onClick={() =>
-                printElement(
-                  document.getElementById("duty-table"),
-                  "Transaction History",
-                  {
-                    autoExcludeControls: true,
-                    replaceTakaWithBDT: true,
-                    showCurrencyInHeader: true,
-                    totalRecordCount: {
-                      label: "Total",
-                      value: filteredHistory.length,
-                      labelColumnHeader: "Client Information",
-                      valueColumnHeader: "B/E Reference",
-                      additionalValuesByHeader: {
-                        Amount: filteredHistory
-                          .reduce((sum, rec) => sum + rec.duty, 0)
-                          .toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }),
-                        Received: filteredHistory
-                          .reduce((sum, rec) => sum + rec.received, 0)
-                          .toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }),
-                        Profit: filteredHistory
-                          .reduce((sum, rec) => sum + rec.profit, 0)
-                          .toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }),
-                      },
-                    },
-                  },
-                )
-              }
-              title="Print table"
+              onClick={() => {
+                if (selectedRecords.length === 0) {
+                  alert("Please select at least one item to print invoice.");
+                  return;
+                }
+                printDutyInvoice(selectedRecords);
+              }}
+              title="Print selected invoices"
               className="bg-white/80 text-slate-700 px-3 py-2 rounded-lg border shadow-sm hover:bg-slate-50 text-sm font-bold"
             >
               {" "}
-              <i className="fas fa-print"></i> Print
+              <i className="fas fa-print"></i> Print Selected
             </button>
           </div>
         </div>
@@ -1237,6 +1180,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               Bulk Settle
             </button>
             <button
+              onClick={() => printDutyInvoice(selectedRecords)}
+              className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
+            >
+              <i className="fas fa-print"></i> Invoice
+            </button>
+            <button
               onClick={() => handleDeleteClick()}
               className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
             >
@@ -1376,3 +1325,4 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 };
 
 export default DutyPayment;
+
