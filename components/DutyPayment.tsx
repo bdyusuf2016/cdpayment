@@ -283,6 +283,52 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     navigator.clipboard.writeText(text);
   };
 
+  const getPaymentMethodVisual = (method: string) => {
+    const key = String(method || "").trim().toLowerCase();
+
+    if (key.includes("cash")) {
+      return <i className="fas fa-money-bill-wave text-emerald-600" />;
+    }
+    if (key.includes("bank")) {
+      return <i className="fas fa-university text-blue-600" />;
+    }
+    if (key.includes("card")) {
+      return <i className="fas fa-credit-card text-indigo-600" />;
+    }
+    if (key.includes("bkash")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-600 px-1 text-[10px] font-black text-white">
+          bK
+        </span>
+      );
+    }
+    if (key.includes("nagad")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-black text-white">
+          NG
+        </span>
+      );
+    }
+    if (key.includes("rocket")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-fuchsia-600 px-1 text-[10px] font-black text-white">
+          RK
+        </span>
+      );
+    }
+    if (key.includes("upay")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">
+          UP
+        </span>
+      );
+    }
+    if (key.includes("mobile")) {
+      return <i className="fas fa-mobile-alt text-cyan-600" />;
+    }
+    return <i className="fas fa-wallet text-slate-500" />;
+  };
+
   const printDutyInvoice = (recs: PaymentRecord[]) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -1269,7 +1315,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                       onClick={() => setPaymentMethod(m)}
                       className={`py-3 px-2 rounded-xl text-xs font-bold uppercase border-2 transition-all ${paymentMethod === m ? "border-green-500 bg-green-50 text-green-700" : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
                     >
-                      {m}
+                      <span className="inline-flex items-center gap-2">
+                        {getPaymentMethodVisual(m)}
+                        <span>{m}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
