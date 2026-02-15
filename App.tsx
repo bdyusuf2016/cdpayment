@@ -598,7 +598,7 @@ const App: React.FC = () => {
           (acc, r) => acc + Number(r.nosOfBe || 0),
           0,
         );
-        const outstanding = totalNet - totalReceived;
+        const outstanding = Math.max(0, totalNet - totalReceived);
         return [
           {
             label: "Total Billed",
@@ -611,7 +611,7 @@ const App: React.FC = () => {
             color: "#10b981",
           },
             {
-              label: "Outstanding",
+              label: "Due Amount",
               value: `৳ ${outstanding.toLocaleString()}`,
               color: "#ef4444",
             },
@@ -654,6 +654,7 @@ const App: React.FC = () => {
           0,
         );
         const serviceProfit = rows.reduce((acc, r) => acc + r.profit, 0);
+        const dueAmount = Math.max(0, grossDuty - totalCollection);
         return [
           {
             label: "Gross Duty",
@@ -671,8 +672,8 @@ const App: React.FC = () => {
             color: "#f59e0b",
           },
           {
-            label: "Pending Job",
-            value: rows.filter((r) => r.status !== "Paid").length,
+            label: "Due Amount",
+            value: `৳ ${dueAmount.toLocaleString()}`,
             color: "#ef4444",
           },
         ];
@@ -1143,3 +1144,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+

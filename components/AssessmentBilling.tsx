@@ -536,6 +536,12 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const queueTotal = queue.reduce((sum, item) => sum + item.amount, 0);
   const queueDiscount = parseFloat(batchDiscount) || 0;
   const queueNetTotal = Math.max(0, queueTotal - queueDiscount);
+  const selectedRecords = allHistory.filter((r) => selectedIds.includes(r.id));
+  const selectedTotalAmount = selectedRecords.reduce((sum, rec) => sum + rec.net, 0);
+  const selectedDueAmount = selectedRecords.reduce(
+    (sum, rec) => sum + Math.max(0, rec.net - (rec.received || 0)),
+    0,
+  );
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
@@ -759,6 +765,16 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             </h3>
             {selectedIds.length > 0 && (
               <>
+                <span
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                    isDark
+                      ? "bg-slate-900 border-slate-600 text-slate-200"
+                      : "bg-purple-50 border-purple-200 text-purple-700"
+                  }`}
+                >
+                  Total ৳{selectedTotalAmount.toLocaleString()} | Due ৳
+                  {selectedDueAmount.toLocaleString()}
+                </span>
                 <button
                   onClick={() => initiatePayment(selectedIds)}
                   className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in"

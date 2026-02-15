@@ -591,6 +591,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const isDark = systemConfig.theme === "dark";
+  const selectedRecords = allHistory.filter((r) => selectedIds.includes(r.id));
+  const selectedTotalAmount = selectedRecords.reduce((sum, rec) => sum + rec.duty, 0);
+  const selectedDueAmount = selectedRecords.reduce(
+    (sum, rec) => sum + Math.max(0, rec.duty - (rec.received || 0)),
+    0,
+  );
   const totalDueForPayment = allHistory
     .filter((r) => paymentIds.includes(r.id))
     .reduce((a, b) => a + b.duty, 0);
@@ -839,6 +845,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             </h3>
             {selectedIds.length > 0 && (
               <>
+                <span
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                    isDark
+                      ? "bg-slate-900 border-slate-600 text-slate-200"
+                      : "bg-blue-50 border-blue-200 text-blue-700"
+                  }`}
+                >
+                  Total ৳{selectedTotalAmount.toLocaleString()} | Due ৳
+                  {selectedDueAmount.toLocaleString()}
+                </span>
                 <button
                   onClick={() => initiatePayment(selectedIds)}
                   className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all animate-in zoom-in"
