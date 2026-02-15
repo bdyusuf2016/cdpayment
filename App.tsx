@@ -770,6 +770,18 @@ const App: React.FC = () => {
       {/* Primary Workspace */}
       <main className="p-4 md:p-8 max-w-[1600px] mx-auto w-full flex-grow">
         <StatsCards cards={stats} />
+        {!isAdminUser && (
+          <div
+            className={`mb-4 rounded-xl border px-4 py-3 text-xs font-bold ${
+              isDark
+                ? "bg-slate-800 border-slate-700 text-slate-300"
+                : "bg-blue-50 border-blue-200 text-blue-700"
+            }`}
+          >
+            Your account can only view its own records. Contact an admin if you
+            need broader access.
+          </div>
+        )}
 
         {/* Mobile Navigation (Dropdown Style) */}
         <div className="md:hidden mb-6 relative z-50">
@@ -864,6 +876,22 @@ const App: React.FC = () => {
         </div>
 
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+          {!isAdminUser &&
+            ((activeTab === "duty" && visibleDutyRows.length === 0) ||
+              (activeTab === "assessment" &&
+                visibleAssessmentRows.length === 0) ||
+              (activeTab === "ain" && visibleAinRows.length === 0) ||
+              (activeTab === "logs" && auditLogs.length === 0)) && (
+              <div
+                className={`mb-4 rounded-xl border px-4 py-3 text-xs font-bold ${
+                  isDark
+                    ? "bg-slate-800 border-slate-700 text-slate-300"
+                    : "bg-amber-50 border-amber-200 text-amber-700"
+                }`}
+              >
+                No records available in this view for your account.
+              </div>
+            )}
           {activeTab === "duty" && (
             <DutyPayment
               clients={clients}
