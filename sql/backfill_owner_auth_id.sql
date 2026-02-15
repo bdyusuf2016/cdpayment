@@ -5,11 +5,11 @@
 
 -- ====== Fallback owner UUID ======
 -- Set to an admin auth.users.id. Currently set to:
--- 23f88b2e-805c-4bca-8528-0740b80fd28c
+-- 26c0175a-6fd4-45ba-a2ac-24e3e6444e88
 
 -- Use the same fallback owner value in this CTE.
 with params as (
-  select '23f88b2e-805c-4bca-8528-0740b80fd28c'::uuid as fallback_owner_auth_id
+  select '26c0175a-6fd4-45ba-a2ac-24e3e6444e88'::uuid as fallback_owner_auth_id
 ),
 email_map as (
   select id as auth_id, lower(email) as email
@@ -62,30 +62,31 @@ where c.owner_auth_id is null
 
 -- 4) Final fallback: assign remaining null owners to fallback owner
 with params as (
-  select '23f88b2e-805c-4bca-8528-0740b80fd28c'::uuid as fallback_owner_auth_id
+  select '26c0175a-6fd4-45ba-a2ac-24e3e6444e88'::uuid as fallback_owner_auth_id
 )
 update public.clients
 set owner_auth_id = (select fallback_owner_auth_id from params)
 where owner_auth_id is null;
 
 with params as (
-  select '23f88b2e-805c-4bca-8528-0740b80fd28c'::uuid as fallback_owner_auth_id
+  select '26c0175a-6fd4-45ba-a2ac-24e3e6444e88'::uuid as fallback_owner_auth_id
 )
 update public.duty_payments
 set owner_auth_id = (select fallback_owner_auth_id from params)
 where owner_auth_id is null;
 
 with params as (
-  select '23f88b2e-805c-4bca-8528-0740b80fd28c'::uuid as fallback_owner_auth_id
+  select '26c0175a-6fd4-45ba-a2ac-24e3e6444e88'::uuid as fallback_owner_auth_id
 )
 update public.assessments
 set owner_auth_id = (select fallback_owner_auth_id from params)
 where owner_auth_id is null;
 
 with params as (
-  select '23f88b2e-805c-4bca-8528-0740b80fd28c'::uuid as fallback_owner_auth_id
+  select '26c0175a-6fd4-45ba-a2ac-24e3e6444e88'::uuid as fallback_owner_auth_id
 )
 update public.audit_logs
 set owner_auth_id = (select fallback_owner_auth_id from params)
 where owner_auth_id is null;
+
 

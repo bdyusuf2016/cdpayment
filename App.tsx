@@ -372,6 +372,45 @@ const App: React.FC = () => {
     return currentStaffUser.role || "User";
   }, [currentStaffUser]);
   const isAdminUser = currentUserRole === "Admin";
+  const hasPermission = useCallback(
+    (key: string) => {
+      if (isAdminUser) return true;
+      return Boolean(currentStaffUser?.permissions?.[key]);
+    },
+    [currentStaffUser, isAdminUser],
+  );
+  const canAccessDutyModule = useMemo(
+    () =>
+      hasPermission("bill_add") ||
+      hasPermission("bill_edit") ||
+      hasPermission("bill_delete") ||
+      hasPermission("bill_bulk_pay") ||
+      hasPermission("bill_export") ||
+      hasPermission("bill_wa_share") ||
+      hasPermission("invoice_print"),
+    [hasPermission],
+  );
+  const canAccessAssessmentModule = canAccessDutyModule;
+  const canAccessAinModule = hasPermission("ain_view");
+  const canAccessLogsModule = hasPermission("view_logs");
+  const canAccessAdminModule = isAdminUser;
+  const tabAccess = useMemo<Record<TabType, boolean>>(
+    () => ({
+      duty: canAccessDutyModule,
+      assessment: canAccessAssessmentModule,
+      ain: canAccessAinModule,
+      admin: canAccessAdminModule,
+      logs: canAccessLogsModule,
+      settings: false,
+    }),
+    [
+      canAccessAdminModule,
+      canAccessAinModule,
+      canAccessAssessmentModule,
+      canAccessDutyModule,
+      canAccessLogsModule,
+    ],
+  );
 
   const handleOpenProfileModal = useCallback(() => {
     setProfileName(
@@ -500,21 +539,25 @@ const App: React.FC = () => {
     supabase,
   ]);
 
-  const navTabs = [
+  const allTabs = [
     { id: "duty", label: t.duty, icon: "fa-file-invoice" },
     { id: "assessment", label: t.assessment, icon: "fa-calculator" },
     { id: "ain", label: t.ain, icon: "fa-database" },
     { id: "logs", label: t.logs, icon: "fa-list-check" },
   ];
   if (isAdminUser) {
-    navTabs.splice(3, 0, { id: "admin", label: t.admin, icon: "fa-shield-halved" });
+    allTabs.splice(3, 0, { id: "admin", label: t.admin, icon: "fa-shield-halved" });
   }
+  const navTabs = allTabs.filter((tab) => tabAccess[tab.id as TabType]);
 
   useEffect(() => {
-    if (!isAdminUser && activeTab === "admin") {
-      setActiveTab("duty");
+    if (!tabAccess[activeTab]) {
+      const fallbackTab = navTabs.find((tab) => tabAccess[tab.id as TabType]);
+      if (fallbackTab) {
+        setActiveTab(fallbackTab.id as TabType);
+      }
     }
-  }, [activeTab, isAdminUser]);
+  }, [activeTab, navTabs, tabAccess]);
 
   const stats = useMemo(() => {
     switch (activeTab) {
@@ -778,8 +821,8 @@ const App: React.FC = () => {
                 : "bg-blue-50 border-blue-200 text-blue-700"
             }`}
           >
-            Your account can only view its own records. Contact an admin if you
-            need broader access.
+            Your access is limited by role permissions. Contact an admin if you
+            need additional modules.
           </div>
         )}
 
@@ -892,7 +935,7 @@ const App: React.FC = () => {
                 No records available in this view for your account.
               </div>
             )}
-          {activeTab === "duty" && (
+          {activeTab === "duty" && tabAccess.duty && (
             <DutyPayment
               clients={clients}
               history={dutyHistory}
@@ -902,7 +945,7 @@ const App: React.FC = () => {
               supabase={supabase}
             />
           )}
-          {activeTab === "assessment" && (
+          {activeTab === "assessment" && tabAccess.assessment && (
             <AssessmentBilling
               clients={clients}
               systemConfig={config}
@@ -912,7 +955,7 @@ const App: React.FC = () => {
               supabase={supabase}
             />
           )}
-          {activeTab === "ain" && (
+          {activeTab === "ain" && tabAccess.ain && (
             <AinDatabase
               clients={clients}
               setClients={setClients}
@@ -921,7 +964,7 @@ const App: React.FC = () => {
               supabase={supabase}
             />
           )}
-          {activeTab === "admin" && isAdminUser && (
+          {activeTab === "admin" && tabAccess.admin && (
             <AdminPanel
               config={config}
               setConfig={setConfig}
@@ -935,8 +978,19 @@ const App: React.FC = () => {
               supabase={supabase}
             />
           )}
-          {activeTab === "logs" && (
+          {activeTab === "logs" && tabAccess.logs && (
             <AuditLogs systemConfig={config} supabase={supabase} logs={auditLogs} />
+          )}
+          {!tabAccess[activeTab] && (
+            <div
+              className={`rounded-xl border px-4 py-3 text-xs font-bold ${
+                isDark
+                  ? "bg-slate-800 border-slate-700 text-slate-300"
+                  : "bg-amber-50 border-amber-200 text-amber-700"
+              }`}
+            >
+              You do not have permission to access this module.
+            </div>
           )}
         </div>
       </main>
