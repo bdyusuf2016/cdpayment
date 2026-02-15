@@ -867,7 +867,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           </div>
         </div>
         {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
-          <div className="sticky top-0 z-20 px-2 md:px-4 pt-3">
+          <div className="sticky top-[78px] md:top-[86px] z-30 px-2 md:px-4 pt-3">
             <div
               className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
                 isDark
@@ -878,10 +878,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               <span className="text-xs font-black uppercase tracking-wider">
                 Selected {selectedIds.length}
               </span>
-              <span className="text-sm md:text-base font-extrabold tracking-wide">
+              <span className="text-base md:text-lg font-extrabold tracking-wide">
                 Total ৳{selectedTotalAmount.toLocaleString()}
               </span>
-              <span className="text-sm md:text-base font-extrabold tracking-wide text-red-500">
+              <span className="text-base md:text-lg font-extrabold tracking-wide text-red-500">
                 Settlement ৳{selectedDueAmount.toLocaleString()}
               </span>
               <button
