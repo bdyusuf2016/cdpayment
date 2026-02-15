@@ -274,6 +274,7 @@ export async function updateStaffUser(
   }
   return {
     id: data.id,
+    authId: data.authId ?? data.auth_id ?? undefined,
     name: data.name ?? "",
     role: data.role ?? "User",
     permissions: data.permissions ?? {},
@@ -304,6 +305,7 @@ export async function insertStaffUser(
   }
   return {
     id: data.id,
+    authId: data.authId ?? data.auth_id ?? undefined,
     name: data.name ?? "",
     role: data.role ?? "User",
     permissions: data.permissions ?? {},

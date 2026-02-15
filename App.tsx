@@ -96,6 +96,14 @@ const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>("duty");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profilePassword, setProfilePassword] = useState("");
+  const [profileConfirmPassword, setProfileConfirmPassword] = useState("");
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Data State
   const [clients, setClients] = useState<Client[]>([]);
@@ -354,15 +362,143 @@ const App: React.FC = () => {
 
   const t = translations[config.language];
   const isDark = config.theme === "dark";
-  const currentUserRole = useMemo(() => {
+  const currentStaffUser = useMemo(() => {
     const authUserId = session?.user?.id;
-    if (!authUserId) return "User";
-
-    const matchedUser = users.find((u) => u.authId === authUserId);
-    if (!matchedUser || !matchedUser.active) return "User";
-    return matchedUser.role || "User";
+    if (!authUserId) return null;
+    return users.find((u) => u.authId === authUserId) || null;
   }, [session, users]);
+  const currentUserRole = useMemo(() => {
+    if (!currentStaffUser || !currentStaffUser.active) return "User";
+    return currentStaffUser.role || "User";
+  }, [currentStaffUser]);
   const isAdminUser = currentUserRole === "Admin";
+
+  const handleOpenProfileModal = useCallback(() => {
+    setProfileName(
+      currentStaffUser?.name ||
+        session?.user?.user_metadata?.full_name ||
+        session?.user?.email?.split("@")?.[0] ||
+        "",
+    );
+    setProfileEmail(session?.user?.email || "");
+    setProfilePassword("");
+    setProfileConfirmPassword("");
+    setProfileError(null);
+    setProfileSuccess(null);
+    setShowProfileModal(true);
+  }, [currentStaffUser, session]);
+
+  const handleUpdateProfile = useCallback(async () => {
+    if (!supabase || !session?.user) return;
+
+    setProfileError(null);
+    setProfileSuccess(null);
+    setIsSavingProfile(true);
+
+    try {
+      const normalizedName = profileName.trim();
+      const normalizedEmail = profileEmail.trim();
+      const currentEmail = session.user.email || "";
+      const nextPassword = profilePassword.trim();
+
+      if (!normalizedName) {
+        throw new Error("Name is required.");
+      }
+      if (!normalizedEmail) {
+        throw new Error("Email is required.");
+      }
+      if (nextPassword) {
+        if (nextPassword.length < 6) {
+          throw new Error("Password must be at least 6 characters.");
+        }
+        if (nextPassword !== profileConfirmPassword.trim()) {
+          throw new Error("Password confirmation does not match.");
+        }
+      }
+
+      const userUpdates: {
+        email?: string;
+        password?: string;
+        data: { full_name: string };
+      } = {
+        data: { full_name: normalizedName },
+      };
+
+      if (normalizedEmail !== currentEmail) {
+        userUpdates.email = normalizedEmail;
+      }
+      if (nextPassword) {
+        userUpdates.password = nextPassword;
+      }
+
+      const { data: authData, error: authError } =
+        await supabase.auth.updateUser(userUpdates);
+      if (authError) {
+        throw authError;
+      }
+
+      const now = new Date().toLocaleString();
+      const { error: staffError } = await supabase
+        .from("staff_users")
+        .update({
+          name: normalizedName,
+          last_active: now,
+        })
+        .eq("auth_id", session.user.id);
+      if (staffError) {
+        throw staffError;
+      }
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.authId === session.user.id
+            ? { ...u, name: normalizedName, lastActive: now }
+            : u,
+        ),
+      );
+
+      if (authData?.user) {
+        setSession((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                user: {
+                  ...prev.user,
+                  ...authData.user,
+                },
+              }
+            : prev,
+        );
+      }
+
+      await insertAuditLog(supabase, {
+        user_name: normalizedEmail || currentEmail || "system",
+        action: "UPDATE",
+        module: "profile",
+        details: "Profile information updated",
+        type: "warning",
+      });
+
+      setProfilePassword("");
+      setProfileConfirmPassword("");
+      setProfileSuccess(
+        normalizedEmail !== currentEmail
+          ? "Profile updated. Check your inbox to confirm email change."
+          : "Profile updated successfully.",
+      );
+    } catch (error: any) {
+      setProfileError(error?.message || "Failed to update profile.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }, [
+    profileName,
+    profileEmail,
+    profilePassword,
+    profileConfirmPassword,
+    session,
+    supabase,
+  ]);
 
   const navTabs = [
     { id: "duty", label: t.duty, icon: "fa-file-invoice" },
@@ -616,6 +752,13 @@ const App: React.FC = () => {
             </button>
           )}
           <button
+            onClick={handleOpenProfileModal}
+            className="bg-white dark:bg-slate-800 text-slate-500 hover:text-blue-600 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm border border-slate-200 dark:border-slate-700"
+            title="Profile"
+          >
+            <i className="fas fa-user text-sm"></i>
+          </button>
+          <button
             onClick={handleLogout}
             className="bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-600 hover:text-white w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm border border-red-100 dark:border-red-900/30"
           >
@@ -799,6 +942,120 @@ const App: React.FC = () => {
           ) : null}
         </div>
       </footer>
+
+      {showProfileModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div
+            className={`rounded-[1.5rem] shadow-2xl w-full max-w-lg overflow-hidden p-8 ${isDark ? "bg-slate-800" : "bg-white"}`}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3
+                className={`text-lg font-black ${isDark ? "text-white" : "text-slate-900"}`}
+              >
+                User Profile Management
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className={`w-9 h-9 rounded-lg border transition-colors ${isDark ? "border-slate-700 text-slate-300 hover:bg-slate-700" : "border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {profileError && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-bold">
+                {profileError}
+              </div>
+            )}
+            {profileSuccess && (
+              <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-bold">
+                {profileSuccess}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label
+                  className={`block text-[10px] font-black uppercase tracking-widest mb-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}
+                >
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className={`w-full px-4 py-3 rounded-xl border-2 font-bold outline-none focus:border-blue-500 ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
+                  placeholder="Your full name"
+                />
+              </div>
+
+              <div>
+                <label
+                  className={`block text-[10px] font-black uppercase tracking-widest mb-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}
+                >
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={profileEmail}
+                  onChange={(e) => setProfileEmail(e.target.value)}
+                  className={`w-full px-4 py-3 rounded-xl border-2 font-bold outline-none focus:border-blue-500 ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
+                  placeholder="name@company.com"
+                />
+              </div>
+
+              <div>
+                <label
+                  className={`block text-[10px] font-black uppercase tracking-widest mb-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}
+                >
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={profilePassword}
+                  onChange={(e) => setProfilePassword(e.target.value)}
+                  className={`w-full px-4 py-3 rounded-xl border-2 font-bold outline-none focus:border-blue-500 ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
+                  placeholder="Leave blank to keep current password"
+                />
+              </div>
+
+              <div>
+                <label
+                  className={`block text-[10px] font-black uppercase tracking-widest mb-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}
+                >
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={profileConfirmPassword}
+                  onChange={(e) => setProfileConfirmPassword(e.target.value)}
+                  className={`w-full px-4 py-3 rounded-xl border-2 font-bold outline-none focus:border-blue-500 ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
+                  placeholder="Re-enter new password"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-7">
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className={`flex-1 py-3 rounded-xl text-xs font-black uppercase ${isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateProfile}
+                disabled={isSavingProfile}
+                className="flex-1 py-3 rounded-xl text-xs font-black uppercase bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingProfile ? "Saving..." : "Save Profile"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

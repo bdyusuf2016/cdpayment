@@ -299,6 +299,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
       const created: StaffUser = {
         id: createdRow.id,
+        authId: createdRow.authId ?? createdRow.auth_id ?? undefined,
         name: createdRow.name ?? "",
         role: createdRow.role ?? "User",
         permissions: createdRow.permissions ?? {},
