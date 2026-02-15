@@ -12,7 +12,6 @@ import {
 import {
   deleteStaffUser,
   insertAuditLog,
-  insertStaffUser,
   updateStaffUser,
   updateSystemSettings,
 } from "../utils/supabaseApi";
@@ -109,6 +108,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   // New/Edit User Form
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userPassword, setUserPassword] = useState("");
   const [userRole, setUserRole] = useState("User");
   const [userActive, setUserActive] = useState("Yes");
   const [permissions, setPermissions] = useState<GranularPermissions>({
@@ -165,12 +166,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (user) {
       setEditingUserId(user.id);
       setUserName(user.name);
+      setUserEmail("");
+      setUserPassword("");
       setUserRole(user.role === "Staff" ? "User" : user.role);
       setUserActive(user.active ? "Yes" : "No");
       setPermissions(user.permissions);
     } else {
       setEditingUserId(null);
       setUserName("");
+      setUserEmail("");
+      setUserPassword("");
       setUserRole("User");
       setUserActive("Yes");
       setPermissions(getDefaultPermissionsForRole("User"));
@@ -213,25 +218,95 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       if (log) appendAuditLog(log);
     } else {
-      const now = new Date().toLocaleString();
-      const tempId = `tmp-${Date.now()}`;
-      const tempUser: StaffUser = {
-        id: tempId,
+      const email = userEmail.trim();
+      if (!email || !userPassword) {
+        alert("Email and password are required for new users.");
+        return;
+      }
+
+      const supabaseUrl = config.supabaseUrl || localStorage.getItem("supabase_url") || "";
+      const supabaseKey = config.supabaseKey || localStorage.getItem("supabase_key") || "";
+      if (!supabaseUrl || !supabaseKey) {
+        alert("Supabase URL/Key is missing.");
+        return;
+      }
+
+      const authClient = createClient(supabaseUrl, supabaseKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      });
+
+      const { data: signUpData, error: signUpError } = await authClient.auth.signUp({
+        email,
+        password: userPassword,
+        options: {
+          data: { full_name: userName },
+        },
+      });
+      if (signUpError || !signUpData.user) {
+        alert(signUpError?.message || "Failed to create auth user.");
+        return;
+      }
+
+      const authId = signUpData.user.id;
+      const staffPayload = {
+        auth_id: authId,
         name: userName,
         role: userRole,
         permissions,
-        lastActive: now,
+        last_active: new Date().toLocaleString(),
         active: userActive === "Yes",
       };
-      setUsers((prev) => [tempUser, ...prev.filter((u) => u.id !== tempId)]);
-      const created = await insertStaffUser(supabase, tempUser);
-      if (!created) {
-        setUsers((prev) => prev.filter((u) => u.id !== tempId));
+
+      const { data: existingRows, error: existingError } = await supabase
+        .from("staff_users")
+        .select("id")
+        .eq("auth_id", authId)
+        .limit(1);
+      if (existingError) {
+        alert(existingError.message || "Failed to create staff profile.");
         return;
       }
-      setUsers((prev) =>
-        [created, ...prev.filter((u) => u.id !== tempId && u.id !== created.id)],
-      );
+
+      let createdRow: any = null;
+      if (existingRows && existingRows.length > 0) {
+        const { data, error } = await supabase
+          .from("staff_users")
+          .update(staffPayload)
+          .eq("id", existingRows[0].id)
+          .select()
+          .single();
+        if (error) {
+          alert(error.message || "Failed to update staff profile.");
+          return;
+        }
+        createdRow = data;
+      } else {
+        const { data, error } = await supabase
+          .from("staff_users")
+          .insert(staffPayload)
+          .select()
+          .single();
+        if (error) {
+          alert(error.message || "Failed to create staff profile.");
+          return;
+        }
+        createdRow = data;
+      }
+
+      const created: StaffUser = {
+        id: createdRow.id,
+        name: createdRow.name ?? "",
+        role: createdRow.role ?? "User",
+        permissions: createdRow.permissions ?? {},
+        lastActive: createdRow.lastActive ?? createdRow.last_active ?? "",
+        active: Boolean(createdRow.active),
+      };
+
+      setUsers((prev) => [created, ...prev.filter((u) => u.id !== created.id)]);
       const log = await insertAuditLog(supabase, {
         user_name: currentUserEmail || "system",
         action: "INSERT",
@@ -944,18 +1019,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             {/* Form Inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
               <input
                 type="text"
-                placeholder="Username"
+                placeholder="Full Name"
                 className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
               />
               <input
+                type="email"
+                placeholder="Email"
+                className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                disabled={Boolean(editingUserId)}
+              />
+              <input
                 type="password"
                 placeholder="Password"
                 className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
+                value={userPassword}
+                onChange={(e) => setUserPassword(e.target.value)}
+                disabled={Boolean(editingUserId)}
               />
               <select
                 className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
