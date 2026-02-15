@@ -55,6 +55,7 @@ const normalizeAssessmentRecord = (row: any): AssessmentRecord => ({
 
 const normalizeStaffUser = (row: any): StaffUser => ({
   id: row.id,
+  authId: row.authId ?? row.auth_id ?? undefined,
   name: row.name ?? "",
   role: row.role ?? "Staff",
   permissions: row.permissions ?? {},
@@ -353,14 +354,31 @@ const App: React.FC = () => {
 
   const t = translations[config.language];
   const isDark = config.theme === "dark";
+  const currentUserRole = useMemo(() => {
+    const authUserId = session?.user?.id;
+    if (!authUserId) return "User";
+
+    const matchedUser = users.find((u) => u.authId === authUserId);
+    if (!matchedUser || !matchedUser.active) return "User";
+    return matchedUser.role || "User";
+  }, [session, users]);
+  const isAdminUser = currentUserRole === "Admin";
 
   const navTabs = [
     { id: "duty", label: t.duty, icon: "fa-file-invoice" },
     { id: "assessment", label: t.assessment, icon: "fa-calculator" },
     { id: "ain", label: t.ain, icon: "fa-database" },
-    { id: "admin", label: t.admin, icon: "fa-shield-halved" },
     { id: "logs", label: t.logs, icon: "fa-list-check" },
   ];
+  if (isAdminUser) {
+    navTabs.splice(3, 0, { id: "admin", label: t.admin, icon: "fa-shield-halved" });
+  }
+
+  useEffect(() => {
+    if (!isAdminUser && activeTab === "admin") {
+      setActiveTab("duty");
+    }
+  }, [activeTab, isAdminUser]);
 
   const stats = useMemo(() => {
     switch (activeTab) {
@@ -589,12 +607,14 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          <button
-            onClick={() => setActiveTab("admin")}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 border ${activeTab === "admin" ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500"}`}
-          >
-            <i className="fas fa-cog text-sm"></i>
-          </button>
+          {isAdminUser && (
+            <button
+              onClick={() => setActiveTab("admin")}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 border ${activeTab === "admin" ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500"}`}
+            >
+              <i className="fas fa-cog text-sm"></i>
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-600 hover:text-white w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm border border-red-100 dark:border-red-900/30"
@@ -730,7 +750,7 @@ const App: React.FC = () => {
               supabase={supabase}
             />
           )}
-          {activeTab === "admin" && (
+          {activeTab === "admin" && isAdminUser && (
             <AdminPanel
               config={config}
               setConfig={setConfig}

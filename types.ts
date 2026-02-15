@@ -76,6 +76,7 @@ export interface GranularPermissions {
 
 export interface StaffUser {
   id: string;
+  authId?: string;
   name: string;
   role: string; // 'Admin' | 'Staff' | 'Viewer'
   permissions: GranularPermissions;
