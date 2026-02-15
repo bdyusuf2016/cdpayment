@@ -110,8 +110,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         recClientName.includes(filterSearch.toLowerCase()) ||
         recAin.includes(filterSearch) ||
         recBeCount.includes(filterSearch);
+      const isDue = (rec.received || 0) < (rec.net || 0);
       const matchesStatus =
-        filterStatus === "All" || rec.status === filterStatus;
+        filterStatus === "All"
+          ? true
+          : filterStatus === "Due"
+            ? isDue
+            : rec.status === filterStatus;
       const matchesMethod =
         filterPaymentMethod === "All" ||
         rec.paymentMethod === filterPaymentMethod;
@@ -812,6 +817,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 onChange={(e) => setFilterSearch(e.target.value)}
               />
             </div>
+
+            <select
+              className={`px-3 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-600 text-white" : "bg-slate-50 border-slate-200"}`}
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="All">All Status</option>
+              <option value="Due">Due</option>
+              <option value="Pending">Pending</option>
+              <option value="Paid">Paid</option>
+              <option value="New">New</option>
+            </select>
 
             <select
               className={`px-3 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-600 text-white" : "bg-slate-50 border-slate-200"}`}
