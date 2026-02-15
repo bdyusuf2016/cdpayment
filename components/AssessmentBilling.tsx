@@ -756,7 +756,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
       {/* Ledger Table */}
       <div
-        className={`rounded-[1.5rem] shadow-sm border overflow-hidden ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
+        className={`rounded-[1.5rem] shadow-sm border overflow-visible ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
       >
         <div
           className={`px-8 py-6 border-b flex flex-col md:flex-row gap-4 justify-between items-center ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-300"}`}
