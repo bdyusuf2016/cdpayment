@@ -1055,6 +1055,23 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         </div>
       </div>
 
+      {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
+        <div className="fixed bottom-4 right-4 z-[90] max-w-[calc(100vw-2rem)]">
+          <div
+            className={`rounded-xl border px-4 py-3 shadow-xl text-xs font-black uppercase tracking-wider ${
+              isDark
+                ? "bg-slate-900 border-slate-700 text-slate-100"
+                : "bg-white border-slate-200 text-slate-700"
+            }`}
+          >
+            <div>Total ৳{selectedTotalAmount.toLocaleString()}</div>
+            <div className="mt-1 text-red-500">
+              Due ৳{selectedDueAmount.toLocaleString()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payment Settlement Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
