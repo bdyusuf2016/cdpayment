@@ -385,7 +385,9 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className={`${isDark ? "bg-slate-900" : "bg-slate-900"}`}>
+              <tr
+                className={`${isDark ? "bg-slate-900/50 border-slate-700" : "bg-slate-50 border-slate-300"} border-b`}
+              >
                 <th className="px-6 py-4 w-14 text-center">
                   <input
                     type="checkbox"
