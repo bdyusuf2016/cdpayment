@@ -854,22 +854,72 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             >
               Clear
             </button>
-            <button
-              onClick={() => {
-                if (selectedRecords.length === 0) {
-                  alert("Please select at least one item to print invoice.");
-                  return;
-                }
-                printAssessmentInvoice(selectedRecords);
-              }}
-              title="Print selected invoices"
-              className="bg-white/80 text-slate-700 px-3 py-2 rounded-lg border shadow-sm hover:bg-slate-50 text-sm font-bold"
-            >
-              {" "}
-              <i className="fas fa-print"></i> Print Selected
-            </button>
+            {selectedIds.length > 0 && (
+              <button
+                onClick={() => printAssessmentInvoice(selectedRecords)}
+                title="Print selected invoices"
+                className="bg-white/80 text-slate-700 px-3 py-2 rounded-lg border shadow-sm hover:bg-slate-50 text-sm font-bold"
+              >
+                {" "}
+                <i className="fas fa-print"></i> Print Selected
+              </button>
+            )}
           </div>
         </div>
+        {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
+          <div className="sticky top-0 z-20 px-2 md:px-4 pt-3">
+            <div
+              className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
+                isDark
+                  ? "bg-slate-900/95 border-slate-700 text-slate-100"
+                  : "bg-white/95 border-slate-200 text-slate-700"
+              }`}
+            >
+              <span className="text-xs font-black uppercase tracking-wider">
+                Selected {selectedIds.length}
+              </span>
+              <span className="text-sm md:text-base font-extrabold tracking-wide">
+                Total ৳{selectedTotalAmount.toLocaleString()}
+              </span>
+              <span className="text-sm md:text-base font-extrabold tracking-wide text-red-500">
+                Settlement ৳{selectedDueAmount.toLocaleString()}
+              </span>
+              <button
+                onClick={() => initiatePayment(selectedIds)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
+              >
+                Bulk Pay
+              </button>
+              <button
+                onClick={() => printAssessmentInvoice(selectedRecords)}
+                className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
+              >
+                <i className="fas fa-print"></i> Invoice
+              </button>
+              <button
+                onClick={() => handleDeleteRecord()}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() =>
+                  shareWhatsApp(allHistory.filter((h) => selectedIds.includes(h.id)))
+                }
+                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
+              >
+                <i className="fab fa-whatsapp"></i> Summary
+              </button>
+              <button
+                onClick={() => setSelectedIds([])}
+                className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <i className="fas fa-times"></i> Close
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table id="assessment-table" className="w-full text-left">
             <thead>
@@ -1010,53 +1060,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         </div>
       </div>
 
-      {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
-        <div className="fixed top-[78px] md:top-[86px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)]">
-          <div
-            className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-xl backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
-              isDark
-                ? "bg-slate-900/95 border-slate-700 text-slate-100"
-                : "bg-white/95 border-slate-200 text-slate-700"
-            }`}
-          >
-            <span className="text-[10px] font-black uppercase tracking-wider">
-              Selected {selectedIds.length}
-            </span>
-            <span className="text-[10px] font-black uppercase tracking-wider">
-              Total ৳{selectedTotalAmount.toLocaleString()}
-            </span>
-            <span className="text-[10px] font-black uppercase tracking-wider text-red-500">
-              Settlement ৳{selectedDueAmount.toLocaleString()}
-            </span>
-            <button
-              onClick={() => initiatePayment(selectedIds)}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
-            >
-              Bulk Pay
-            </button>
-            <button
-              onClick={() => printAssessmentInvoice(selectedRecords)}
-              className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
-            >
-              <i className="fas fa-print"></i> Invoice
-            </button>
-            <button
-              onClick={() => handleDeleteRecord()}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
-            >
-              Delete
-            </button>
-            <button
-              onClick={() =>
-                shareWhatsApp(allHistory.filter((h) => selectedIds.includes(h.id)))
-              }
-              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
-            >
-              <i className="fab fa-whatsapp"></i> Summary
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Payment Settlement Modal */}
       {showPaymentModal && (
@@ -1183,4 +1186,5 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 };
 
 export default AssessmentBilling;
+
 
