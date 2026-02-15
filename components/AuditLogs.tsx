@@ -269,12 +269,12 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
         ) : null}
 
         <div className="overflow-x-auto">
-          <table id="auditlogs-table" className="w-full text-left">
+          <table id="auditlogs-table" className="w-full text-left border-collapse">
             <thead>
               <tr
-                className={`${isDark ? "bg-slate-900" : "bg-slate-50"}`}
+                className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
               >
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => toggleSort("timestamp")}
@@ -284,7 +284,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                     <i className={`fas ${getSortIcon("timestamp")}`}></i>
                   </button>
                 </th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => toggleSort("user")}
@@ -293,7 +293,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                     Initiator <i className={`fas ${getSortIcon("user")}`}></i>
                   </button>
                 </th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => toggleSort("action")}
@@ -302,7 +302,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                     Action <i className={`fas ${getSortIcon("action")}`}></i>
                   </button>
                 </th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => toggleSort("module")}
@@ -311,7 +311,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                     Module <i className={`fas ${getSortIcon("module")}`}></i>
                   </button>
                 </th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => toggleSort("details")}
@@ -324,9 +324,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
               </tr>
             </thead>
             <tbody
-              className={`divide-y ${
-                isDark ? "divide-slate-700" : "divide-slate-300"
-              }`}
+              className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
             >
               {sortedLogs.length === 0 ? (
                 <tr>
@@ -343,14 +341,14 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                     key={log.id}
                     className={`transition-colors group ${
                       isDark
-                        ? "hover:bg-slate-700/50"
-                        : "hover:bg-slate-50/50"
+                        ? "hover:bg-slate-800/40"
+                        : "hover:bg-slate-50/70"
                     }`}
                   >
-                    <td className="px-8 py-4 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
+                    <td className="px-6 py-3 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
                       {log.timestamp}
                     </td>
-                    <td className="px-8 py-4">
+                    <td className="px-6 py-3">
                       <span
                         className={`text-[11px] font-black uppercase tracking-tight ${
                           isDark ? "text-slate-200" : "text-slate-900"
@@ -359,7 +357,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         {log.user}
                       </span>
                     </td>
-                    <td className="px-8 py-4">
+                    <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-2 h-2 rounded-full ${
@@ -381,7 +379,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         </span>
                       </div>
                     </td>
-                    <td className="px-8 py-4">
+                    <td className="px-6 py-3">
                       <span
                         className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-tighter ${
                           isDark
@@ -392,7 +390,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         {log.module}
                       </span>
                     </td>
-                    <td className="px-8 py-4">
+                    <td className="px-6 py-3">
                       <p
                         className={`text-[11px] font-bold leading-snug transition-colors ${
                           isDark

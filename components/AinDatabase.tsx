@@ -383,15 +383,15 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr
                 className={`${isDark ? "bg-slate-900/50 border-slate-700" : "bg-slate-50 border-slate-300"} border-b`}
               >
-                <th className="px-6 py-4 w-14 text-center">
+                <th className="px-6 py-3 w-12 text-center">
                   <input
                     type="checkbox"
-                    className="w-5 h-5 rounded-lg border-2 border-slate-700 bg-transparent checked:bg-blue-500 checked:border-blue-500 transition-all cursor-pointer accent-blue-500"
+                    className="w-4 h-4 rounded cursor-pointer accent-blue-600"
                     checked={
                       sortedClients.length > 0 &&
                       selectedAins.length === sortedClients.length
@@ -399,7 +399,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => toggleSort("ain")}
@@ -408,7 +408,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                     AIN ID <i className={`fas ${getSortIcon("ain")}`}></i>
                   </button>
                 </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => toggleSort("name")}
@@ -418,7 +418,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                     <i className={`fas ${getSortIcon("name")}`}></i>
                   </button>
                 </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => toggleSort("phone")}
@@ -427,13 +427,13 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                     Communication <i className={`fas ${getSortIcon("phone")}`}></i>
                   </button>
                 </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-right tracking-[0.2em] pr-12">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
                   Action
                 </th>
               </tr>
             </thead>
             <tbody
-              className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-50"}`}
+              className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
             >
               {sortedClients.length === 0 ? (
                 <tr>
@@ -448,24 +448,30 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                 sortedClients.map((client) => (
                   <tr
                     key={client.ain}
-                    className={`transition-all group ${selectedAins.includes(client.ain) ? "bg-blue-50/40 dark:bg-blue-900/10" : "hover:bg-slate-50/50 dark:hover:bg-slate-700/50"}`}
+                    className={`group transition-all ${
+                      selectedAins.includes(client.ain)
+                        ? "bg-blue-50/50 dark:bg-blue-900/10"
+                        : isDark
+                          ? "hover:bg-slate-800/40"
+                          : "hover:bg-slate-50/70"
+                    }`}
                   >
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-6 py-3 text-center">
                       <input
                         type="checkbox"
-                        className="w-5 h-5 rounded-lg border-2 border-slate-200 transition-all cursor-pointer accent-blue-500"
+                        className="w-4 h-4 rounded cursor-pointer accent-blue-600"
                         checked={selectedAins.includes(client.ain)}
                         onChange={() => toggleSelectOne(client.ain)}
                       />
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <span
                         className={`text-sm font-black px-3 py-1.5 rounded-xl border shadow-sm ${isDark ? "bg-blue-900/30 border-blue-800 text-blue-400" : "bg-blue-50 border-blue-100 text-blue-700"}`}
                       >
                         {client.ain}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <div
                         className={`text-sm font-black transition-colors ${isDark ? "text-slate-200 group-hover:text-blue-400" : "text-slate-800 group-hover:text-blue-700"}`}
                       >
@@ -475,7 +481,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                         Verified Importer/Exporter
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       {client.phone ? (
                         <div className="flex items-center gap-3">
                           <div
@@ -495,11 +501,11 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-3 text-right">
+                      <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-all">
                         <button
                           onClick={() => handleOpenModal(client)}
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-90 border ${isDark ? "bg-slate-700 border-slate-600 text-blue-400 hover:bg-blue-600 hover:text-white" : "bg-white border-slate-100 text-blue-600 hover:bg-blue-600 hover:text-white"}`}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-blue-400 hover:bg-blue-600 hover:text-white" : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"}`}
                           title="Edit Profile"
                         >
                           <i className="fas fa-pen text-xs"></i>
@@ -512,7 +518,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                               isBulk: false,
                             })
                           }
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-90 border ${isDark ? "bg-slate-700 border-slate-600 text-red-400 hover:bg-red-500 hover:text-white" : "bg-white border-slate-100 text-red-500 hover:bg-red-500 hover:text-white"}`}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-red-400 hover:bg-red-500 hover:text-white" : "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"}`}
                           title="Delete Record"
                         >
                           <i className="fas fa-trash-alt text-xs"></i>

@@ -975,15 +975,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         )}
 
         <div className="overflow-x-auto">
-          <table id="assessment-table" className="w-full text-left">
+          <table id="assessment-table" className="w-full text-left border-collapse">
             <thead>
               <tr
                 className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
               >
-                <th className="px-6 py-3 w-10 text-center">
+                <th className="px-6 py-3 w-12 text-center">
                   <input
                     type="checkbox"
-                    className="w-4 h-4 rounded cursor-pointer accent-purple-600"
+                    className="w-4 h-4 rounded cursor-pointer accent-blue-600"
                     checked={
                       selectedIds.length === sortedHistory.length &&
                       sortedHistory.length > 0
@@ -1042,10 +1042,16 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             <tbody
               className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
             >
-              {sortedHistory.map((rec, index) => (
+              {sortedHistory.map((rec) => (
                 <tr
                   key={rec.id}
-                  className={`group hover:bg-purple-50/30 dark:hover:bg-slate-700/30 transition-all ${index % 2 === 0 && !isDark ? "bg-white" : !isDark ? "bg-slate-50/40" : ""}`}
+                  className={`group transition-all ${
+                    selectedIds.includes(rec.id)
+                      ? "bg-blue-50/50 dark:bg-blue-900/10"
+                      : isDark
+                        ? "hover:bg-slate-800/40"
+                        : "hover:bg-slate-50/70"
+                  }`}
                 >
                   <td className="px-6 py-3 text-center">
                     <input
