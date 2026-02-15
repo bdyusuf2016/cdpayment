@@ -648,12 +648,16 @@ const App: React.FC = () => {
       }
       default: {
         const rows = visibleDutyRows;
+        const paidRows = rows.filter((r) => r.status === "Paid");
         const grossDuty = rows.reduce((acc, r) => acc + r.duty, 0);
         const collection = rows.reduce(
           (acc, r) => acc + r.received,
           0,
         );
-        const profit = collection - grossDuty;
+        const profit = paidRows.reduce(
+          (acc, r) => acc + ((r.received || 0) - (r.duty || 0)),
+          0,
+        );
         const dueAmount = rows.reduce(
           (acc, r) => acc + Math.max(0, r.duty - (r.received || 0)),
           0,
