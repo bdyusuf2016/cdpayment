@@ -649,12 +649,15 @@ const App: React.FC = () => {
       default: {
         const rows = visibleDutyRows;
         const grossDuty = rows.reduce((acc, r) => acc + r.duty, 0);
-        const totalCollection = rows.reduce(
+        const collection = rows.reduce(
           (acc, r) => acc + r.received,
           0,
         );
-        const serviceProfit = rows.reduce((acc, r) => acc + r.profit, 0);
-        const dueAmount = Math.max(0, grossDuty - totalCollection);
+        const profit = collection - grossDuty;
+        const dueAmount = rows.reduce(
+          (acc, r) => acc + Math.max(0, r.duty - (r.received || 0)),
+          0,
+        );
         return [
           {
             label: "Gross Duty",
@@ -662,17 +665,17 @@ const App: React.FC = () => {
             color: "#2563eb",
           },
           {
-            label: "Total Collection",
-            value: `৳ ${totalCollection.toLocaleString()}`,
+            label: "Collection",
+            value: `৳ ${collection.toLocaleString()}`,
             color: "#10b981",
           },
           {
-            label: "Service Profit",
-            value: `৳ ${serviceProfit.toLocaleString()}`,
+            label: "Profit",
+            value: `৳ ${profit.toLocaleString()}`,
             color: "#f59e0b",
           },
           {
-            label: "Due Amount",
+            label: "Due",
             value: `৳ ${dueAmount.toLocaleString()}`,
             color: "#ef4444",
           },
