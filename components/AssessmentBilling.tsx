@@ -11,6 +11,7 @@ import {
   deleteAssessment,
 } from "../utils/supabaseApi";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { createSimplePdfBlob } from "../utils/simplePdf";
 
 interface AssessmentBillingProps {
   clients: Client[];
@@ -436,6 +437,77 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const encodedMsg = encodeURIComponent(msg);
     const waUrl = `https://api.whatsapp.com/send/?phone=${waPhone}&text=${encodedMsg}&type=phone_number&app_absent=0`;
     window.open(waUrl, "_blank");
+  };
+
+  const shareInvoicePdfToWhatsApp = async (recs: AssessmentRecord[]) => {
+    if (recs.length === 0) return;
+
+    const targetPhone = recs.find((r) => r.phone)?.phone || "";
+    const digits = targetPhone.replace(/\D/g, "");
+    const waPhone = digits.startsWith("880")
+      ? digits
+      : digits.startsWith("0")
+        ? `88${digits}`
+        : digits.length === 10 && digits.startsWith("1")
+          ? `880${digits}`
+          : digits;
+
+    if (!waPhone || waPhone.length < 11) {
+      alert("No phone number found.");
+      return;
+    }
+
+    const total = recs.reduce((a, b) => a + b.net, 0);
+    const lines: string[] = [
+      `Agency: ${systemConfig.agencyName}`,
+      `Client: ${recs[0].clientName}`,
+      `Date: ${new Date().toLocaleDateString("en-GB")}`,
+      "",
+    ];
+    recs.forEach((r, idx) => {
+      lines.push(
+        `${idx + 1}. Qty ${r.nosOfBe} B/E | Rate Tk ${r.rate} | Amount Tk ${r.net.toLocaleString("en-BD")}`,
+      );
+    });
+    lines.push("");
+    lines.push(`TOTAL PAYABLE: Tk ${total.toLocaleString("en-BD")}`);
+
+    const pdfBlob = createSimplePdfBlob("ASSESSMENT BILL INVOICE", lines);
+    const filename = `assessment-invoice-${Date.now()}.pdf`;
+    const pdfFile = new File([pdfBlob], filename, { type: "application/pdf" });
+
+    try {
+      if (
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare({ files: [pdfFile] })
+      ) {
+        await navigator.share({
+          title: "Assessment Invoice",
+          text: "Invoice PDF attached.",
+          files: [pdfFile],
+        });
+        return;
+      }
+    } catch {
+      return;
+    }
+
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    const waText = encodeURIComponent(
+      "Invoice PDF downloaded. Please attach the downloaded file and send it.",
+    );
+    window.open(
+      `https://api.whatsapp.com/send/?phone=${waPhone}&text=${waText}&type=phone_number&app_absent=0`,
+      "_blank",
+    );
+    alert("PDF downloaded. Please attach the file in WhatsApp.");
   };
 
   const copyToClipboard = (text: string) => {
@@ -971,6 +1043,16 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
               >
                 <i className="fab fa-whatsapp"></i> Summary
+              </button>
+              <button
+                onClick={() =>
+                  shareInvoicePdfToWhatsApp(
+                    allHistory.filter((h) => selectedIds.includes(h.id)),
+                  )
+                }
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
+              >
+                <i className="fas fa-file-pdf"></i> WA PDF
               </button>
               <button
                 onClick={() => setSelectedIds([])}
