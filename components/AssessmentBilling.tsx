@@ -426,11 +426,11 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     msg += `--------------------------------\n\n`;
 
     recs.forEach((r, i) => {
-      msg += `${i + 1}. *Qty:* ${r.nosOfBe} B/E\n    *Rate:* à§³${r.rate}\n    *Amount:* à§³${r.net.toLocaleString()}\n\n`;
+      msg += `${i + 1}. *Qty:* ${r.nosOfBe} B/E\n    *Rate:* Tk ${r.rate}\n    *Amount:* Tk ${r.net.toLocaleString("en-BD")}\n\n`;
     });
 
     msg += `--------------------------------\n`;
-    msg += `*TOTAL PAYABLE:* à§³${total.toLocaleString()}\n`;
+    msg += `*TOTAL PAYABLE:* Tk ${total.toLocaleString("en-BD")}\n`;
     msg += `--------------------------------\n`;
 
     const encodedMsg = encodeURIComponent(msg);

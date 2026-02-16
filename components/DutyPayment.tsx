@@ -314,11 +314,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     msg += `--------------------------------\n\n`;
 
     recs.forEach((r, i) => {
-      msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* à§³${r.duty.toLocaleString()}\n\n`;
+      msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* Tk ${r.duty.toLocaleString("en-BD")}\n\n`;
     });
 
     msg += `--------------------------------\n`;
-    msg += `*TOTAL PAYABLE:* à§³${total.toLocaleString()}\n`;
+    msg += `*TOTAL PAYABLE:* Tk ${total.toLocaleString("en-BD")}\n`;
     msg += `--------------------------------\n`;
     msg += `Thank you for your business.`;
 
