@@ -342,10 +342,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       return;
     }
     const msg = generateWAMessage(recs);
-    window.open(
-      `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`,
-      "_blank",
-    );
+    const encodedMsg = encodeURIComponent(msg);
+    const waUrl = `https://api.whatsapp.com/send/?phone=${waPhone}&text=${encodedMsg}&type=phone_number&app_absent=0`;
+    window.open(waUrl, "_blank");
   };
 
   const copyToClipboard = (text: string) => {
