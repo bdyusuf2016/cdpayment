@@ -22,6 +22,22 @@ import {
   LogEntry,
 } from "./types";
 
+const fixMojibake = (value: string): string =>
+  value.replace(/à§³/g, "৳").replace(/â€¢/g, "•");
+
+const sanitizeData = (input: any): any => {
+  if (typeof input === "string") return fixMojibake(input);
+  if (Array.isArray(input)) return input.map((item) => sanitizeData(item));
+  if (input && typeof input === "object") {
+    const output: Record<string, any> = {};
+    Object.keys(input).forEach((key) => {
+      output[key] = sanitizeData(input[key]);
+    });
+    return output;
+  }
+  return input;
+};
+
 const normalizeDutyRecord = (row: any): PaymentRecord => ({
   id: row.id,
   date: row.date ?? "",
@@ -209,7 +225,12 @@ const App: React.FC = () => {
       if (error) {
         console.error(`Error fetching ${tableName}:`, error);
       } else {
-        setter((data || []).map((row) => (transform ? transform(row) : row)));
+        setter(
+          (data || []).map((rawRow) => {
+            const row = sanitizeData(rawRow);
+            return transform ? transform(row) : row;
+          }),
+        );
       }
 
       // Subscribe to changes
@@ -220,7 +241,8 @@ const App: React.FC = () => {
           { event: "*", schema: "public", table: tableName },
           (payload) => {
             if (payload.eventType === "INSERT") {
-              const record = transform ? transform(payload.new) : payload.new;
+              const nextRow = sanitizeData(payload.new);
+              const record = transform ? transform(nextRow) : nextRow;
               setter((current) => {
                 const key = getRowKey(record);
                 const next = current.filter((item) => getRowKey(item) !== key);
@@ -229,8 +251,9 @@ const App: React.FC = () => {
               writeAuditLog(tableName, "INSERT", payload);
             }
             if (payload.eventType === "UPDATE") {
-              const record = transform ? transform(payload.new) : payload.new;
-              const key = getRowKey(payload.new);
+              const nextRow = sanitizeData(payload.new);
+              const record = transform ? transform(nextRow) : nextRow;
+              const key = getRowKey(nextRow);
               setter((current) =>
                 current.map((item) =>
                   getRowKey(item) === key ? record : item,
@@ -239,7 +262,8 @@ const App: React.FC = () => {
               writeAuditLog(tableName, "UPDATE", payload);
             }
             if (payload.eventType === "DELETE") {
-              const key = getRowKey(payload.old);
+              const oldRow = sanitizeData(payload.old);
+              const key = getRowKey(oldRow);
               setter((current) =>
                 current.filter((item) => getRowKey(item) !== key),
               );
