@@ -412,11 +412,17 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const waText = encodeURIComponent(
       "Invoice PDF downloaded. Please attach the downloaded file and send it.",
     );
-    window.open(
-      `https://api.whatsapp.com/send/?phone=${waPhone}&text=${waText}&type=phone_number&app_absent=0`,
-      "_blank",
+    const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
+    const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
+
+    window.location.href = desktopUrl;
+    setTimeout(() => {
+      window.open(webUrl, "_blank");
+    }, 700);
+
+    alert(
+      "PDF download হয়েছে। WhatsApp খুলে গেলে downloaded PDF টি attach করে Send করুন।",
     );
-    alert("PDF downloaded. Please attach the file in WhatsApp.");
   };
 
   const copyToClipboard = (text: string) => {
@@ -980,7 +986,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-blue-600">
-                      à§³{item.duty.toLocaleString()}
+                      ৳{item.duty.toLocaleString()}
                     </p>
                     <button
                       onClick={() =>
@@ -1006,7 +1012,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <span
                 className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-800"}`}
               >
-                à§³{queue.reduce((a, b) => a + b.duty, 0).toLocaleString()}
+                ৳{queue.reduce((a, b) => a + b.duty, 0).toLocaleString()}
               </span>
             </div>
             <button
@@ -1148,10 +1154,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 Selected {selectedIds.length}
               </span>
               <span className="text-base md:text-lg font-extrabold tracking-wide">
-                Total à§³{selectedTotalAmount.toLocaleString()}
+                Total ৳{selectedTotalAmount.toLocaleString()}
               </span>
               <span className="text-base md:text-lg font-extrabold tracking-wide text-red-500">
-                Settlement à§³{selectedDueAmount.toLocaleString()}
+                Settlement ৳{selectedDueAmount.toLocaleString()}
               </span>
               <button
                 onClick={() => initiatePayment(selectedIds)}
@@ -1349,13 +1355,13 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   <td
                     className={`px-6 py-3 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
                   >
-                    à§³{rec.duty.toLocaleString()}
+                    ৳{rec.duty.toLocaleString()}
                   </td>
                   <td
                     className={`px-6 py-3 text-sm font-bold text-right ${rec.received > 0 ? "text-green-600" : "text-slate-400"}`}
                   >
                     {rec.received > 0
-                      ? `à§³${rec.received.toLocaleString()}`
+                      ? `৳${rec.received.toLocaleString()}`
                       : "-"}
                   </td>
                   <td className="px-6 py-3 text-center">
@@ -1373,7 +1379,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   </td>
                   <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
                     {rec.status === "Paid"
-                      ? `à§³${rec.profit.toLocaleString()}`
+                      ? `৳${rec.profit.toLocaleString()}`
                       : "-"}
                   </td>
                   <td className="px-6 py-3">
@@ -1480,7 +1486,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 <span
                   className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
                 >
-                  à§³{totalDueForPayment.toLocaleString()}
+                  ৳{totalDueForPayment.toLocaleString()}
                 </span>
               </div>
 
@@ -1570,4 +1576,5 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 };
 
 export default DutyPayment;
+
 

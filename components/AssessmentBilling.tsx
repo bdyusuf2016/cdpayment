@@ -503,11 +503,17 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const waText = encodeURIComponent(
       "Invoice PDF downloaded. Please attach the downloaded file and send it.",
     );
-    window.open(
-      `https://api.whatsapp.com/send/?phone=${waPhone}&text=${waText}&type=phone_number&app_absent=0`,
-      "_blank",
+    const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
+    const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
+
+    window.location.href = desktopUrl;
+    setTimeout(() => {
+      window.open(webUrl, "_blank");
+    }, 700);
+
+    alert(
+      "PDF download হয়েছে। WhatsApp খুলে গেলে downloaded PDF টি attach করে Send করুন।",
     );
-    alert("PDF downloaded. Please attach the file in WhatsApp.");
   };
 
   const copyToClipboard = (text: string) => {
@@ -773,7 +779,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   Current Line Amount
                 </span>
                 <span className="text-2xl font-bold text-purple-600">
-                  à§³{calculatedAmount.toLocaleString()}
+                  ৳{calculatedAmount.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -822,7 +828,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     <p
                       className={`font-bold text-sm text-right whitespace-nowrap ${isDark ? "text-white" : "text-slate-800"}`}
                     >
-                      à§³{item.amount.toLocaleString()}
+                      ৳{item.amount.toLocaleString()}
                     </p>
                   </div>
                   <button
@@ -848,7 +854,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               <span
                 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}
               >
-                à§³{queueTotal.toLocaleString()}
+                ৳{queueTotal.toLocaleString()}
               </span>
             </div>
 
@@ -873,7 +879,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 Net Payable
               </span>
               <span className="text-lg font-black text-purple-600">
-                à§³{queueNetTotal.toLocaleString()}
+                ৳{queueNetTotal.toLocaleString()}
               </span>
             </div>
 
@@ -1013,10 +1019,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 Selected {selectedIds.length}
               </span>
               <span className="text-base md:text-lg font-extrabold tracking-wide">
-                Total à§³{selectedTotalAmount.toLocaleString()}
+                Total ৳{selectedTotalAmount.toLocaleString()}
               </span>
               <span className="text-base md:text-lg font-extrabold tracking-wide text-red-500">
-                Settlement à§³{selectedDueAmount.toLocaleString()}
+                Settlement ৳{selectedDueAmount.toLocaleString()}
               </span>
               <button
                 onClick={() => initiatePayment(selectedIds)}
@@ -1188,7 +1194,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   <td
                     className={`px-6 py-3 text-right text-sm font-bold ${isDark ? "text-slate-200" : "text-slate-900"}`}
                   >
-                    à§³{rec.net.toLocaleString()}
+                    ৳{rec.net.toLocaleString()}
                   </td>
                   <td className="px-6 py-3 text-center">
                     <span
@@ -1271,7 +1277,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 <span
                   className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
                 >
-                  à§³
+                  ৳
                   {allHistory
                     .filter((r) => paymentIds.includes(r.id))
                     .reduce((a, b) => a + b.net, 0)
@@ -1361,5 +1367,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 };
 
 export default AssessmentBilling;
+
 
 
