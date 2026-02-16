@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+﻿import React, { useState, useRef, useMemo, useEffect } from "react";
 import {
   AssessmentItem,
   Client,
@@ -147,11 +147,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     endDate,
   ]);
 
-<<<<<<< HEAD
-  useEffect(() => {
-    onVisibleRowsChange(filteredHistory);
-  }, [filteredHistory, onVisibleRowsChange]);
-=======
   const sortedHistory = useMemo(() => {
     const rows = [...filteredHistory];
     rows.sort((a, b) => {
@@ -205,7 +200,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   useEffect(() => {
     onVisibleRowsChange(sortedHistory);
   }, [sortedHistory, onVisibleRowsChange]);
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
 
   const handleAinChange = (val: string) => {
     setAin(val);
@@ -324,7 +318,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         if (res) inserted.push(res);
         else {
           console.warn(
-            "insertAssessment returned null — rendering local record instead.",
+            "insertAssessment returned null â€” rendering local record instead.",
           );
           inserted.push(rec as AssessmentRecord);
         }
@@ -338,7 +332,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         });
       }
     } else {
-      // No supabase client — render locally
+      // No supabase client â€” render locally
       setInsertedRecords((prev) => [...newRecords, ...prev]);
       setHistory((prev) => [...newRecords, ...prev]);
     }
@@ -398,7 +392,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             </div>
           </div>
           <div class="print-footer">
-            This is system-generated invoice. Powered by ${systemConfig.agencyName} • Printed on ${new Date().toLocaleString("en-GB")}
+            This is system-generated invoice. Powered by ${systemConfig.agencyName} â€¢ Printed on ${new Date().toLocaleString("en-GB")}
           </div>
         </body>
       </html>
@@ -408,8 +402,17 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
   const shareWhatsApp = (recs: AssessmentRecord[]) => {
     if (recs.length === 0) return;
-    const targetPhone = recs[0].phone;
-    if (!targetPhone) {
+    const targetPhone = recs.find((r) => r.phone)?.phone || "";
+    const digits = targetPhone.replace(/\D/g, "");
+    const waPhone = digits.startsWith("880")
+      ? digits
+      : digits.startsWith("0")
+        ? `88${digits}`
+        : digits.length === 10 && digits.startsWith("1")
+          ? `880${digits}`
+          : digits;
+
+    if (!waPhone || waPhone.length < 11) {
       alert("No phone number found.");
       return;
     }
@@ -423,15 +426,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     msg += `--------------------------------\n\n`;
 
     recs.forEach((r, i) => {
-      msg += `${i + 1}. *Qty:* ${r.nosOfBe} B/E\n    *Rate:* ৳${r.rate}\n    *Amount:* ৳${r.net.toLocaleString()}\n\n`;
+      msg += `${i + 1}. *Qty:* ${r.nosOfBe} B/E\n    *Rate:* à§³${r.rate}\n    *Amount:* à§³${r.net.toLocaleString()}\n\n`;
     });
 
     msg += `--------------------------------\n`;
-    msg += `*TOTAL PAYABLE:* ৳${total.toLocaleString()}\n`;
+    msg += `*TOTAL PAYABLE:* à§³${total.toLocaleString()}\n`;
     msg += `--------------------------------\n`;
 
     window.open(
-      `https://wa.me/${targetPhone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`,
+      `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`,
       "_blank",
     );
   };
@@ -699,7 +702,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   Current Line Amount
                 </span>
                 <span className="text-2xl font-bold text-purple-600">
-                  ৳{calculatedAmount.toLocaleString()}
+                  à§³{calculatedAmount.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -748,7 +751,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     <p
                       className={`font-bold text-sm text-right whitespace-nowrap ${isDark ? "text-white" : "text-slate-800"}`}
                     >
-                      ৳{item.amount.toLocaleString()}
+                      à§³{item.amount.toLocaleString()}
                     </p>
                   </div>
                   <button
@@ -774,7 +777,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               <span
                 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}
               >
-                ৳{queueTotal.toLocaleString()}
+                à§³{queueTotal.toLocaleString()}
               </span>
             </div>
 
@@ -799,7 +802,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 Net Payable
               </span>
               <span className="text-lg font-black text-purple-600">
-                ৳{queueNetTotal.toLocaleString()}
+                à§³{queueNetTotal.toLocaleString()}
               </span>
             </div>
 
@@ -927,11 +930,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           </div>
         </div>
         {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
-<<<<<<< HEAD
-          <div className="fixed top-[78px] md:top-[86px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
-=======
           <div className="fixed top-[112px] md:top-[116px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
             <div
               className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
                 isDark
@@ -943,10 +942,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 Selected {selectedIds.length}
               </span>
               <span className="text-base md:text-lg font-extrabold tracking-wide">
-                Total ৳{selectedTotalAmount.toLocaleString()}
+                Total à§³{selectedTotalAmount.toLocaleString()}
               </span>
               <span className="text-base md:text-lg font-extrabold tracking-wide text-red-500">
-                Settlement ৳{selectedDueAmount.toLocaleString()}
+                Settlement à§³{selectedDueAmount.toLocaleString()}
               </span>
               <button
                 onClick={() => initiatePayment(selectedIds)}
@@ -990,11 +989,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               <tr
                 className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
               >
-<<<<<<< HEAD
-                <th className="px-6 py-3 w-10 text-center">
-=======
                 <th className="px-6 py-3 w-12 text-center">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                   <input
                     type="checkbox"
                     className="w-4 h-4 rounded cursor-pointer accent-blue-600"
@@ -1012,20 +1007,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   />
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-<<<<<<< HEAD
-                  Client & AIN
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
-                  Count of B/E
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  Net Value
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
-=======
                   <button
                     type="button"
                     onClick={() => toggleSort("clientName")}
@@ -1063,7 +1044,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   </button>
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                   Actions
                 </th>
               </tr>
@@ -1127,7 +1107,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   <td
                     className={`px-6 py-3 text-right text-sm font-bold ${isDark ? "text-slate-200" : "text-slate-900"}`}
                   >
-                    ৳{rec.net.toLocaleString()}
+                    à§³{rec.net.toLocaleString()}
                   </td>
                   <td className="px-6 py-3 text-center">
                     <span
@@ -1210,7 +1190,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 <span
                   className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
                 >
-                  ৳
+                  à§³
                   {allHistory
                     .filter((r) => paymentIds.includes(r.id))
                     .reduce((a, b) => a + b.net, 0)

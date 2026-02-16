@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import React, { useState, useEffect, useCallback } from "react";
-=======
-import React, { useState, useEffect, useCallback, useMemo } from "react";
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
+﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { LogEntry, SystemConfig } from "../types";
 import { printElement } from "../utils/printTable";
 import { fetchData } from "../utils/supabaseApi";
@@ -43,8 +39,6 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
       l.action.toLowerCase().includes(filter.toLowerCase()),
   );
 
-<<<<<<< HEAD
-=======
   const parseTimestamp = (value: string) => {
     if (!value) return 0;
     const normalized = value.trim();
@@ -110,7 +104,6 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
       : "fa-sort-down text-blue-500";
   };
 
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
   const loadLogs = useCallback(async () => {
     if (supabase) {
       setLoading(true);
@@ -279,24 +272,6 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
           <table id="auditlogs-table" className="w-full text-left border-collapse">
             <thead>
               <tr
-<<<<<<< HEAD
-                className={`${isDark ? "bg-slate-900" : "bg-slate-50"}`}
-              >
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Timestamp
-                </th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Initiator
-                </th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Action
-                </th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Module
-                </th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Activity Detail
-=======
                 className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
               >
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -345,7 +320,6 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                     Activity Detail{" "}
                     <i className={`fas ${getSortIcon("details")}`}></i>
                   </button>
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                 </th>
               </tr>
             </thead>
@@ -369,16 +343,6 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                     key={log.id}
                     className={`transition-colors group ${
                       isDark
-<<<<<<< HEAD
-                        ? "hover:bg-slate-700/50"
-                        : "hover:bg-slate-50/50"
-                    }`}
-                  >
-                    <td className="px-8 py-4 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
-                      {log.timestamp}
-                    </td>
-                    <td className="px-8 py-4">
-=======
                         ? "hover:bg-slate-800/40"
                         : "hover:bg-slate-50/70"
                     }`}
@@ -387,7 +351,6 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                       {log.timestamp}
                     </td>
                     <td className="px-6 py-3">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <span
                         className={`text-[11px] font-black uppercase tracking-tight ${
                           isDark ? "text-slate-200" : "text-slate-900"
@@ -396,11 +359,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         {log.user}
                       </span>
                     </td>
-<<<<<<< HEAD
-                    <td className="px-8 py-4">
-=======
                     <td className="px-6 py-3">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-2 h-2 rounded-full ${
@@ -422,11 +381,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         </span>
                       </div>
                     </td>
-<<<<<<< HEAD
-                    <td className="px-8 py-4">
-=======
                     <td className="px-6 py-3">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <span
                         className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-tighter ${
                           isDark
@@ -437,11 +392,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         {log.module}
                       </span>
                     </td>
-<<<<<<< HEAD
-                    <td className="px-8 py-4">
-=======
                     <td className="px-6 py-3">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <p
                         className={`text-[11px] font-bold leading-snug transition-colors ${
                           isDark

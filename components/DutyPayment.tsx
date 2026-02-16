@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+﻿import React, { useState, useRef, useMemo, useEffect } from "react";
 import { DutyItem, PaymentRecord, Client, SystemConfig } from "../types";
 import { insertDuty, updateDuty, deleteDuty } from "../utils/supabaseApi";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -135,11 +135,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     endDate,
   ]);
 
-<<<<<<< HEAD
-  useEffect(() => {
-    onVisibleRowsChange(filteredHistory);
-  }, [filteredHistory, onVisibleRowsChange]);
-=======
   const sortedHistory = useMemo(() => {
     const rows = [...filteredHistory];
     rows.sort((a, b) => {
@@ -199,7 +194,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   useEffect(() => {
     onVisibleRowsChange(sortedHistory);
   }, [sortedHistory, onVisibleRowsChange]);
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
 
   const handleAinChange = (val: string) => {
     setAin(val);
@@ -287,7 +281,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         else {
           // If insert failed or returned null, still render locally so UX reflects the queue
           console.warn(
-            "insertDuty returned null — rendering local record instead.",
+            "insertDuty returned null â€” rendering local record instead.",
           );
           setInsertedRecords((prev) => [record, ...prev]);
           setHistory((prev) => {
@@ -297,7 +291,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         }
       }
     } else {
-      // No supabase client — render locally
+      // No supabase client â€” render locally
       setInsertedRecords((prev) => [...newRecords, ...prev]);
       setHistory((prev) => [...newRecords, ...prev]);
     }
@@ -320,11 +314,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     msg += `--------------------------------\n\n`;
 
     recs.forEach((r, i) => {
-      msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* ৳${r.duty.toLocaleString()}\n\n`;
+      msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* à§³${r.duty.toLocaleString()}\n\n`;
     });
 
     msg += `--------------------------------\n`;
-    msg += `*TOTAL PAYABLE:* ৳${total.toLocaleString()}\n`;
+    msg += `*TOTAL PAYABLE:* à§³${total.toLocaleString()}\n`;
     msg += `--------------------------------\n`;
     msg += `Thank you for your business.`;
 
@@ -333,14 +327,23 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const shareWhatsApp = (recs: PaymentRecord[]) => {
     if (recs.length === 0) return;
-    const targetPhone = recs[0].phone;
-    if (!targetPhone) {
+    const targetPhone = recs.find((r) => r.phone)?.phone || "";
+    const digits = targetPhone.replace(/\D/g, "");
+    const waPhone = digits.startsWith("880")
+      ? digits
+      : digits.startsWith("0")
+        ? `88${digits}`
+        : digits.length === 10 && digits.startsWith("1")
+          ? `880${digits}`
+          : digits;
+
+    if (!waPhone || waPhone.length < 11) {
       alert("No phone number found for this client.");
       return;
     }
     const msg = generateWAMessage(recs);
     window.open(
-      `https://wa.me/${targetPhone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`,
+      `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`,
       "_blank",
     );
   };
@@ -447,7 +450,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             </div>
           </div>
           <div class="print-footer">
-            This is system-generated invoice. Powered by ${systemConfig.agencyName} • Printed on ${new Date().toLocaleString("en-GB")}
+            This is system-generated invoice. Powered by ${systemConfig.agencyName} â€¢ Printed on ${new Date().toLocaleString("en-GB")}
           </div>
         </body>
       </html>
@@ -906,7 +909,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-blue-600">
-                      ৳{item.duty.toLocaleString()}
+                      à§³{item.duty.toLocaleString()}
                     </p>
                     <button
                       onClick={() =>
@@ -932,7 +935,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <span
                 className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-800"}`}
               >
-                ৳{queue.reduce((a, b) => a + b.duty, 0).toLocaleString()}
+                à§³{queue.reduce((a, b) => a + b.duty, 0).toLocaleString()}
               </span>
             </div>
             <button
@@ -1062,11 +1065,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         </div>
 
         {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
-<<<<<<< HEAD
-          <div className="fixed top-[78px] md:top-[86px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
-=======
           <div className="fixed top-[112px] md:top-[116px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
             <div
               className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
                 isDark
@@ -1078,10 +1077,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 Selected {selectedIds.length}
               </span>
               <span className="text-base md:text-lg font-extrabold tracking-wide">
-                Total ৳{selectedTotalAmount.toLocaleString()}
+                Total à§³{selectedTotalAmount.toLocaleString()}
               </span>
               <span className="text-base md:text-lg font-extrabold tracking-wide text-red-500">
-                Settlement ৳{selectedDueAmount.toLocaleString()}
+                Settlement à§³{selectedDueAmount.toLocaleString()}
               </span>
               <button
                 onClick={() => initiatePayment(selectedIds)}
@@ -1143,27 +1142,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   />
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-<<<<<<< HEAD
-                  Date
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  Client Information
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  B/E Reference
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  Received
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  Profit
-=======
                   <button
                     type="button"
                     onClick={() => toggleSort("date")}
@@ -1226,7 +1204,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   >
                     Profit <i className={`fas ${getSortIcon("profit")}`}></i>
                   </button>
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   Controls
@@ -1291,13 +1268,13 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   <td
                     className={`px-6 py-3 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
                   >
-                    ৳{rec.duty.toLocaleString()}
+                    à§³{rec.duty.toLocaleString()}
                   </td>
                   <td
                     className={`px-6 py-3 text-sm font-bold text-right ${rec.received > 0 ? "text-green-600" : "text-slate-400"}`}
                   >
                     {rec.received > 0
-                      ? `৳${rec.received.toLocaleString()}`
+                      ? `à§³${rec.received.toLocaleString()}`
                       : "-"}
                   </td>
                   <td className="px-6 py-3 text-center">
@@ -1315,7 +1292,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   </td>
                   <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
                     {rec.status === "Paid"
-                      ? `৳${rec.profit.toLocaleString()}`
+                      ? `à§³${rec.profit.toLocaleString()}`
                       : "-"}
                   </td>
                   <td className="px-6 py-3">
@@ -1422,7 +1399,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 <span
                   className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
                 >
-                  ৳{totalDueForPayment.toLocaleString()}
+                  à§³{totalDueForPayment.toLocaleString()}
                 </span>
               </div>
 

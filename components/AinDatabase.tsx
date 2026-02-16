@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Client, SystemConfig } from "../types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
@@ -27,13 +27,10 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   const [selectedAins, setSelectedAins] = useState<string[]>([]);
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const [pendingDeletedAins, setPendingDeletedAins] = useState<string[]>([]);
-<<<<<<< HEAD
-=======
   const [sortKey, setSortKey] = useState<"latest" | "ain" | "name" | "phone">(
     "latest",
   );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
 
   // For Custom Confirmation
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -62,11 +59,6 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       c.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-<<<<<<< HEAD
-  useEffect(() => {
-    onVisibleRowsChange(filteredClients);
-  }, [filteredClients, onVisibleRowsChange]);
-=======
   const clientTime = (client: Client) => {
     const raw = (client as any).created_at || (client as any).createdAt || "";
     const t = new Date(raw).getTime();
@@ -123,7 +115,6 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   useEffect(() => {
     onVisibleRowsChange(sortedClients);
   }, [sortedClients, onVisibleRowsChange]);
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
 
   const handleOpenModal = (client?: Client) => {
     if (client) {
@@ -299,21 +290,12 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
   const toggleSelectAll = () => {
     if (
-<<<<<<< HEAD
-      selectedAins.length === filteredClients.length &&
-      filteredClients.length > 0
-    ) {
-      setSelectedAins([]);
-    } else {
-      setSelectedAins(filteredClients.map((c) => c.ain));
-=======
       selectedAins.length === sortedClients.length &&
       sortedClients.length > 0
     ) {
       setSelectedAins([]);
     } else {
       setSelectedAins(sortedClients.map((c) => c.ain));
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
     }
   };
 
@@ -395,11 +377,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
           <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
             <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">
-<<<<<<< HEAD
-              {filteredClients.length} Profiles
-=======
               {sortedClients.length} Profiles
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
             </span>
           </div>
         </div>
@@ -407,16 +385,6 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-<<<<<<< HEAD
-              <tr className={`${isDark ? "bg-slate-900" : "bg-slate-900"}`}>
-                <th className="px-6 py-4 w-14 text-center">
-                  <input
-                    type="checkbox"
-                    className="w-5 h-5 rounded-lg border-2 border-slate-700 bg-transparent checked:bg-blue-500 checked:border-blue-500 transition-all cursor-pointer accent-blue-500"
-                    checked={
-                      filteredClients.length > 0 &&
-                      selectedAins.length === filteredClients.length
-=======
               <tr
                 className={`${isDark ? "bg-slate-900/50 border-slate-700" : "bg-slate-50 border-slate-300"} border-b`}
               >
@@ -427,23 +395,10 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                     checked={
                       sortedClients.length > 0 &&
                       selectedAins.length === sortedClients.length
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                     }
                     onChange={toggleSelectAll}
                   />
                 </th>
-<<<<<<< HEAD
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  AIN ID
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  Business Information
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  Communication
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-right tracking-[0.2em] pr-12">
-=======
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
@@ -473,21 +428,14 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                   </button>
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                   Action
                 </th>
               </tr>
             </thead>
             <tbody
-<<<<<<< HEAD
-              className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-50"}`}
-            >
-              {filteredClients.length === 0 ? (
-=======
               className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
             >
               {sortedClients.length === 0 ? (
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                 <tr>
                   <td colSpan={5} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center opacity-30">
@@ -497,17 +445,6 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                   </td>
                 </tr>
               ) : (
-<<<<<<< HEAD
-                filteredClients.map((client) => (
-                  <tr
-                    key={client.ain}
-                    className={`transition-all group ${selectedAins.includes(client.ain) ? "bg-blue-50/40 dark:bg-blue-900/10" : "hover:bg-slate-50/50 dark:hover:bg-slate-700/50"}`}
-                  >
-                    <td className="px-6 py-4 text-center">
-                      <input
-                        type="checkbox"
-                        className="w-5 h-5 rounded-lg border-2 border-slate-200 transition-all cursor-pointer accent-blue-500"
-=======
                 sortedClients.map((client) => (
                   <tr
                     key={client.ain}
@@ -523,27 +460,18 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                       <input
                         type="checkbox"
                         className="w-4 h-4 rounded cursor-pointer accent-blue-600"
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                         checked={selectedAins.includes(client.ain)}
                         onChange={() => toggleSelectOne(client.ain)}
                       />
                     </td>
-<<<<<<< HEAD
-                    <td className="px-6 py-4">
-=======
                     <td className="px-6 py-3">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <span
                         className={`text-sm font-black px-3 py-1.5 rounded-xl border shadow-sm ${isDark ? "bg-blue-900/30 border-blue-800 text-blue-400" : "bg-blue-50 border-blue-100 text-blue-700"}`}
                       >
                         {client.ain}
                       </span>
                     </td>
-<<<<<<< HEAD
-                    <td className="px-6 py-4">
-=======
                     <td className="px-6 py-3">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <div
                         className={`text-sm font-black transition-colors ${isDark ? "text-slate-200 group-hover:text-blue-400" : "text-slate-800 group-hover:text-blue-700"}`}
                       >
@@ -553,11 +481,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                         Verified Importer/Exporter
                       </div>
                     </td>
-<<<<<<< HEAD
-                    <td className="px-6 py-4">
-=======
                     <td className="px-6 py-3">
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       {client.phone ? (
                         <div className="flex items-center gap-3">
                           <div
@@ -577,19 +501,11 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                         </span>
                       )}
                     </td>
-<<<<<<< HEAD
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleOpenModal(client)}
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-90 border ${isDark ? "bg-slate-700 border-slate-600 text-blue-400 hover:bg-blue-600 hover:text-white" : "bg-white border-slate-100 text-blue-600 hover:bg-blue-600 hover:text-white"}`}
-=======
                     <td className="px-6 py-3 text-right">
                       <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-all">
                         <button
                           onClick={() => handleOpenModal(client)}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-blue-400 hover:bg-blue-600 hover:text-white" : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"}`}
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                           title="Edit Profile"
                         >
                           <i className="fas fa-pen text-xs"></i>
@@ -602,11 +518,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                               isBulk: false,
                             })
                           }
-<<<<<<< HEAD
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-90 border ${isDark ? "bg-slate-700 border-slate-600 text-red-400 hover:bg-red-500 hover:text-white" : "bg-white border-slate-100 text-red-500 hover:bg-red-500 hover:text-white"}`}
-=======
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-red-400 hover:bg-red-500 hover:text-white" : "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"}`}
->>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                           title="Delete Record"
                         >
                           <i className="fas fa-trash-alt text-xs"></i>
