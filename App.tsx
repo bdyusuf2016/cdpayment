@@ -320,6 +320,10 @@ const App: React.FC = () => {
     localStorage.setItem("ui_theme_template", activeTemplate);
   }, [config.theme, config.themeTemplate]);
 
+  useEffect(() => {
+    document.documentElement.lang = config.language === "bn" ? "bn" : "en";
+  }, [config.language]);
+
   // Handle Login from Auth Component
   const handleLoginSuccess = (newSession: any, url: string, key: string) => {
     localStorage.setItem("supabase_url", url);
@@ -350,13 +354,13 @@ const App: React.FC = () => {
       console: "Enterprise Console",
     },
     bn: {
-      duty: "à¦¡à¦¿à¦‰à¦Ÿà¦¿ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ",
-      assessment: "à¦…à§à¦¯à¦¾à¦¸à§‡à¦¸à¦®à§‡à¦¨à§à¦Ÿ",
-      ain: "AIN à¦¡à¦¾à¦Ÿà¦¾à¦¬à§‡à¦¸",
-      admin: "à¦à¦¡à¦®à¦¿à¦¨ à¦ªà§à¦¯à¦¾à¦¨à§‡à¦²",
-      logs: "à¦…à¦¡à¦¿à¦Ÿ à¦²à¦—",
-      logout: "à¦²à¦—à¦†à¦‰à¦Ÿ",
-      console: "à¦à¦¨à§à¦Ÿà¦¾à¦°à¦ªà§à¦°à¦¾à¦‡à¦œ à¦•à¦¨à¦¸à§‹à¦²",
+      duty: "ডিউটি পেমেন্ট",
+      assessment: "অ্যাসেসমেন্ট",
+      ain: "AIN ডাটাবেস",
+      admin: "এডমিন প্যানেল",
+      logs: "অডিট লগ",
+      logout: "লগআউট",
+      console: "এন্টারপ্রাইজ কনসোল",
     },
   };
 
@@ -566,22 +570,22 @@ const App: React.FC = () => {
           const rows = visibleAinRows;
         return [
           {
-            label: config.language === "en" ? "Total Database" : "à¦®à§‹à¦Ÿ à¦¡à¦¾à¦Ÿà¦¾à¦¬à§‡à¦¸",
+            label: config.language === "en" ? "Total Database" : "মোট ডাটাবেস",
             value: rows.length,
             color: "#2563eb",
           },
           {
-            label: config.language === "en" ? "Verified" : "à¦­à§‡à¦°à¦¿à¦«à¦¾à¦‡à¦¡",
+            label: config.language === "en" ? "Verified" : "ভেরিফাইড",
             value: rows.filter((c) => c.phone).length,
             color: "#10b981",
           },
           {
-            label: config.language === "en" ? "Active" : "à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼",
+            label: config.language === "en" ? "Active" : "সক্রিয়",
             value: rows.filter((c) => c.active).length,
             color: "#3b82f6",
           },
           {
-            label: config.language === "en" ? "Version" : "à¦­à¦¾à¦°à§à¦¸à¦¨",
+            label: config.language === "en" ? "Version" : "ভার্সন",
             value: "Pro v3.6",
             color: "#f59e0b",
           },
@@ -602,17 +606,17 @@ const App: React.FC = () => {
         return [
           {
             label: "Total Billed",
-            value: `à§³ ${totalNet.toLocaleString()}`,
+            value: `Tk ${totalNet.toLocaleString()}`,
             color: "#2563eb",
           },
           {
             label: "Received",
-            value: `à§³ ${totalReceived.toLocaleString()}`,
+            value: `Tk ${totalReceived.toLocaleString()}`,
             color: "#10b981",
           },
             {
               label: "Due Amount",
-              value: `à§³ ${outstanding.toLocaleString()}`,
+              value: `Tk ${outstanding.toLocaleString()}`,
               color: "#ef4444",
             },
             {
@@ -667,22 +671,22 @@ const App: React.FC = () => {
         return [
           {
             label: "Gross Duty",
-            value: `à§³ ${grossDuty.toLocaleString()}`,
+            value: `Tk ${grossDuty.toLocaleString()}`,
             color: "#2563eb",
           },
           {
             label: "Collection",
-            value: `à§³ ${collection.toLocaleString()}`,
+            value: `Tk ${collection.toLocaleString()}`,
             color: "#10b981",
           },
           {
             label: "Profit",
-            value: `à§³ ${profit.toLocaleString()}`,
+            value: `Tk ${profit.toLocaleString()}`,
             color: "#f59e0b",
           },
           {
             label: "Due",
-            value: `à§³ ${dueAmount.toLocaleString()}`,
+            value: `Tk ${dueAmount.toLocaleString()}`,
             color: "#ef4444",
           },
         ];
@@ -1020,7 +1024,7 @@ const App: React.FC = () => {
             {config.agencyName}
           </p>
           <p className="text-[9px] font-bold text-slate-400 max-w-sm">
-            System v2.0 â€¢ {config.agencyAddress}
+            System v2.0 • {config.agencyAddress}
           </p>
           {config.showDeveloperCredit && config.developerCreditName ? (
             <p className="text-[10px] font-bold text-slate-500">
