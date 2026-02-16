@@ -24,4 +24,9 @@ dist-ssr
 *.sw?
 
 # Local environment files
+<<<<<<< HEAD
 .env
+=======
+.env*
+!.env.example
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0

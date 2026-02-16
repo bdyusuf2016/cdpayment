@@ -648,6 +648,7 @@ const App: React.FC = () => {
       }
       default: {
         const rows = visibleDutyRows;
+<<<<<<< HEAD
         const grossDuty = rows.reduce((acc, r) => acc + r.duty, 0);
         const totalCollection = rows.reduce(
           (acc, r) => acc + r.received,
@@ -655,6 +656,24 @@ const App: React.FC = () => {
         );
         const serviceProfit = rows.reduce((acc, r) => acc + r.profit, 0);
         const dueAmount = Math.max(0, grossDuty - totalCollection);
+=======
+        const paidRows = rows.filter(
+          (r) => String(r.status || "").trim().toLowerCase() === "paid",
+        );
+        const grossDuty = rows.reduce((acc, r) => acc + r.duty, 0);
+        const collection = rows.reduce(
+          (acc, r) => acc + r.received,
+          0,
+        );
+        const profit = paidRows.reduce(
+          (acc, r) => acc + ((r.received || 0) - (r.duty || 0)),
+          0,
+        );
+        const dueAmount = rows.reduce(
+          (acc, r) => acc + Math.max(0, r.duty - (r.received || 0)),
+          0,
+        );
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
         return [
           {
             label: "Gross Duty",
@@ -662,6 +681,7 @@ const App: React.FC = () => {
             color: "#2563eb",
           },
           {
+<<<<<<< HEAD
             label: "Total Collection",
             value: `৳ ${totalCollection.toLocaleString()}`,
             color: "#10b981",
@@ -673,6 +693,19 @@ const App: React.FC = () => {
           },
           {
             label: "Due Amount",
+=======
+            label: "Collection",
+            value: `৳ ${collection.toLocaleString()}`,
+            color: "#10b981",
+          },
+          {
+            label: "Profit",
+            value: `৳ ${profit.toLocaleString()}`,
+            color: "#f59e0b",
+          },
+          {
+            label: "Due",
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
             value: `৳ ${dueAmount.toLocaleString()}`,
             color: "#ef4444",
           },
@@ -730,6 +763,7 @@ const App: React.FC = () => {
     >
       {/* Top Navigation Bar */}
       <header
+<<<<<<< HEAD
         className={`px-6 py-4 flex items-center justify-between sticky top-0 z-[60] shadow-sm backdrop-blur-md border-b transition-colors ${config.theme === "dark" ? "bg-[#1e293b]/80 border-slate-700" : "bg-white/80 border-slate-100"}`}
       >
         <div className="flex items-center gap-4">
@@ -808,6 +842,185 @@ const App: React.FC = () => {
           >
             <i className="fas fa-power-off text-sm"></i>
           </button>
+=======
+        className={`px-3 md:px-5 py-3 sticky top-0 z-[60] shadow-sm backdrop-blur-md border-b transition-colors ${config.theme === "dark" ? "bg-[#1e293b]/80 border-slate-700" : "bg-white/80 border-slate-100"}`}
+      >
+        <div className="max-w-[1600px] mx-auto w-full">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i className="fas fa-cube text-white text-base"></i>
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-base md:text-lg font-black tracking-tight leading-none">
+                  {config.agencyName}
+                </h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                  <span className="text-[9px] font-black opacity-50 uppercase tracking-widest">
+                    {t.console} 2.0
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="hidden lg:flex flex-col items-end mr-2">
+                <span className="text-xs font-bold dark:text-white">
+                  {session.user.email}
+                </span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                  Logged In
+                </span>
+              </div>
+
+              <div className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg mr-1 border border-slate-200 dark:border-slate-700">
+                <button
+                  onClick={() => setConfig((prev) => ({ ...prev, language: "en" }))}
+                  className={`px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${config.language === "en" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
+                >
+                  ENG
+                </button>
+                <button
+                  onClick={() => setConfig((prev) => ({ ...prev, language: "bn" }))}
+                  className={`px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${config.language === "bn" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
+                >
+                  BAN
+                </button>
+                <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                <button
+                  onClick={() => {
+                    const nextTheme = isDark ? "light" : "dark";
+                    setConfig((prev) => ({ ...prev, theme: nextTheme }));
+                    if (supabase) {
+                      updateSystemSettings(supabase, { theme: nextTheme });
+                    }
+                  }}
+                  className={`w-8 h-7 rounded-md flex items-center justify-center transition-all ${isDark ? "text-yellow-400" : "text-slate-400 hover:text-slate-600"}`}
+                >
+                  <i className={`fas ${isDark ? "fa-sun" : "fa-moon"}`}></i>
+                </button>
+              </div>
+
+              {isAdminUser && (
+                <button
+                  onClick={() => setActiveTab("admin")}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-sm active:scale-95 border ${activeTab === "admin" ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500"}`}
+                >
+                  <i className="fas fa-cog text-xs"></i>
+                </button>
+              )}
+              <button
+                onClick={handleOpenProfileModal}
+                className="bg-white dark:bg-slate-800 text-slate-500 hover:text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm border border-slate-200 dark:border-slate-700"
+                title="Profile"
+              >
+                <i className="fas fa-user text-xs"></i>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-600 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm border border-red-100 dark:border-red-900/30"
+              >
+                <i className="fas fa-power-off text-xs"></i>
+              </button>
+            </div>
+          </div>
+
+          {/* Header Flow Navigation */}
+          <div className="mt-2.5">
+            {/* Mobile Navigation (Dropdown Style) */}
+            <div className="md:hidden relative z-50">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`w-full p-2.5 rounded-xl border shadow-sm flex items-center justify-between transition-all active:scale-[0.99] ${config.theme === "dark" ? "bg-[#0f172a]/70 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === "dark" ? "bg-slate-700 text-white" : "bg-blue-600 text-white"}`}
+                  >
+                    <i
+                      className={`fas ${navTabs.find((t) => t.id === activeTab)?.icon}`}
+                    ></i>
+                  </div>
+                  <div className="text-left leading-tight">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                      Current View
+                    </p>
+                    <p className="text-xs font-black uppercase tracking-widest">
+                      {navTabs.find((t) => t.id === activeTab)?.label}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isMobileMenuOpen ? "bg-blue-100 text-blue-600 rotate-180" : "bg-slate-100 text-slate-400"}`}
+                >
+                  <i className="fas fa-chevron-down"></i>
+                </div>
+              </button>
+
+              {isMobileMenuOpen && (
+                <div
+                  className={`absolute top-full left-0 w-full mt-2 p-2 rounded-2xl border shadow-xl flex flex-col gap-2 animate-in slide-in-from-top-5 fade-in duration-200 ${config.theme === "dark" ? "bg-[#1e293b] border-slate-700" : "bg-white border-slate-200"}`}
+                >
+                  {navTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id as TabType);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`flex items-center gap-4 p-3 rounded-xl transition-all ${
+                        activeTab === tab.id
+                          ? config.theme === "dark"
+                            ? "bg-blue-600 text-white shadow-lg"
+                            : "bg-slate-900 text-white shadow-lg"
+                          : config.theme === "dark"
+                            ? "text-slate-400 hover:bg-slate-800"
+                            : "text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeTab === tab.id ? "bg-white/20" : "bg-transparent"}`}
+                      >
+                        <i className={`fas ${tab.icon}`}></i>
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-widest">
+                        {tab.label}
+                      </span>
+                      {activeTab === tab.id && (
+                        <i className="fas fa-check ml-auto"></i>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Navigation (Segmented Control) */}
+            <div className="hidden md:flex justify-center">
+              <nav
+                className={`mx-auto flex p-1 rounded-xl shadow-sm border overflow-x-auto no-scrollbar transition-colors ${config.theme === "dark" ? "bg-[#0f172a]/70 border-slate-700" : "bg-white border-slate-200"}`}
+              >
+                {navTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as TabType)}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? "bg-slate-900 dark:bg-blue-600 text-white shadow-lg"
+                        : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <i
+                      className={`fas ${tab.icon} ${activeTab === tab.id ? "text-white" : "text-slate-400"}`}
+                    ></i>
+                    <span className="uppercase tracking-widest">{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
         </div>
       </header>
 
@@ -826,6 +1039,7 @@ const App: React.FC = () => {
             need additional modules.
           </div>
         )}
+<<<<<<< HEAD
 
         {/* Mobile Navigation (Dropdown Style) */}
         <div className="md:hidden mb-6 relative z-50">
@@ -918,6 +1132,8 @@ const App: React.FC = () => {
             ))}
           </nav>
         </div>
+=======
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
 
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
           {!isAdminUser &&

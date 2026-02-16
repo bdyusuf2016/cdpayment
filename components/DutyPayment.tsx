@@ -41,6 +41,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [filterPaymentMethod, setFilterPaymentMethod] = useState("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [sortKey, setSortKey] = useState<
+    "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit"
+  >("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -131,9 +135,71 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     endDate,
   ]);
 
+<<<<<<< HEAD
   useEffect(() => {
     onVisibleRowsChange(filteredHistory);
   }, [filteredHistory, onVisibleRowsChange]);
+=======
+  const sortedHistory = useMemo(() => {
+    const rows = [...filteredHistory];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "date") {
+        left = parseDate(a.date).getTime();
+        right = parseDate(b.date).getTime();
+      } else if (sortKey === "clientName") {
+        left = (a.clientName || "").toLowerCase();
+        right = (b.clientName || "").toLowerCase();
+      } else if (sortKey === "beYear") {
+        left = (a.beYear || "").toLowerCase();
+        right = (b.beYear || "").toLowerCase();
+      } else if (sortKey === "duty") {
+        left = a.duty || 0;
+        right = b.duty || 0;
+      } else if (sortKey === "received") {
+        left = a.received || 0;
+        right = b.received || 0;
+      } else if (sortKey === "status") {
+        left = (a.status || "").toLowerCase();
+        right = (b.status || "").toLowerCase();
+      } else {
+        left = a.profit || 0;
+        right = b.profit || 0;
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredHistory, sortKey, sortDir]);
+
+  const toggleSort = (
+    key: "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit",
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "date" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit",
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-600"
+      : "fa-sort-down text-blue-600";
+  };
+
+  useEffect(() => {
+    onVisibleRowsChange(sortedHistory);
+  }, [sortedHistory, onVisibleRowsChange]);
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
 
   const handleAinChange = (val: string) => {
     setAin(val);
@@ -281,6 +347,52 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+  };
+
+  const getPaymentMethodVisual = (method: string) => {
+    const key = String(method || "").trim().toLowerCase();
+
+    if (key.includes("cash")) {
+      return <i className="fas fa-money-bill-wave text-emerald-600" />;
+    }
+    if (key.includes("bank")) {
+      return <i className="fas fa-university text-blue-600" />;
+    }
+    if (key.includes("card")) {
+      return <i className="fas fa-credit-card text-indigo-600" />;
+    }
+    if (key.includes("bkash")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-600 px-1 text-[10px] font-black text-white">
+          bK
+        </span>
+      );
+    }
+    if (key.includes("nagad")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-black text-white">
+          NG
+        </span>
+      );
+    }
+    if (key.includes("rocket")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-fuchsia-600 px-1 text-[10px] font-black text-white">
+          RK
+        </span>
+      );
+    }
+    if (key.includes("upay")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">
+          UP
+        </span>
+      );
+    }
+    if (key.includes("mobile")) {
+      return <i className="fas fa-mobile-alt text-cyan-600" />;
+    }
+    return <i className="fas fa-wallet text-slate-500" />;
   };
 
   const printDutyInvoice = (recs: PaymentRecord[]) => {
@@ -950,7 +1062,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         </div>
 
         {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
+<<<<<<< HEAD
           <div className="fixed top-[78px] md:top-[86px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
+=======
+          <div className="fixed top-[112px] md:top-[116px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
             <div
               className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
                 isDark
@@ -1014,19 +1130,20 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     type="checkbox"
                     className="w-4 h-4 rounded cursor-pointer accent-blue-600"
                     checked={
-                      selectedIds.length === filteredHistory.length &&
-                      filteredHistory.length > 0
+                      selectedIds.length === sortedHistory.length &&
+                      sortedHistory.length > 0
                     }
                     onChange={() =>
                       setSelectedIds(
-                        selectedIds.length === filteredHistory.length
+                        selectedIds.length === sortedHistory.length
                           ? []
-                          : filteredHistory.map((h) => h.id),
+                          : sortedHistory.map((h) => h.id),
                       )
                     }
                   />
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+<<<<<<< HEAD
                   Date
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -1046,6 +1163,70 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
                   Profit
+=======
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("date")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Date <i className={`fas ${getSortIcon("date")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("clientName")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Client Information{" "}
+                    <i className={`fas ${getSortIcon("clientName")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("beYear")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    B/E Reference <i className={`fas ${getSortIcon("beYear")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("duty")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Amount <i className={`fas ${getSortIcon("duty")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("received")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Received <i className={`fas ${getSortIcon("received")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("status")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Status <i className={`fas ${getSortIcon("status")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("profit")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Profit <i className={`fas ${getSortIcon("profit")}`}></i>
+                  </button>
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   Controls
@@ -1055,7 +1236,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             <tbody
               className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
             >
-              {filteredHistory.map((rec, index) => (
+              {sortedHistory.map((rec, index) => (
                 <tr
                   key={rec.id}
                   className={`group transition-all ${getRowBackground(rec.status)} ${selectedIds.includes(rec.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""}`}
@@ -1269,7 +1450,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                       onClick={() => setPaymentMethod(m)}
                       className={`py-3 px-2 rounded-xl text-xs font-bold uppercase border-2 transition-all ${paymentMethod === m ? "border-green-500 bg-green-50 text-green-700" : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
                     >
-                      {m}
+                      <span className="inline-flex items-center gap-2">
+                        {getPaymentMethodVisual(m)}
+                        <span>{m}</span>
+                      </span>
                     </button>
                   ))}
                 </div>

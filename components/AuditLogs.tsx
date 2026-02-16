@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useCallback } from "react";
+=======
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
 import { LogEntry, SystemConfig } from "../types";
 import { printElement } from "../utils/printTable";
 import { fetchData } from "../utils/supabaseApi";
@@ -16,6 +20,10 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
   const [error, setError] = useState<string | null>(null);
 
   const [filter, setFilter] = useState("");
+  const [sortKey, setSortKey] = useState<
+    "timestamp" | "user" | "action" | "module" | "details"
+  >("timestamp");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const mapLog = (d: any): LogEntry => ({
     id: d.id,
@@ -35,6 +43,74 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
       l.action.toLowerCase().includes(filter.toLowerCase()),
   );
 
+<<<<<<< HEAD
+=======
+  const parseTimestamp = (value: string) => {
+    if (!value) return 0;
+    const normalized = value.trim();
+    if (normalized.includes("/") && normalized.includes(",")) {
+      const [datePart, timePart] = normalized.split(",");
+      const [day, month, year] = datePart.trim().split("/");
+      const parsed = new Date(
+        `${year}-${month}-${day}T${(timePart || "00:00:00").trim()}`,
+      ).getTime();
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    const parsed = new Date(normalized).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const sortedLogs = useMemo(() => {
+    const rows = [...filteredLogs];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "timestamp") {
+        left = parseTimestamp(a.timestamp);
+        right = parseTimestamp(b.timestamp);
+      } else if (sortKey === "user") {
+        left = (a.user || "").toLowerCase();
+        right = (b.user || "").toLowerCase();
+      } else if (sortKey === "action") {
+        left = (a.action || "").toLowerCase();
+        right = (b.action || "").toLowerCase();
+      } else if (sortKey === "module") {
+        left = (a.module || "").toLowerCase();
+        right = (b.module || "").toLowerCase();
+      } else {
+        left = (a.details || "").toLowerCase();
+        right = (b.details || "").toLowerCase();
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredLogs, sortDir, sortKey]);
+
+  const toggleSort = (
+    key: "timestamp" | "user" | "action" | "module" | "details",
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "timestamp" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "timestamp" | "user" | "action" | "module" | "details",
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-500"
+      : "fa-sort-down text-blue-500";
+  };
+
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
   const loadLogs = useCallback(async () => {
     if (supabase) {
       setLoading(true);
@@ -200,9 +276,10 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
         ) : null}
 
         <div className="overflow-x-auto">
-          <table id="auditlogs-table" className="w-full text-left">
+          <table id="auditlogs-table" className="w-full text-left border-collapse">
             <thead>
               <tr
+<<<<<<< HEAD
                 className={`${isDark ? "bg-slate-900" : "bg-slate-50"}`}
               >
                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -219,6 +296,56 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                 </th>
                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Activity Detail
+=======
+                className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
+              >
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("timestamp")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Timestamp{" "}
+                    <i className={`fas ${getSortIcon("timestamp")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("user")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Initiator <i className={`fas ${getSortIcon("user")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("action")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Action <i className={`fas ${getSortIcon("action")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("module")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Module <i className={`fas ${getSortIcon("module")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("details")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Activity Detail{" "}
+                    <i className={`fas ${getSortIcon("details")}`}></i>
+                  </button>
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                 </th>
               </tr>
             </thead>
@@ -227,7 +354,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                 isDark ? "divide-slate-700" : "divide-slate-300"
               }`}
             >
-              {filteredLogs.length === 0 ? (
+              {sortedLogs.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
@@ -237,11 +364,12 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
+                sortedLogs.map((log) => (
                   <tr
                     key={log.id}
                     className={`transition-colors group ${
                       isDark
+<<<<<<< HEAD
                         ? "hover:bg-slate-700/50"
                         : "hover:bg-slate-50/50"
                     }`}
@@ -250,6 +378,16 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                       {log.timestamp}
                     </td>
                     <td className="px-8 py-4">
+=======
+                        ? "hover:bg-slate-800/40"
+                        : "hover:bg-slate-50/70"
+                    }`}
+                  >
+                    <td className="px-6 py-3 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
+                      {log.timestamp}
+                    </td>
+                    <td className="px-6 py-3">
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <span
                         className={`text-[11px] font-black uppercase tracking-tight ${
                           isDark ? "text-slate-200" : "text-slate-900"
@@ -258,7 +396,11 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         {log.user}
                       </span>
                     </td>
+<<<<<<< HEAD
                     <td className="px-8 py-4">
+=======
+                    <td className="px-6 py-3">
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-2 h-2 rounded-full ${
@@ -280,7 +422,11 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         </span>
                       </div>
                     </td>
+<<<<<<< HEAD
                     <td className="px-8 py-4">
+=======
+                    <td className="px-6 py-3">
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <span
                         className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-tighter ${
                           isDark
@@ -291,7 +437,11 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         {log.module}
                       </span>
                     </td>
+<<<<<<< HEAD
                     <td className="px-8 py-4">
+=======
+                    <td className="px-6 py-3">
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                       <p
                         className={`text-[11px] font-bold leading-snug transition-colors ${
                           isDark

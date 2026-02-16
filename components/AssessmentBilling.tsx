@@ -44,6 +44,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const [filterPaymentMethod, setFilterPaymentMethod] = useState("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [sortKey, setSortKey] = useState<
+    "date" | "clientName" | "nosOfBe" | "net" | "status"
+  >("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [queue, setQueue] = useState<AssessmentItem[]>([]);
   const [insertedRecords, setInsertedRecords] = useState<AssessmentRecord[]>(
@@ -143,9 +147,65 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     endDate,
   ]);
 
+<<<<<<< HEAD
   useEffect(() => {
     onVisibleRowsChange(filteredHistory);
   }, [filteredHistory, onVisibleRowsChange]);
+=======
+  const sortedHistory = useMemo(() => {
+    const rows = [...filteredHistory];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "date") {
+        left = parseDate(a.date).getTime();
+        right = parseDate(b.date).getTime();
+      } else if (sortKey === "clientName") {
+        left = (a.clientName || "").toLowerCase();
+        right = (b.clientName || "").toLowerCase();
+      } else if (sortKey === "nosOfBe") {
+        left = a.nosOfBe || 0;
+        right = b.nosOfBe || 0;
+      } else if (sortKey === "net") {
+        left = a.net || 0;
+        right = b.net || 0;
+      } else {
+        left = (a.status || "").toLowerCase();
+        right = (b.status || "").toLowerCase();
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredHistory, sortKey, sortDir]);
+
+  const toggleSort = (
+    key: "date" | "clientName" | "nosOfBe" | "net" | "status",
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "date" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "date" | "clientName" | "nosOfBe" | "net" | "status",
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400";
+    return sortDir === "asc"
+      ? "fa-sort-up text-purple-600"
+      : "fa-sort-down text-purple-600";
+  };
+
+  useEffect(() => {
+    onVisibleRowsChange(sortedHistory);
+  }, [sortedHistory, onVisibleRowsChange]);
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
 
   const handleAinChange = (val: string) => {
     setAin(val);
@@ -867,7 +927,11 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           </div>
         </div>
         {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
+<<<<<<< HEAD
           <div className="fixed top-[78px] md:top-[86px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
+=======
+          <div className="fixed top-[112px] md:top-[116px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
             <div
               className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
                 isDark
@@ -921,29 +985,34 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         )}
 
         <div className="overflow-x-auto">
-          <table id="assessment-table" className="w-full text-left">
+          <table id="assessment-table" className="w-full text-left border-collapse">
             <thead>
               <tr
                 className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
               >
+<<<<<<< HEAD
                 <th className="px-6 py-3 w-10 text-center">
+=======
+                <th className="px-6 py-3 w-12 text-center">
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                   <input
                     type="checkbox"
-                    className="w-4 h-4 rounded cursor-pointer accent-purple-600"
+                    className="w-4 h-4 rounded cursor-pointer accent-blue-600"
                     checked={
-                      selectedIds.length === filteredHistory.length &&
-                      filteredHistory.length > 0
+                      selectedIds.length === sortedHistory.length &&
+                      sortedHistory.length > 0
                     }
                     onChange={() =>
                       setSelectedIds(
-                        selectedIds.length === filteredHistory.length
+                        selectedIds.length === sortedHistory.length
                           ? []
-                          : filteredHistory.map((h) => h.id),
+                          : sortedHistory.map((h) => h.id),
                       )
                     }
                   />
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+<<<<<<< HEAD
                   Client & AIN
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
@@ -956,6 +1025,45 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   Status
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+=======
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("clientName")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Client & AIN{" "}
+                    <i className={`fas ${getSortIcon("clientName")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("nosOfBe")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Count of B/E <i className={`fas ${getSortIcon("nosOfBe")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("net")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Net Value <i className={`fas ${getSortIcon("net")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("status")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Status <i className={`fas ${getSortIcon("status")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+>>>>>>> 0dfae7e6b494dd7f9bd48f20d848c17360a100e0
                   Actions
                 </th>
               </tr>
@@ -963,10 +1071,16 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
             <tbody
               className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
             >
-              {filteredHistory.map((rec, index) => (
+              {sortedHistory.map((rec) => (
                 <tr
                   key={rec.id}
-                  className={`group hover:bg-purple-50/30 dark:hover:bg-slate-700/30 transition-all ${index % 2 === 0 && !isDark ? "bg-white" : !isDark ? "bg-slate-50/40" : ""}`}
+                  className={`group transition-all ${
+                    selectedIds.includes(rec.id)
+                      ? "bg-blue-50/50 dark:bg-blue-900/10"
+                      : isDark
+                        ? "hover:bg-slate-800/40"
+                        : "hover:bg-slate-50/70"
+                  }`}
                 >
                   <td className="px-6 py-3 text-center">
                     <input
