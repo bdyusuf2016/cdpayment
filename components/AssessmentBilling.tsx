@@ -428,6 +428,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       return;
     }
     const total = recs.reduce((a, b) => a + b.net, 0);
+    const isAllPaid = recs.every(
+      (r) => String(r.status || "").trim().toLowerCase() === "paid",
+    );
+    const totalLabel = isAllPaid ? "TOTAL PAID" : "TOTAL PAYABLE";
 
     let msg = `*ASSESSMENT BILL SUMMARY*\n`;
     msg += `--------------------------------\n`;
@@ -441,7 +445,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     });
 
     msg += `--------------------------------\n`;
-    msg += `*TOTAL PAYABLE:* Tk ${total.toLocaleString("en-BD")}\n`;
+    msg += `*${totalLabel}:* Tk ${total.toLocaleString("en-BD")}\n`;
     msg += `--------------------------------\n`;
 
     const encodedMsg = encodeURIComponent(msg);
@@ -468,6 +472,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     }
 
     const total = recs.reduce((a, b) => a + b.net, 0);
+    const isAllPaid = recs.every(
+      (r) => String(r.status || "").trim().toLowerCase() === "paid",
+    );
+    const totalLabel = isAllPaid ? "TOTAL PAID" : "TOTAL PAYABLE";
     const lines: string[] = [
       `Agency: ${systemConfig.agencyName}`,
       `Client: ${recs[0].clientName}`,
@@ -480,7 +488,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       );
     });
     lines.push("");
-    lines.push(`TOTAL PAYABLE: Tk ${total.toLocaleString("en-BD")}`);
+    lines.push(`${totalLabel}: Tk ${total.toLocaleString("en-BD")}`);
 
     const pdfBlob = createSimplePdfBlob("ASSESSMENT BILL INVOICE", lines);
     const filename = `assessment-invoice-${Date.now()}.pdf`;
@@ -1378,6 +1386,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 };
 
 export default AssessmentBilling;
+
 
 
 

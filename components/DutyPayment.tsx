@@ -316,6 +316,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const generateWAMessage = (recs: PaymentRecord[]) => {
     const clientName = recs[0].clientName;
     const total = recs.reduce((a, b) => a + b.duty, 0);
+    const isAllPaid = recs.every(
+      (r) => String(r.status || "").trim().toLowerCase() === "paid",
+    );
+    const totalLabel = isAllPaid ? "TOTAL PAID" : "TOTAL PAYABLE";
 
     let msg = `*INVOICE SUMMARY*\n`;
     msg += `--------------------------------\n`;
@@ -329,7 +333,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     });
 
     msg += `--------------------------------\n`;
-    msg += `*TOTAL PAYABLE:* Tk ${total.toLocaleString("en-BD")}\n`;
+    msg += `*${totalLabel}:* Tk ${total.toLocaleString("en-BD")}\n`;
     msg += `--------------------------------\n`;
     msg += `Thank you for your business.`;
 
@@ -377,6 +381,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     }
 
     const total = recs.reduce((a, b) => a + b.duty, 0);
+    const isAllPaid = recs.every(
+      (r) => String(r.status || "").trim().toLowerCase() === "paid",
+    );
+    const totalLabel = isAllPaid ? "TOTAL PAID" : "TOTAL PAYABLE";
     const lines: string[] = [
       `Agency: ${systemConfig.agencyName}`,
       `Client: ${recs[0].clientName}`,
@@ -389,7 +397,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       );
     });
     lines.push("");
-    lines.push(`TOTAL PAYABLE: Tk ${total.toLocaleString("en-BD")}`);
+    lines.push(`${totalLabel}: Tk ${total.toLocaleString("en-BD")}`);
 
     const pdfBlob = createSimplePdfBlob("DUTY PAYMENT INVOICE", lines);
     const filename = `duty-invoice-${Date.now()}.pdf`;
