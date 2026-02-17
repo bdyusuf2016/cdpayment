@@ -93,9 +93,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const combined = [...insertedRecords, ...history].filter(
       (v, i, a) => a.findIndex((x) => x.id === v.id) === i,
     );
-    return combined
+    const applied = combined
       .map((rec) => updatedRecords[rec.id] || rec)
       .filter((rec) => !deletedIds.includes(rec.id));
+    return [...applied].sort(
+      (a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime(),
+    );
   }, [insertedRecords, history, updatedRecords, deletedIds]);
 
   const filteredHistory = useMemo(() => {
@@ -1584,4 +1587,3 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 };
 
 export default DutyPayment;
-

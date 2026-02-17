@@ -105,9 +105,12 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       (v, i, a) => a.findIndex((x) => x.id === v.id) === i,
     );
     // Apply any local updates
-    return combined
+    const applied = combined
       .map((rec) => (updatedRecords[rec.id] ? updatedRecords[rec.id] : rec))
       .filter((rec) => !deletedIds.includes(rec.id));
+    return [...applied].sort(
+      (a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime(),
+    );
   }, [history, insertedRecords, updatedRecords, deletedIds]);
 
   const filteredHistory = useMemo(() => {
