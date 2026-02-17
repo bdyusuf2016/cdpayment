@@ -726,18 +726,6 @@ const App: React.FC = () => {
     auditLogs,
   ]);
 
-  useEffect(() => {
-    setVisibleDutyRows(dutyHistory);
-  }, [dutyHistory]);
-
-  useEffect(() => {
-    setVisibleAssessmentRows(assessmentHistory);
-  }, [assessmentHistory]);
-
-  useEffect(() => {
-    setVisibleAinRows(clients);
-  }, [clients]);
-
   // Loading Screen
   if (isLoadingSession) {
     return (
