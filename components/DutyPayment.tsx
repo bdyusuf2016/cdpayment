@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import { DutyItem, PaymentRecord, Client, SystemConfig } from "../types";
 import { insertDuty, updateDuty, deleteDuty } from "../utils/supabaseApi";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -12,6 +12,13 @@ interface DutyPaymentProps {
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
 }
+
+const getTodayDateInputValue = (): string => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().split("T")[0];
+};
 
 const DutyPayment: React.FC<DutyPaymentProps> = ({
   clients,
@@ -40,8 +47,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [filterSearch, setFilterSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterPaymentMethod, setFilterPaymentMethod] = useState("All");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(getTodayDateInputValue);
+  const [endDate, setEndDate] = useState(getTodayDateInputValue);
   const [sortKey, setSortKey] = useState<
     "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit"
   >("date");
@@ -1111,8 +1118,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
             <button
               onClick={() => {
-                setStartDate(new Date().toISOString().split("T")[0]);
-                setEndDate(new Date().toISOString().split("T")[0]);
+                const today = getTodayDateInputValue();
+                setStartDate(today);
+                setEndDate(today);
               }}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-blue-700"
             >
@@ -1576,5 +1584,4 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 };
 
 export default DutyPayment;
-
 

@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import {
   AssessmentItem,
   Client,
@@ -22,6 +22,13 @@ interface AssessmentBillingProps {
   supabase: SupabaseClient | null;
 }
 
+const getTodayDateInputValue = (): string => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().split("T")[0];
+};
+
 const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   clients,
   systemConfig,
@@ -43,8 +50,8 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const [filterSearch, setFilterSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterPaymentMethod, setFilterPaymentMethod] = useState("All");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(getTodayDateInputValue);
+  const [endDate, setEndDate] = useState(getTodayDateInputValue);
   const [sortKey, setSortKey] = useState<
     "date" | "clientName" | "nosOfBe" | "net" | "status"
   >("date");
@@ -977,8 +984,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
             <button
               onClick={() => {
-                setStartDate(new Date().toISOString().split("T")[0]);
-                setEndDate(new Date().toISOString().split("T")[0]);
+                const today = getTodayDateInputValue();
+                setStartDate(today);
+                setEndDate(today);
               }}
               className="bg-purple-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-purple-700"
             >
