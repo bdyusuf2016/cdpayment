@@ -315,11 +315,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const generateWAMessage = (recs: PaymentRecord[]) => {
     const clientName = recs[0].clientName;
-    const total = recs.reduce((a, b) => a + b.duty, 0);
+    const subtotal = recs.reduce((a, b) => a + (b.duty || 0), 0);
+    const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
+    const serviceCharge = recs.reduce((a, b) => a + (b.profit || 0), 0);
+    const due = Math.max(0, subtotal - totalReceived);
     const isAllPaid = recs.every(
       (r) => String(r.status || "").trim().toLowerCase() === "paid",
     );
-    const totalLabel = isAllPaid ? "TOTAL PAID" : "TOTAL PAYABLE";
+    const settlementLabel = isAllPaid ? "Paid" : "Payable";
+    const settlementValue = isAllPaid ? Math.max(totalReceived, subtotal) : due;
 
     let msg = `*INVOICE SUMMARY*\n`;
     msg += `--------------------------------\n`;
@@ -333,7 +337,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     });
 
     msg += `--------------------------------\n`;
-    msg += `*${totalLabel}:* Tk ${total.toLocaleString("en-BD")}\n`;
+    msg += `*Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
+    msg += `*Service Charge:* Tk ${serviceCharge.toLocaleString("en-BD")}\n`;
+    msg += `*Due:* Tk ${due.toLocaleString("en-BD")}\n`;
+    msg += `*${settlementLabel}:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
     msg += `--------------------------------\n`;
     msg += `Thank you for your business.`;
 
@@ -380,11 +387,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       return;
     }
 
-    const total = recs.reduce((a, b) => a + b.duty, 0);
+    const subtotal = recs.reduce((a, b) => a + (b.duty || 0), 0);
+    const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
+    const serviceCharge = recs.reduce((a, b) => a + (b.profit || 0), 0);
+    const due = Math.max(0, subtotal - totalReceived);
     const isAllPaid = recs.every(
       (r) => String(r.status || "").trim().toLowerCase() === "paid",
     );
-    const totalLabel = isAllPaid ? "TOTAL PAID" : "TOTAL PAYABLE";
+    const settlementLabel = isAllPaid ? "Paid" : "Payable";
+    const settlementValue = isAllPaid ? Math.max(totalReceived, subtotal) : due;
     const lines: string[] = [
       `Agency: ${systemConfig.agencyName}`,
       `Client: ${recs[0].clientName}`,
@@ -397,7 +408,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       );
     });
     lines.push("");
-    lines.push(`${totalLabel}: Tk ${total.toLocaleString("en-BD")}`);
+    lines.push(`Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
+    lines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
+    lines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
+    lines.push(`${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}`);
 
     const pdfBlob = createSimplePdfBlob("DUTY PAYMENT INVOICE", lines);
     const filename = `duty-invoice-${Date.now()}.pdf`;
