@@ -452,6 +452,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     msg += `--------------------------------\n`;
     msg += `*Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
     msg += `*Service Charge:* Tk ${serviceCharge.toLocaleString("en-BD")}\n`;
+    msg += `*Received Amount:* Tk ${totalReceived.toLocaleString("en-BD")}\n`;
     msg += `*Due:* Tk ${due.toLocaleString("en-BD")}\n`;
     msg += `*${settlementLabel}:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
     msg += `--------------------------------\n`;
@@ -503,6 +504,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     lines.push("");
     lines.push(`Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
     lines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
+    lines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
     lines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
     lines.push(`${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}`);
 
@@ -535,7 +537,14 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     URL.revokeObjectURL(url);
 
     const waText = encodeURIComponent(
-      "Invoice PDF downloaded. Please attach the downloaded file and send it.",
+      `ASSESSMENT BILL SUMMARY
+Subtotal: Tk ${subtotal.toLocaleString("en-BD")}
+Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}
+Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}
+Due: Tk ${due.toLocaleString("en-BD")}
+${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}
+
+Invoice PDF downloaded. Please attach the downloaded file and send it.`,
     );
     const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
     const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
