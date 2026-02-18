@@ -324,6 +324,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     );
     const settlementLabel = isAllPaid ? "Paid" : "Payable";
     const settlementValue = isAllPaid ? Math.max(totalReceived, subtotal) : due;
+    const showReceivedLine = settlementLabel === "Paid";
 
     let msg = `*INVOICE SUMMARY*\n`;
     msg += `--------------------------------\n`;
@@ -339,7 +340,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     msg += `--------------------------------\n`;
     msg += `*Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
     msg += `*Service Charge:* Tk ${serviceCharge.toLocaleString("en-BD")}\n`;
-    msg += `*Received Amount:* Tk ${totalReceived.toLocaleString("en-BD")}\n`;
+    if (showReceivedLine) {
+      msg += `*Received Amount:* Tk ${totalReceived.toLocaleString("en-BD")}\n`;
+    }
     msg += `*Due:* Tk ${due.toLocaleString("en-BD")}\n`;
     msg += `*${settlementLabel}:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
     msg += `--------------------------------\n`;
@@ -397,6 +400,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     );
     const settlementLabel = isAllPaid ? "Paid" : "Payable";
     const settlementValue = isAllPaid ? Math.max(totalReceived, subtotal) : due;
+    const showReceivedLine = settlementLabel === "Paid";
     const lines: string[] = [
       `Agency: ${systemConfig.agencyName}`,
       `Client: ${recs[0].clientName}`,
@@ -411,7 +415,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     lines.push("");
     lines.push(`Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
     lines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
-    lines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
+    if (showReceivedLine) {
+      lines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
+    }
     lines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
     lines.push(`${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}`);
 
@@ -443,16 +449,20 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     a.click();
     URL.revokeObjectURL(url);
 
-    const waText = encodeURIComponent(
-      `INVOICE SUMMARY
+    let waSummaryText = `INVOICE SUMMARY
 Subtotal: Tk ${subtotal.toLocaleString("en-BD")}
 Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}
-Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}
 Due: Tk ${due.toLocaleString("en-BD")}
 ${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}
 
-Invoice PDF downloaded. Please attach the downloaded file and send it.`,
-    );
+Invoice PDF downloaded. Please attach the downloaded file and send it.`;
+    if (showReceivedLine) {
+      waSummaryText = waSummaryText.replace(
+        "Due:",
+        `Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}\nDue:`,
+      );
+    }
+    const waText = encodeURIComponent(waSummaryText);
     const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
     const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
 
@@ -638,6 +648,7 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`,
     };
 
     const receivedById = allocateByWeight(targetRecords, amount, (r) => r.duty);
+    const paymentDate = new Date().toLocaleDateString("en-GB");
 
     // Optimistic UI update first
     setUpdatedRecords((prev) => {
@@ -645,6 +656,7 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`,
       for (const rec of targetRecords) {
         const received = receivedById[rec.id] ?? 0;
         const patched: Partial<PaymentRecord> = {
+          date: paymentDate,
           status: "Paid",
           received,
           profit: received - rec.duty,
@@ -657,8 +669,9 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`,
     setHistory((prev) =>
       prev.map((rec) =>
         paymentIds.includes(rec.id)
-          ? ({
+            ? ({
               ...rec,
+              date: paymentDate,
               status: "Paid",
               received: receivedById[rec.id] ?? 0,
               profit: (receivedById[rec.id] ?? 0) - rec.duty,
@@ -674,6 +687,7 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`,
         targetRecords.map(async (rec) => {
           const received = receivedById[rec.id] ?? 0;
           const patched: Partial<PaymentRecord> = {
+            date: paymentDate,
             status: "Paid",
             received,
             profit: received - rec.duty,

@@ -437,6 +437,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     );
     const settlementLabel = isAllPaid ? "Paid" : "Payable";
     const settlementValue = isAllPaid ? Math.max(totalReceived, totalNet) : due;
+    const showReceivedLine = settlementLabel === "Paid";
 
     let msg = `*ASSESSMENT BILL SUMMARY*\n`;
     msg += `--------------------------------\n`;
@@ -452,7 +453,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     msg += `--------------------------------\n`;
     msg += `*Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
     msg += `*Service Charge:* Tk ${serviceCharge.toLocaleString("en-BD")}\n`;
-    msg += `*Received Amount:* Tk ${totalReceived.toLocaleString("en-BD")}\n`;
+    if (showReceivedLine) {
+      msg += `*Received Amount:* Tk ${totalReceived.toLocaleString("en-BD")}\n`;
+    }
     msg += `*Due:* Tk ${due.toLocaleString("en-BD")}\n`;
     msg += `*${settlementLabel}:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
     msg += `--------------------------------\n`;
@@ -490,6 +493,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     );
     const settlementLabel = isAllPaid ? "Paid" : "Payable";
     const settlementValue = isAllPaid ? Math.max(totalReceived, totalNet) : due;
+    const showReceivedLine = settlementLabel === "Paid";
     const lines: string[] = [
       `Agency: ${systemConfig.agencyName}`,
       `Client: ${recs[0].clientName}`,
@@ -504,7 +508,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     lines.push("");
     lines.push(`Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
     lines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
-    lines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
+    if (showReceivedLine) {
+      lines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
+    }
     lines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
     lines.push(`${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}`);
 
@@ -536,16 +542,20 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     a.click();
     URL.revokeObjectURL(url);
 
-    const waText = encodeURIComponent(
-      `ASSESSMENT BILL SUMMARY
+    let waSummaryText = `ASSESSMENT BILL SUMMARY
 Subtotal: Tk ${subtotal.toLocaleString("en-BD")}
 Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}
-Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}
 Due: Tk ${due.toLocaleString("en-BD")}
 ${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}
 
-Invoice PDF downloaded. Please attach the downloaded file and send it.`,
-    );
+Invoice PDF downloaded. Please attach the downloaded file and send it.`;
+    if (showReceivedLine) {
+      waSummaryText = waSummaryText.replace(
+        "Due:",
+        `Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}\nDue:`,
+      );
+    }
+    const waText = encodeURIComponent(waSummaryText);
     const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
     const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
 
@@ -626,6 +636,7 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`,
     };
 
     const receivedById = allocateByWeight(targetRecords, amount, (r) => r.net);
+    const paymentDate = new Date().toLocaleDateString("en-GB");
 
     const apply = async () => {
       setHistory((prev) =>
@@ -633,6 +644,7 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`,
           paymentIds.includes(rec.id)
             ? ({
                 ...rec,
+                date: paymentDate,
                 status: "Paid",
                 received: receivedById[rec.id] ?? 0,
                 paymentMethod,
@@ -643,6 +655,7 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`,
       for (const rec of targetRecords) {
         const received = receivedById[rec.id] ?? 0;
         const patched: Partial<AssessmentRecord> = {
+          date: paymentDate,
           status: "Paid",
           received,
           paymentMethod: paymentMethod,
