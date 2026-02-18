@@ -427,11 +427,16 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       alert("No phone number found.");
       return;
     }
-    const total = recs.reduce((a, b) => a + b.net, 0);
+    const subtotal = recs.reduce((a, b) => a + (b.amount || 0), 0);
+    const serviceCharge = recs.reduce((a, b) => a + (b.profit || 0), 0);
+    const totalNet = recs.reduce((a, b) => a + (b.net || 0), 0);
+    const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
+    const due = Math.max(0, totalNet - totalReceived);
     const isAllPaid = recs.every(
       (r) => String(r.status || "").trim().toLowerCase() === "paid",
     );
-    const totalLabel = isAllPaid ? "TOTAL PAID" : "TOTAL PAYABLE";
+    const settlementLabel = isAllPaid ? "Paid" : "Payable";
+    const settlementValue = isAllPaid ? Math.max(totalReceived, totalNet) : due;
 
     let msg = `*ASSESSMENT BILL SUMMARY*\n`;
     msg += `--------------------------------\n`;
@@ -445,7 +450,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     });
 
     msg += `--------------------------------\n`;
-    msg += `*${totalLabel}:* Tk ${total.toLocaleString("en-BD")}\n`;
+    msg += `*Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
+    msg += `*Service Charge:* Tk ${serviceCharge.toLocaleString("en-BD")}\n`;
+    msg += `*Due:* Tk ${due.toLocaleString("en-BD")}\n`;
+    msg += `*${settlementLabel}:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
     msg += `--------------------------------\n`;
 
     const encodedMsg = encodeURIComponent(msg);
@@ -471,11 +479,16 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       return;
     }
 
-    const total = recs.reduce((a, b) => a + b.net, 0);
+    const subtotal = recs.reduce((a, b) => a + (b.amount || 0), 0);
+    const serviceCharge = recs.reduce((a, b) => a + (b.profit || 0), 0);
+    const totalNet = recs.reduce((a, b) => a + (b.net || 0), 0);
+    const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
+    const due = Math.max(0, totalNet - totalReceived);
     const isAllPaid = recs.every(
       (r) => String(r.status || "").trim().toLowerCase() === "paid",
     );
-    const totalLabel = isAllPaid ? "TOTAL PAID" : "TOTAL PAYABLE";
+    const settlementLabel = isAllPaid ? "Paid" : "Payable";
+    const settlementValue = isAllPaid ? Math.max(totalReceived, totalNet) : due;
     const lines: string[] = [
       `Agency: ${systemConfig.agencyName}`,
       `Client: ${recs[0].clientName}`,
@@ -488,7 +501,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       );
     });
     lines.push("");
-    lines.push(`${totalLabel}: Tk ${total.toLocaleString("en-BD")}`);
+    lines.push(`Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
+    lines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
+    lines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
+    lines.push(`${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}`);
 
     const pdfBlob = createSimplePdfBlob("ASSESSMENT BILL INVOICE", lines);
     const filename = `assessment-invoice-${Date.now()}.pdf`;
