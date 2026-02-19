@@ -207,8 +207,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   }, [sortedHistory, onVisibleRowsChange]);
 
   const handleAinChange = (val: string) => {
-    setAin(val);
-    const client = clients.find((c) => c.ain === val);
+    const normalizedAin = String(val || "")
+      .split("|")[0]
+      .trim();
+    setAin(normalizedAin);
+    const client = clients.find((c) => c.ain === normalizedAin);
     if (client) {
       setClientName(client.name);
       setPhone(client.phone || "");
@@ -898,10 +901,16 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`;
                 <input
                   type="text"
                   placeholder="Search AIN..."
+                  list="client-ain-options-duty"
                   className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                   value={ain}
                   onChange={(e) => handleAinChange(e.target.value)}
                 />
+                <datalist id="client-ain-options-duty">
+                  {clients.map((c) => (
+                    <option key={c.ain} value={`${c.ain} | ${c.name}`} />
+                  ))}
+                </datalist>
               </div>
             </div>
             <div className="space-y-1.5">
