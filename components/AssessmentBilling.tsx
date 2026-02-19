@@ -1257,7 +1257,9 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`;
                     <span
                       className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${rec.status === "Paid" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
                     >
-                      {rec.status}
+                      {rec.status === "Paid" && rec.paymentMethod
+                        ? `${rec.status} | ${rec.paymentMethod}`
+                        : rec.status}
                     </span>
                   </td>
                   <td className="px-6 py-3 text-center">

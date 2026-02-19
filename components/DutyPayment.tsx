@@ -1430,7 +1430,9 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`;
                             : "bg-indigo-100 text-indigo-700"
                       }`}
                     >
-                      {rec.status}
+                      {rec.status === "Paid" && rec.paymentMethod
+                        ? `${rec.status} | ${rec.paymentMethod}`
+                        : rec.status}
                     </span>
                   </td>
                   <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
