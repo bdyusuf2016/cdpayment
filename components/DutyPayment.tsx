@@ -348,12 +348,13 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     msg += `--------------------------------\n\n`;
 
     groupedByAin.forEach(([ainValue, ainRecords]) => {
-      msg += `*AIN:* ${ainValue}\n`;
+      const ainName = ainRecords[0]?.clientName || "Unknown";
+      msg += `*AIN:* ${ainValue} | *Name:* ${ainName}\n`;
       ainRecords.forEach((r, i) => {
         msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* Tk ${r.duty.toLocaleString("en-BD")}\n`;
       });
       const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
-      msg += `*Subtotal (${ainValue}):* Tk ${ainSubtotal.toLocaleString("en-BD")}\n\n`;
+      msg += `*Subtotal (${ainValue} - ${ainName}):* Tk ${ainSubtotal.toLocaleString("en-BD")}\n\n`;
     });
 
     msg += `--------------------------------\n`;
@@ -439,14 +440,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       "",
     ];
     groupedByAin.forEach(([ainValue, ainRecords]) => {
-      lines.push(`AIN: ${ainValue}`);
+      const ainName = ainRecords[0]?.clientName || "Unknown";
+      lines.push(`AIN: ${ainValue} | Name: ${ainName}`);
       ainRecords.forEach((r, idx) => {
         lines.push(
           `${idx + 1}. B/E ${r.beYear} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
         );
       });
       const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
-      lines.push(`Subtotal (${ainValue}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      lines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
       lines.push("");
     });
     lines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
@@ -488,14 +490,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
     const summaryLines: string[] = ["INVOICE SUMMARY", ""];
     groupedByAin.forEach(([ainValue, ainRecords]) => {
-      summaryLines.push(`AIN: ${ainValue}`);
+      const ainName = ainRecords[0]?.clientName || "Unknown";
+      summaryLines.push(`AIN: ${ainValue} | Name: ${ainName}`);
       ainRecords.forEach((r, idx) => {
         summaryLines.push(
           `${idx + 1}. B/E ${r.beYear} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
         );
       });
       const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
-      summaryLines.push(`Subtotal (${ainValue}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      summaryLines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
       summaryLines.push("");
     });
     summaryLines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
@@ -606,6 +609,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     );
     const items = groupedByAin
       .map(([ainValue, ainRecords]) => {
+        const ainName = ainRecords[0]?.clientName || "Unknown";
         const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
         const ainRows = ainRecords
           .map(
@@ -619,11 +623,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           .join("");
         return `
       <tr>
-        <td colspan="3" style="padding: 12px; border-bottom: 1px solid #ddd; background: #f8fafc; font-weight: 700;">AIN: ${ainValue}</td>
+        <td colspan="3" style="padding: 12px; border-bottom: 1px solid #ddd; background: #f8fafc; font-weight: 700;">AIN: ${ainValue} | Name: ${ainName}</td>
       </tr>
       ${ainRows}
       <tr>
-        <td colspan="2" style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">Subtotal (${ainValue})</td>
+        <td colspan="2" style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">Subtotal (${ainValue} - ${ainName})</td>
         <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">${fmt(ainSubtotal)}</td>
       </tr>`;
       })

@@ -386,6 +386,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const totalNet = records.reduce((acc, r) => acc + r.net, 0);
     const itemsHtml = groupedByAin
       .map(([ainValue, ainRecords]) => {
+        const ainName = ainRecords[0]?.clientName || "Unknown";
         const ainSubtotal = ainRecords.reduce((acc, rec) => acc + rec.net, 0);
         const ainRows = ainRecords
           .map(
@@ -399,11 +400,11 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           .join("");
         return `
       <tr>
-        <td colspan="3" style="padding: 10px; border-bottom: 1px solid #ddd; background: #f8fafc; font-weight: 700;">AIN: ${ainValue}</td>
+        <td colspan="3" style="padding: 10px; border-bottom: 1px solid #ddd; background: #f8fafc; font-weight: 700;">AIN: ${ainValue} | Name: ${ainName}</td>
       </tr>
       ${ainRows}
       <tr>
-        <td colspan="2" style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">Subtotal (${ainValue})</td>
+        <td colspan="2" style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">Subtotal (${ainValue} - ${ainName})</td>
         <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">${fmt(ainSubtotal)}</td>
       </tr>`;
       })
@@ -486,12 +487,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     msg += `--------------------------------\n\n`;
 
     groupedByAin.forEach(([ainValue, ainRecords]) => {
-      msg += `*AIN:* ${ainValue}\n`;
+      const ainName = ainRecords[0]?.clientName || "Unknown";
+      msg += `*AIN:* ${ainValue} | *Name:* ${ainName}\n`;
       ainRecords.forEach((r, i) => {
         msg += `${i + 1}. *Qty:* ${r.nosOfBe} B/E\n    *Rate:* Tk ${r.rate}\n    *Amount:* Tk ${r.net.toLocaleString("en-BD")}\n`;
       });
       const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.net || 0), 0);
-      msg += `*Subtotal (${ainValue}):* Tk ${ainSubtotal.toLocaleString("en-BD")}\n\n`;
+      msg += `*Subtotal (${ainValue} - ${ainName}):* Tk ${ainSubtotal.toLocaleString("en-BD")}\n\n`;
     });
 
     msg += `--------------------------------\n`;
@@ -557,14 +559,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       "",
     ];
     groupedByAin.forEach(([ainValue, ainRecords]) => {
-      lines.push(`AIN: ${ainValue}`);
+      const ainName = ainRecords[0]?.clientName || "Unknown";
+      lines.push(`AIN: ${ainValue} | Name: ${ainName}`);
       ainRecords.forEach((r, idx) => {
         lines.push(
           `${idx + 1}. Qty ${r.nosOfBe} B/E | Rate Tk ${r.rate} | Amount Tk ${r.net.toLocaleString("en-BD")}`,
         );
       });
       const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.net || 0), 0);
-      lines.push(`Subtotal (${ainValue}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      lines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
       lines.push("");
     });
     lines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
@@ -606,14 +609,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
     const summaryLines: string[] = ["ASSESSMENT BILL SUMMARY", ""];
     groupedByAin.forEach(([ainValue, ainRecords]) => {
-      summaryLines.push(`AIN: ${ainValue}`);
+      const ainName = ainRecords[0]?.clientName || "Unknown";
+      summaryLines.push(`AIN: ${ainValue} | Name: ${ainName}`);
       ainRecords.forEach((r, idx) => {
         summaryLines.push(
           `${idx + 1}. Qty ${r.nosOfBe} B/E | Rate Tk ${r.rate} | Amount Tk ${r.net.toLocaleString("en-BD")}`,
         );
       });
       const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.net || 0), 0);
-      summaryLines.push(`Subtotal (${ainValue}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      summaryLines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
       summaryLines.push("");
     });
     summaryLines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);

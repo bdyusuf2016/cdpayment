@@ -782,6 +782,7 @@ const App: React.FC = () => {
         const dueRows = visibleDutyRows
           .map((r) => ({
             ain: r.ain || "N/A",
+            name: r.clientName || "Unknown",
             be: r.beYear || "N/A",
             due: Math.max(0, (r.duty || 0) - (r.received || 0)),
           }))
@@ -792,7 +793,10 @@ const App: React.FC = () => {
           title: "Due Details (Top Records)",
           items:
             dueRows.length > 0
-              ? dueRows.map((r) => `AIN ${r.ain} | B/E ${r.be} | Due ${money(r.due)}`)
+              ? dueRows.map(
+                  (r) =>
+                    `AIN ${r.ain} (${r.name}) | B/E ${r.be} | Due ${money(r.due)}`,
+                )
               : ["No due records in current view."],
         };
       }
@@ -822,6 +826,7 @@ const App: React.FC = () => {
           const dueRows = visibleAssessmentRows
             .map((r) => ({
               ain: r.ain || "N/A",
+              name: r.clientName || "Unknown",
               be: r.nosOfBe || 0,
               due: Math.max(0, (r.net || 0) - (r.received || 0)),
             }))
@@ -833,7 +838,8 @@ const App: React.FC = () => {
             items:
               dueRows.length > 0
                 ? dueRows.map(
-                    (r) => `AIN ${r.ain} | Qty ${r.be} B/E | Due ${money(r.due)}`,
+                    (r) =>
+                      `AIN ${r.ain} (${r.name}) | Qty ${r.be} B/E | Due ${money(r.due)}`,
                   )
                 : ["No due records in current view."],
           };
