@@ -106,12 +106,18 @@ const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
   paymentMethods: row.paymentMethods ?? row.payment_methods,
 });
 
+interface StatDetailView {
+  title: string;
+  items: string[];
+}
+
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   const [activeTab, setActiveTab] = useState<TabType>("duty");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeStatIndex, setActiveStatIndex] = useState<number | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
@@ -726,6 +732,165 @@ const App: React.FC = () => {
     auditLogs,
   ]);
 
+  useEffect(() => {
+    setActiveStatIndex(null);
+  }, [activeTab]);
+
+  const statDetail = useMemo<StatDetailView | null>(() => {
+    if (activeStatIndex === null || !stats[activeStatIndex]) return null;
+    const money = (n: number) => `Tk ${n.toLocaleString("en-BD")}`;
+
+    switch (activeTab) {
+      case "duty": {
+        if (activeStatIndex === 0) {
+          const totalRecords = visibleDutyRows.length;
+          const avgDuty =
+            totalRecords > 0
+              ? visibleDutyRows.reduce((acc, r) => acc + (r.duty || 0), 0) /
+                totalRecords
+              : 0;
+          return {
+            title: "Gross Duty Details",
+            items: [
+              `Total Records: ${totalRecords}`,
+              `Average Duty per Record: ${money(Math.round(avgDuty))}`,
+            ],
+          };
+        }
+        if (activeStatIndex === 1) {
+          const withReceived = visibleDutyRows.filter((r) => (r.received || 0) > 0);
+          return {
+            title: "Collection Details",
+            items: [
+              `Records with Collection: ${withReceived.length}`,
+              `Fully Paid Records: ${visibleDutyRows.filter((r) => String(r.status || "").trim().toLowerCase() === "paid").length}`,
+            ],
+          };
+        }
+        if (activeStatIndex === 2) {
+          const paidRows = visibleDutyRows.filter(
+            (r) => String(r.status || "").trim().toLowerCase() === "paid",
+          );
+          return {
+            title: "Profit Details",
+            items: [
+              `Paid Records Count: ${paidRows.length}`,
+              `Unpaid Records Count: ${Math.max(0, visibleDutyRows.length - paidRows.length)}`,
+            ],
+          };
+        }
+        const dueRows = visibleDutyRows
+          .map((r) => ({
+            ain: r.ain || "N/A",
+            be: r.beYear || "N/A",
+            due: Math.max(0, (r.duty || 0) - (r.received || 0)),
+          }))
+          .filter((r) => r.due > 0)
+          .sort((a, b) => b.due - a.due)
+          .slice(0, 8);
+        return {
+          title: "Due Details (Top Records)",
+          items:
+            dueRows.length > 0
+              ? dueRows.map((r) => `AIN ${r.ain} | B/E ${r.be} | Due ${money(r.due)}`)
+              : ["No due records in current view."],
+        };
+      }
+      case "assessment": {
+        if (activeStatIndex === 0) {
+          return {
+            title: "Total Billed Details",
+            items: [
+              `Total Rows: ${visibleAssessmentRows.length}`,
+              `Total B/E Count: ${visibleAssessmentRows.reduce((acc, r) => acc + Number(r.nosOfBe || 0), 0).toLocaleString("en-BD")}`,
+            ],
+          };
+        }
+        if (activeStatIndex === 1) {
+          const paid = visibleAssessmentRows.filter(
+            (r) => String(r.status || "").trim().toLowerCase() === "paid",
+          ).length;
+          return {
+            title: "Received Details",
+            items: [
+              `Paid Rows: ${paid}`,
+              `Unpaid Rows: ${Math.max(0, visibleAssessmentRows.length - paid)}`,
+            ],
+          };
+        }
+        if (activeStatIndex === 2) {
+          const dueRows = visibleAssessmentRows
+            .map((r) => ({
+              ain: r.ain || "N/A",
+              be: r.nosOfBe || 0,
+              due: Math.max(0, (r.net || 0) - (r.received || 0)),
+            }))
+            .filter((r) => r.due > 0)
+            .sort((a, b) => b.due - a.due)
+            .slice(0, 8);
+          return {
+            title: "Due Amount Details (Top Records)",
+            items:
+              dueRows.length > 0
+                ? dueRows.map(
+                    (r) => `AIN ${r.ain} | Qty ${r.be} B/E | Due ${money(r.due)}`,
+                  )
+                : ["No due records in current view."],
+          };
+        }
+        return {
+          title: "Total B/E Details",
+          items: [
+            `Rows Count: ${visibleAssessmentRows.length}`,
+            `Combined B/E Quantity: ${visibleAssessmentRows.reduce((acc, r) => acc + Number(r.nosOfBe || 0), 0).toLocaleString("en-BD")}`,
+          ],
+        };
+      }
+      case "ain": {
+        const noPhone = visibleAinRows.filter((c) => !c.phone).length;
+        const inactive = visibleAinRows.filter((c) => !c.active).length;
+        return {
+          title: `${stats[activeStatIndex].label} Details`,
+          items: [
+            `Total AIN in View: ${visibleAinRows.length}`,
+            `Without Phone: ${noPhone}`,
+            `Inactive AIN: ${inactive}`,
+          ],
+        };
+      }
+      case "logs": {
+        const latest = auditLogs
+          .slice(0, 8)
+          .map((l) => `${l.timestamp} | ${l.module} | ${l.action}`);
+        return {
+          title: `${stats[activeStatIndex].label} Details`,
+          items: latest.length > 0 ? latest : ["No logs available."],
+        };
+      }
+      case "admin": {
+        return {
+          title: `${stats[activeStatIndex].label} Details`,
+          items: [
+            `Total Users: ${users.length}`,
+            `Active: ${users.filter((u) => u.active).length}`,
+            `Inactive: ${users.filter((u) => !u.active).length}`,
+          ],
+        };
+      }
+      default:
+        return null;
+    }
+  }, [
+    activeStatIndex,
+    activeTab,
+    stats,
+    visibleDutyRows,
+    visibleAssessmentRows,
+    visibleAinRows,
+    auditLogs,
+    users,
+  ]);
+
   // Loading Screen
   if (isLoadingSession) {
     return (
@@ -937,7 +1102,43 @@ const App: React.FC = () => {
 
       {/* Primary Workspace */}
       <main className="p-4 md:p-8 max-w-[1600px] mx-auto w-full flex-grow">
-        <StatsCards cards={stats} />
+        <StatsCards
+          cards={stats}
+          activeIndex={activeStatIndex}
+          onCardClick={(index) =>
+            setActiveStatIndex((prev) => (prev === index ? null : index))
+          }
+        />
+        {statDetail && (
+          <div
+            className={`mb-6 rounded-2xl border p-4 ${
+              isDark
+                ? "bg-slate-900/60 border-slate-700 text-slate-200"
+                : "bg-white border-slate-200 text-slate-700"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <p className="text-sm font-extrabold tracking-wide uppercase">
+                {statDetail.title}
+              </p>
+              <button
+                onClick={() => setActiveStatIndex(null)}
+                className={`text-xs font-bold px-2 py-1 rounded ${
+                  isDark
+                    ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Close
+              </button>
+            </div>
+            <div className="space-y-1 text-xs">
+              {statDetail.items.map((item, idx) => (
+                <p key={`${item}-${idx}`}>{item}</p>
+              ))}
+            </div>
+          </div>
+        )}
         {!isAdminUser && (
           <div
             className={`mb-4 rounded-xl border px-4 py-3 text-xs font-bold ${
