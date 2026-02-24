@@ -328,6 +328,17 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const settlementLabel = isAllPaid ? "Paid" : "Payable";
     const settlementValue = isAllPaid ? Math.max(totalReceived, subtotal) : due;
     const showReceivedLine = settlementLabel === "Paid";
+    const groupedByAin = Array.from(
+      recs.reduce(
+        (acc, rec) => {
+          const key = (rec.ain || "N/A").trim() || "N/A";
+          if (!acc.has(key)) acc.set(key, []);
+          acc.get(key)!.push(rec);
+          return acc;
+        },
+        new Map<string, PaymentRecord[]>(),
+      ),
+    );
 
     let msg = `*INVOICE SUMMARY*\n`;
     msg += `--------------------------------\n`;
@@ -336,18 +347,24 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     msg += `*Date:* ${new Date().toLocaleDateString("en-GB")}\n`;
     msg += `--------------------------------\n\n`;
 
-    recs.forEach((r, i) => {
-      msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* Tk ${r.duty.toLocaleString("en-BD")}\n\n`;
+    groupedByAin.forEach(([ainValue, ainRecords]) => {
+      msg += `*AIN:* ${ainValue}\n`;
+      ainRecords.forEach((r, i) => {
+        msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* Tk ${r.duty.toLocaleString("en-BD")}\n`;
+      });
+      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
+      msg += `*Subtotal (${ainValue}):* Tk ${ainSubtotal.toLocaleString("en-BD")}\n\n`;
     });
 
     msg += `--------------------------------\n`;
-    msg += `*Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
+    msg += `*Grand Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
     msg += `*Service Charge:* Tk ${serviceCharge.toLocaleString("en-BD")}\n`;
     if (showReceivedLine) {
       msg += `*Received Amount:* Tk ${totalReceived.toLocaleString("en-BD")}\n`;
     }
     msg += `*Due:* Tk ${due.toLocaleString("en-BD")}\n`;
-    msg += `*${settlementLabel}:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
+    msg += `*Grand Total:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
+    msg += `*Status:* ${settlementLabel}\n`;
     msg += `--------------------------------\n`;
     msg += `Thank you for your business.`;
 
@@ -404,25 +421,42 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const settlementLabel = isAllPaid ? "Paid" : "Payable";
     const settlementValue = isAllPaid ? Math.max(totalReceived, subtotal) : due;
     const showReceivedLine = settlementLabel === "Paid";
+    const groupedByAin = Array.from(
+      recs.reduce(
+        (acc, rec) => {
+          const key = (rec.ain || "N/A").trim() || "N/A";
+          if (!acc.has(key)) acc.set(key, []);
+          acc.get(key)!.push(rec);
+          return acc;
+        },
+        new Map<string, PaymentRecord[]>(),
+      ),
+    );
     const lines: string[] = [
       `Agency: ${systemConfig.agencyName}`,
       `Client: ${recs[0].clientName}`,
       `Date: ${new Date().toLocaleDateString("en-GB")}`,
       "",
     ];
-    recs.forEach((r, idx) => {
-      lines.push(
-        `${idx + 1}. B/E ${r.beYear} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
-      );
+    groupedByAin.forEach(([ainValue, ainRecords]) => {
+      lines.push(`AIN: ${ainValue}`);
+      ainRecords.forEach((r, idx) => {
+        lines.push(
+          `${idx + 1}. B/E ${r.beYear} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
+        );
+      });
+      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
+      lines.push(`Subtotal (${ainValue}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      lines.push("");
     });
-    lines.push("");
-    lines.push(`Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
+    lines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
     lines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
     if (showReceivedLine) {
       lines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
     }
     lines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
-    lines.push(`${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}`);
+    lines.push(`Grand Total: Tk ${settlementValue.toLocaleString("en-BD")}`);
+    lines.push(`Status: ${settlementLabel}`);
 
     const pdfBlob = createSimplePdfBlob("DUTY PAYMENT INVOICE", lines);
     const filename = `duty-invoice-${Date.now()}.pdf`;
@@ -452,19 +486,31 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     a.click();
     URL.revokeObjectURL(url);
 
-    let waSummaryText = `INVOICE SUMMARY
-Subtotal: Tk ${subtotal.toLocaleString("en-BD")}
-Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}
-Due: Tk ${due.toLocaleString("en-BD")}
-${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}
-
-Invoice PDF downloaded. Please attach the downloaded file and send it.`;
+    const summaryLines: string[] = ["INVOICE SUMMARY", ""];
+    groupedByAin.forEach(([ainValue, ainRecords]) => {
+      summaryLines.push(`AIN: ${ainValue}`);
+      ainRecords.forEach((r, idx) => {
+        summaryLines.push(
+          `${idx + 1}. B/E ${r.beYear} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
+        );
+      });
+      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
+      summaryLines.push(`Subtotal (${ainValue}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      summaryLines.push("");
+    });
+    summaryLines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
+    summaryLines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
     if (showReceivedLine) {
-      waSummaryText = waSummaryText.replace(
-        "Due:",
-        `Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}\nDue:`,
-      );
+      summaryLines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
     }
+    summaryLines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
+    summaryLines.push(`Grand Total: Tk ${settlementValue.toLocaleString("en-BD")}`);
+    summaryLines.push(`Status: ${settlementLabel}`);
+    summaryLines.push("");
+    summaryLines.push(
+      "Invoice PDF downloaded. Please attach the downloaded file and send it.",
+    );
+    const waSummaryText = summaryLines.join("\n");
     const waText = encodeURIComponent(waSummaryText);
     const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
     const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
@@ -547,15 +593,40 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`;
     const due = Math.max(0, subtotal - totalReceived);
     const settlementValue =
       settlementLabel === "Paid" ? Math.max(totalReceived, subtotal) : due;
-    const items = recs
-      .map(
-        (r, i) => `
+    const groupedByAin = Array.from(
+      recs.reduce(
+        (acc, rec) => {
+          const key = (rec.ain || "N/A").trim() || "N/A";
+          if (!acc.has(key)) acc.set(key, []);
+          acc.get(key)!.push(rec);
+          return acc;
+        },
+        new Map<string, PaymentRecord[]>(),
+      ),
+    );
+    const items = groupedByAin
+      .map(([ainValue, ainRecords]) => {
+        const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
+        const ainRows = ainRecords
+          .map(
+            (r, i) => `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${i + 1}</td>
         <td style="padding: 12px; border-bottom: 1px solid #eee;">Duty Payment for B/E: <strong>${r.beYear}</strong></td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${fmt(r.duty)}</td>
       </tr>`,
-      )
+          )
+          .join("");
+        return `
+      <tr>
+        <td colspan="3" style="padding: 12px; border-bottom: 1px solid #ddd; background: #f8fafc; font-weight: 700;">AIN: ${ainValue}</td>
+      </tr>
+      ${ainRows}
+      <tr>
+        <td colspan="2" style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">Subtotal (${ainValue})</td>
+        <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">${fmt(ainSubtotal)}</td>
+      </tr>`;
+      })
       .join("");
 
     printWindow.document.write(`
@@ -574,10 +645,10 @@ Invoice PDF downloaded. Please attach the downloaded file and send it.`;
           <div class="summary-wrap">
             <div class="status-seal">${settlementLabel}</div>
             <div class="summary">
-              <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+              <div class="summary-row"><span>Grand Subtotal</span><span>${fmt(subtotal)}</span></div>
               <div class="summary-row"><span>Service Charge</span><span>${fmt(serviceCharge)}</span></div>
               <div class="summary-row"><span>Due</span><span>${fmt(due)}</span></div>
-              <div class="summary-row total"><span>Net Amount</span><span>${fmt(settlementValue)}</span></div>
+              <div class="summary-row total"><span>Grand Total</span><span>${fmt(settlementValue)}</span></div>
             </div>
           </div>
           <div class="print-footer">

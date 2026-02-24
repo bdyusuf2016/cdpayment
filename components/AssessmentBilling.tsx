@@ -361,6 +361,17 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     const client = records[0];
+    const groupedByAin = Array.from(
+      records.reduce(
+        (acc, rec) => {
+          const key = (rec.ain || "N/A").trim() || "N/A";
+          if (!acc.has(key)) acc.set(key, []);
+          acc.get(key)!.push(rec);
+          return acc;
+        },
+        new Map<string, AssessmentRecord[]>(),
+      ),
+    );
     const fmt = (n: number) =>
       n.toLocaleString(undefined, {
         minimumFractionDigits: 2,
@@ -373,15 +384,29 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const subtotal = records.reduce((acc, r) => acc + r.amount, 0);
     const totalDiscount = records.reduce((acc, r) => acc + r.discount, 0);
     const totalNet = records.reduce((acc, r) => acc + r.net, 0);
-    const itemsHtml = records
-      .map(
-        (rec, index) => `
+    const itemsHtml = groupedByAin
+      .map(([ainValue, ainRecords]) => {
+        const ainSubtotal = ainRecords.reduce((acc, rec) => acc + rec.net, 0);
+        const ainRows = ainRecords
+          .map(
+            (rec, index) => `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${index + 1}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">Assessment Bill (${rec.nosOfBe} B/E)</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${fmt(rec.net)}</td>
       </tr>`,
-      )
+          )
+          .join("");
+        return `
+      <tr>
+        <td colspan="3" style="padding: 10px; border-bottom: 1px solid #ddd; background: #f8fafc; font-weight: 700;">AIN: ${ainValue}</td>
+      </tr>
+      ${ainRows}
+      <tr>
+        <td colspan="2" style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">Subtotal (${ainValue})</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">${fmt(ainSubtotal)}</td>
+      </tr>`;
+      })
       .join("");
 
     printWindow.document.write(`
@@ -400,9 +425,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           <div class="summary-wrap">
             <div class="status-seal">${sealLabel}</div>
             <div class="summary">
-              <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
-              <div class="summary-row"><span>Discount</span><span>${fmt(totalDiscount)}</span></div>
-              <div class="summary-row total"><span>${settlementLabel}</span><span>${fmt(totalNet)}</span></div>
+              <div class="summary-row"><span>Grand Subtotal</span><span>${fmt(subtotal)}</span></div>
+              <div class="summary-row"><span>Total Discount</span><span>${fmt(totalDiscount)}</span></div>
+              <div class="summary-row total"><span>Grand Total</span><span>${fmt(totalNet)}</span></div>
             </div>
           </div>
           <div class="print-footer">
@@ -441,6 +466,17 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const settlementLabel = isAllPaid ? "Paid" : "Payable";
     const settlementValue = isAllPaid ? Math.max(totalReceived, totalNet) : due;
     const showReceivedLine = settlementLabel === "Paid";
+    const groupedByAin = Array.from(
+      recs.reduce(
+        (acc, rec) => {
+          const key = (rec.ain || "N/A").trim() || "N/A";
+          if (!acc.has(key)) acc.set(key, []);
+          acc.get(key)!.push(rec);
+          return acc;
+        },
+        new Map<string, AssessmentRecord[]>(),
+      ),
+    );
 
     let msg = `*ASSESSMENT BILL SUMMARY*\n`;
     msg += `--------------------------------\n`;
@@ -449,18 +485,24 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     msg += `*Date:* ${new Date().toLocaleDateString("en-GB")}\n`;
     msg += `--------------------------------\n\n`;
 
-    recs.forEach((r, i) => {
-      msg += `${i + 1}. *Qty:* ${r.nosOfBe} B/E\n    *Rate:* Tk ${r.rate}\n    *Amount:* Tk ${r.net.toLocaleString("en-BD")}\n\n`;
+    groupedByAin.forEach(([ainValue, ainRecords]) => {
+      msg += `*AIN:* ${ainValue}\n`;
+      ainRecords.forEach((r, i) => {
+        msg += `${i + 1}. *Qty:* ${r.nosOfBe} B/E\n    *Rate:* Tk ${r.rate}\n    *Amount:* Tk ${r.net.toLocaleString("en-BD")}\n`;
+      });
+      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.net || 0), 0);
+      msg += `*Subtotal (${ainValue}):* Tk ${ainSubtotal.toLocaleString("en-BD")}\n\n`;
     });
 
     msg += `--------------------------------\n`;
-    msg += `*Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
+    msg += `*Grand Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
     msg += `*Service Charge:* Tk ${serviceCharge.toLocaleString("en-BD")}\n`;
     if (showReceivedLine) {
       msg += `*Received Amount:* Tk ${totalReceived.toLocaleString("en-BD")}\n`;
     }
     msg += `*Due:* Tk ${due.toLocaleString("en-BD")}\n`;
-    msg += `*${settlementLabel}:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
+    msg += `*Grand Total:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
+    msg += `*Status:* ${settlementLabel}\n`;
     msg += `--------------------------------\n`;
 
     const encodedMsg = encodeURIComponent(msg);
@@ -497,25 +539,42 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const settlementLabel = isAllPaid ? "Paid" : "Payable";
     const settlementValue = isAllPaid ? Math.max(totalReceived, totalNet) : due;
     const showReceivedLine = settlementLabel === "Paid";
+    const groupedByAin = Array.from(
+      recs.reduce(
+        (acc, rec) => {
+          const key = (rec.ain || "N/A").trim() || "N/A";
+          if (!acc.has(key)) acc.set(key, []);
+          acc.get(key)!.push(rec);
+          return acc;
+        },
+        new Map<string, AssessmentRecord[]>(),
+      ),
+    );
     const lines: string[] = [
       `Agency: ${systemConfig.agencyName}`,
       `Client: ${recs[0].clientName}`,
       `Date: ${new Date().toLocaleDateString("en-GB")}`,
       "",
     ];
-    recs.forEach((r, idx) => {
-      lines.push(
-        `${idx + 1}. Qty ${r.nosOfBe} B/E | Rate Tk ${r.rate} | Amount Tk ${r.net.toLocaleString("en-BD")}`,
-      );
+    groupedByAin.forEach(([ainValue, ainRecords]) => {
+      lines.push(`AIN: ${ainValue}`);
+      ainRecords.forEach((r, idx) => {
+        lines.push(
+          `${idx + 1}. Qty ${r.nosOfBe} B/E | Rate Tk ${r.rate} | Amount Tk ${r.net.toLocaleString("en-BD")}`,
+        );
+      });
+      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.net || 0), 0);
+      lines.push(`Subtotal (${ainValue}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      lines.push("");
     });
-    lines.push("");
-    lines.push(`Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
+    lines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
     lines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
     if (showReceivedLine) {
       lines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
     }
     lines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
-    lines.push(`${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}`);
+    lines.push(`Grand Total: Tk ${settlementValue.toLocaleString("en-BD")}`);
+    lines.push(`Status: ${settlementLabel}`);
 
     const pdfBlob = createSimplePdfBlob("ASSESSMENT BILL INVOICE", lines);
     const filename = `assessment-invoice-${Date.now()}.pdf`;
@@ -545,19 +604,31 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     a.click();
     URL.revokeObjectURL(url);
 
-    let waSummaryText = `ASSESSMENT BILL SUMMARY
-Subtotal: Tk ${subtotal.toLocaleString("en-BD")}
-Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}
-Due: Tk ${due.toLocaleString("en-BD")}
-${settlementLabel}: Tk ${settlementValue.toLocaleString("en-BD")}
-
-Invoice PDF downloaded. Please attach the downloaded file and send it.`;
+    const summaryLines: string[] = ["ASSESSMENT BILL SUMMARY", ""];
+    groupedByAin.forEach(([ainValue, ainRecords]) => {
+      summaryLines.push(`AIN: ${ainValue}`);
+      ainRecords.forEach((r, idx) => {
+        summaryLines.push(
+          `${idx + 1}. Qty ${r.nosOfBe} B/E | Rate Tk ${r.rate} | Amount Tk ${r.net.toLocaleString("en-BD")}`,
+        );
+      });
+      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.net || 0), 0);
+      summaryLines.push(`Subtotal (${ainValue}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      summaryLines.push("");
+    });
+    summaryLines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
+    summaryLines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
     if (showReceivedLine) {
-      waSummaryText = waSummaryText.replace(
-        "Due:",
-        `Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}\nDue:`,
-      );
+      summaryLines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
     }
+    summaryLines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
+    summaryLines.push(`Grand Total: Tk ${settlementValue.toLocaleString("en-BD")}`);
+    summaryLines.push(`Status: ${settlementLabel}`);
+    summaryLines.push("");
+    summaryLines.push(
+      "Invoice PDF downloaded. Please attach the downloaded file and send it.",
+    );
+    const waSummaryText = summaryLines.join("\n");
     const waText = encodeURIComponent(waSummaryText);
     const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
     const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
