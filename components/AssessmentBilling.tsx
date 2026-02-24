@@ -1312,7 +1312,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     </p>
                     <div className="flex gap-2 mt-1.5">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
-                        AIN: {rec.ain}
+                        AIN: {rec.ain} | Name: {rec.clientName}
                       </span>
                     </div>
                     <div
