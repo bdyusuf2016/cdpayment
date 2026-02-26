@@ -920,6 +920,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const isDark = systemConfig.theme === "dark";
+  const isBn = systemConfig.language === "bn";
   const selectedRecords = allHistory.filter((r) => selectedIds.includes(r.id));
   const selectedTotalAmount = selectedRecords.reduce((sum, rec) => sum + rec.duty, 0);
   const selectedDueAmount = selectedRecords.reduce(
@@ -1178,6 +1179,17 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             >
               <i className="fas fa-list text-blue-500"></i> Transaction History
             </h3>
+            <span
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                isDark
+                  ? "bg-slate-900 border-slate-600 text-slate-300"
+                  : "bg-slate-50 border-slate-200 text-slate-600"
+              }`}
+            >
+              {isBn
+                ? `ফিল্টার: ${sortedHistory.length} / মোট: ${allHistory.length}`
+                : `Filtered: ${sortedHistory.length} / Total: ${allHistory.length}`}
+            </span>
             {selectedIds.length > 0 && (
               <span
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
