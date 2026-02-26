@@ -26,16 +26,19 @@ const parseDate = (dateStr: string): Date => {
   return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
 };
 
-const isSameDay = (dateStr: string, targetDate: string): boolean => {
-  if (!dateStr || !targetDate) return false;
+const isWithinRange = (
+  dateStr: string,
+  startDate: string,
+  endDate: string,
+): boolean => {
+  if (!dateStr || !startDate || !endDate) return false;
   const parsed = parseDate(dateStr);
   if (Number.isNaN(parsed.getTime())) return false;
-  const target = new Date(targetDate);
-  return (
-    parsed.getFullYear() === target.getFullYear() &&
-    parsed.getMonth() === target.getMonth() &&
-    parsed.getDate() === target.getDate()
-  );
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+  return parsed >= start && parsed <= end;
 };
 
 const DailyReport: React.FC<DailyReportProps> = ({
@@ -43,14 +46,17 @@ const DailyReport: React.FC<DailyReportProps> = ({
   assessmentHistory,
   systemConfig,
 }) => {
-  const [reportDate, setReportDate] = useState(getTodayDateInputValue);
+  const [startDate, setStartDate] = useState(getTodayDateInputValue);
+  const [endDate, setEndDate] = useState(getTodayDateInputValue);
   const isDark = systemConfig.theme === "dark";
 
   const t =
     systemConfig.language === "en"
       ? {
           report: "Daily Transaction Report",
-          reportDate: "Report Date",
+          reportRange: "Report Range",
+          reportFrom: "From",
+          reportTo: "To",
           reportCsv: "Download CSV",
           reportPdf: "Download PDF",
           reportDuty: "Duty Summary",
@@ -58,11 +64,13 @@ const DailyReport: React.FC<DailyReportProps> = ({
           reportCombined: "Combined Summary",
           reportDutyRows: "Duty Records",
           reportAssessmentRows: "Assessment Records",
-          reportEmpty: "No transactions for this date.",
+          reportEmpty: "No transactions for this date range.",
         }
       : {
           report: "দৈনিক লেনদেন রিপোর্ট",
-          reportDate: "রিপোর্ট তারিখ",
+          reportRange: "রিপোর্ট রেঞ্জ",
+          reportFrom: "থেকে",
+          reportTo: "পর্যন্ত",
           reportCsv: "CSV ডাউনলোড",
           reportPdf: "PDF ডাউনলোড",
           reportDuty: "ডিউটি সামারি",
@@ -70,16 +78,20 @@ const DailyReport: React.FC<DailyReportProps> = ({
           reportCombined: "কম্বাইন্ড সামারি",
           reportDutyRows: "ডিউটি রেকর্ড",
           reportAssessmentRows: "অ্যাসেসমেন্ট রেকর্ড",
-          reportEmpty: "এই তারিখে কোনো লেনদেন নেই।",
+          reportEmpty: "এই রেঞ্জে কোনো লেনদেন নেই।",
         };
 
   const dailyDuty = useMemo(
-    () => dutyHistory.filter((rec) => isSameDay(rec.date, reportDate)),
-    [dutyHistory, reportDate],
+    () =>
+      dutyHistory.filter((rec) => isWithinRange(rec.date, startDate, endDate)),
+    [dutyHistory, endDate, startDate],
   );
   const dailyAssessment = useMemo(
-    () => assessmentHistory.filter((rec) => isSameDay(rec.date, reportDate)),
-    [assessmentHistory, reportDate],
+    () =>
+      assessmentHistory.filter((rec) =>
+        isWithinRange(rec.date, startDate, endDate),
+      ),
+    [assessmentHistory, endDate, startDate],
   );
 
   const dutySummary = useMemo(() => {
@@ -155,7 +167,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
   const downloadDailyCsv = () => {
     const lines: string[] = [];
-    lines.push(`Report Date,${reportDate}`);
+    lines.push(`Report Range,${startDate} to ${endDate}`);
     lines.push("");
     lines.push("Summary,Transactions,Amount,Received,Due,Profit");
     lines.push(
@@ -248,7 +260,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `daily-transaction-report-${reportDate}.csv`;
+    link.download = `transaction-report-${startDate}_to_${endDate}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -256,8 +268,30 @@ const DailyReport: React.FC<DailyReportProps> = ({
   };
 
   const downloadDailyPdf = () => {
+    const combinedEntries = [
+      ...dailyDuty.map((rec) => ({
+        id: rec.id,
+        date: rec.date,
+        type: "Duty",
+        client: rec.clientName,
+        ref: rec.beYear,
+        amount: rec.duty || 0,
+        received: rec.received || 0,
+      })),
+      ...dailyAssessment.map((rec) => ({
+        id: rec.id,
+        date: rec.date,
+        type: "Assessment",
+        client: rec.clientName,
+        ref: String(rec.nosOfBe ?? ""),
+        amount: rec.net && rec.net > 0 ? rec.net : rec.amount || 0,
+        received: rec.received || 0,
+      })),
+    ].sort((a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime());
+
     const lines: string[] = [];
-    lines.push(`Report Date: ${reportDate}`);
+    lines.push(`Report Range: ${startDate} to ${endDate}`);
+    lines.push(`Statement Style: Bank Statement`);
     lines.push("");
     lines.push("SUMMARY");
     lines.push(
@@ -270,34 +304,31 @@ const DailyReport: React.FC<DailyReportProps> = ({
       `Combined: ${combinedSummary.count} | Amount ${formatMoney(combinedSummary.amount)} | Received ${formatMoney(combinedSummary.received)} | Due ${formatMoney(combinedSummary.due)} | Profit ${formatMoney(combinedSummary.profit)}`,
     );
     lines.push("");
-    lines.push(`DUTY PAYMENTS (${dailyDuty.length})`);
-    if (dailyDuty.length === 0) {
-      lines.push("No duty transactions.");
+    lines.push("STATEMENT");
+    lines.push(
+      "Date | Description | Debit (Tk) | Credit (Tk) | Balance (Tk)",
+    );
+
+    let runningBalance = 0;
+    if (combinedEntries.length === 0) {
+      lines.push("No transactions in this range.");
     } else {
-      dailyDuty.forEach((rec, idx) => {
+      combinedEntries.forEach((entry) => {
+        const debit = entry.amount || 0;
+        const credit = entry.received || 0;
+        runningBalance += credit - debit;
+        const description = `${entry.type} - ${entry.client} - Ref ${entry.ref}`;
         lines.push(
-          `${idx + 1}. ${rec.date} | ${rec.clientName} | AIN ${rec.ain} | BE ${rec.beYear} | Amount ${formatMoney(rec.duty || 0)} | Received ${formatMoney(rec.received || 0)} | Status ${rec.status}`,
-        );
-      });
-    }
-    lines.push("");
-    lines.push(`ASSESSMENTS (${dailyAssessment.length})`);
-    if (dailyAssessment.length === 0) {
-      lines.push("No assessment transactions.");
-    } else {
-      dailyAssessment.forEach((rec, idx) => {
-        const base = rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
-        lines.push(
-          `${idx + 1}. ${rec.date} | ${rec.clientName} | AIN ${rec.ain} | BE ${rec.nosOfBe} | Amount ${formatMoney(base)} | Received ${formatMoney(rec.received || 0)} | Status ${rec.status}`,
+          `${entry.date} | ${description} | ${debit.toFixed(2)} | ${credit.toFixed(2)} | ${runningBalance.toFixed(2)}`,
         );
       });
     }
 
-    const pdfBlob = createSimplePdfBlob("DAILY TRANSACTION REPORT", lines);
+    const pdfBlob = createSimplePdfBlob("TRANSACTION STATEMENT", lines);
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `daily-transaction-report-${reportDate}.pdf`;
+    link.download = `transaction-report-${startDate}_to_${endDate}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -314,16 +345,44 @@ const DailyReport: React.FC<DailyReportProps> = ({
             <h4 className="font-black uppercase text-xs tracking-widest text-blue-600 flex items-center gap-2">
               <i className="fas fa-chart-line"></i> {t.report}
             </h4>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                {t.reportDate}
+                {t.reportRange}
               </label>
-              <input
-                type="date"
-                value={reportDate}
-                onChange={(e) => setReportDate(e.target.value)}
-                className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"}`}
-              />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  {t.reportFrom}
+                </span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setStartDate(next);
+                    if (endDate && next > endDate) {
+                      setEndDate(next);
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"}`}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  {t.reportTo}
+                </span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setEndDate(next);
+                    if (startDate && next < startDate) {
+                      setStartDate(next);
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"}`}
+                />
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
