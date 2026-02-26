@@ -306,13 +306,13 @@ const DailyReport: React.FC<DailyReportProps> = ({
     lines.push("");
     lines.push("STATEMENT");
     const colDefs = [
-      { key: "date", width: 8, align: "left" as const },
-      { key: "type", width: 8, align: "left" as const },
-      { key: "client", width: 14, align: "left" as const },
-      { key: "ref", width: 8, align: "left" as const },
-      { key: "debit", width: 10, align: "right" as const },
-      { key: "credit", width: 10, align: "right" as const },
-      { key: "balance", width: 10, align: "right" as const },
+      { key: "date", width: 9, align: "left" as const },
+      { key: "type", width: 9, align: "left" as const },
+      { key: "client", width: 16, align: "left" as const },
+      { key: "ref", width: 9, align: "left" as const },
+      { key: "debit", width: 11, align: "right" as const },
+      { key: "credit", width: 11, align: "right" as const },
+      { key: "balance", width: 11, align: "right" as const },
     ];
 
     const pad = (value: string, width: number, align: "left" | "right") => {
@@ -331,8 +331,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
     const makeDivider = (char: string) =>
       `+${colDefs.map((col) => char.repeat(col.width + 2)).join("+")}+`;
 
-    lines.push(makeDivider("-"));
-    lines.push(
+    const statementLines: string[] = [];
+    statementLines.push(makeDivider("-"));
+    statementLines.push(
       makeRow([
         "Date",
         "Type",
@@ -343,18 +344,20 @@ const DailyReport: React.FC<DailyReportProps> = ({
         "Balance",
       ]),
     );
-    lines.push(makeDivider("="));
+    statementLines.push(makeDivider("="));
 
     let runningBalance = 0;
     if (combinedEntries.length === 0) {
-      lines.push(makeRow(["-", "-", "No transactions", "-", "-", "-", "-"]));
-      lines.push(makeDivider("-"));
+      statementLines.push(
+        makeRow(["-", "-", "No transactions", "-", "-", "-", "-"]),
+      );
+      statementLines.push(makeDivider("-"));
     } else {
       combinedEntries.forEach((entry) => {
         const debit = entry.amount || 0;
         const credit = entry.received || 0;
         runningBalance += credit - debit;
-        lines.push(
+        statementLines.push(
           makeRow([
             entry.date,
             entry.type,
@@ -365,16 +368,28 @@ const DailyReport: React.FC<DailyReportProps> = ({
             runningBalance.toFixed(2),
           ]),
         );
-        lines.push(makeDivider("-"));
+        statementLines.push(makeDivider("-"));
       });
     }
+
+    lines.push(...statementLines);
+
+    const maxChars = statementLines.reduce(
+      (max, line) => Math.max(max, line.length),
+      0,
+    );
+    const pageWidth = 595;
+    const marginX = 24;
+    const usableWidth = pageWidth - marginX * 2;
+    const autoSize = Math.floor(usableWidth / (0.6 * Math.max(1, maxChars)));
+    const fontSize = Math.min(11, Math.max(7, autoSize));
 
     const pdfBlob = createSimplePdfBlob(
       "TRANSACTION STATEMENT",
       lines,
       "Courier",
-      7,
-      18,
+      fontSize,
+      marginX,
       810,
     );
     const url = URL.createObjectURL(pdfBlob);
