@@ -1470,6 +1470,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     >
                       {rec.clientName}
                     </p>
+                    <p
+                      className={`text-xs font-bold mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}
+                    >
+                      AIN: {rec.ain || "-"}
+                    </p>
                     <div
                       className="flex items-center gap-2 mt-1.5 text-base font-bold text-slate-600 hover:text-blue-600 cursor-pointer w-fit"
                       onClick={(e) => {
