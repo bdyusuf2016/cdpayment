@@ -11,34 +11,80 @@ export const createSimplePdfBlob = (
   fontSize = 11,
   startX = 40,
   startY = 810,
+  options?: {
+    repeatTitle?: boolean;
+    lineHeight?: number;
+    bottomMargin?: number;
+    linesPerPage?: number;
+  },
 ): Blob => {
-  const maxLines = 56;
-  const merged = [title, "", ...lines];
-  const clipped = merged.slice(0, maxLines);
+  const repeatTitle = Boolean(options?.repeatTitle);
+  const bottomMargin = options?.bottomMargin ?? 40;
+  const lineHeight =
+    options?.lineHeight ?? Math.max(12, Math.round(fontSize * 1.3));
+  const availableHeight = startY - bottomMargin;
+  const computedLinesPerPage = Math.max(
+    1,
+    Math.floor(availableHeight / lineHeight),
+  );
+  const linesPerPage = options?.linesPerPage ?? computedLinesPerPage;
 
-  if (merged.length > maxLines) {
-    clipped[maxLines - 1] = `... (${merged.length - maxLines + 1} more lines)`;
+  const baseLines = [title, "", ...lines];
+  const pages: string[][] = [];
+
+  if (repeatTitle) {
+    const payload = [...lines];
+    while (payload.length > 0) {
+      const pageLines = [title, ""];
+      pageLines.push(...payload.splice(0, linesPerPage - 2));
+      pages.push(pageLines);
+    }
+  } else {
+    const payload = [...baseLines];
+    while (payload.length > 0) {
+      pages.push(payload.splice(0, linesPerPage));
+    }
   }
 
-  const streamLines = ["BT", `/F1 ${fontSize} Tf`, `${startX} ${startY} Td`];
-  clipped.forEach((line, idx) => {
-    if (idx > 0) {
-      streamLines.push("0 -14 Td");
-    }
-    streamLines.push(`(${escapePdfText(line)}) Tj`);
+  const buildStream = (pageLines: string[]) => {
+    const streamLines = [
+      "BT",
+      `/F1 ${fontSize} Tf`,
+      `${startX} ${startY} Td`,
+    ];
+    pageLines.forEach((line, idx) => {
+      if (idx > 0) {
+        streamLines.push(`0 -${lineHeight} Td`);
+      }
+      streamLines.push(`(${escapePdfText(line)}) Tj`);
+    });
+    streamLines.push("ET");
+    return streamLines.join("\n");
+  };
+
+  const pageCount = pages.length;
+  const fontId = 3 + pageCount * 2;
+  const objects: string[] = [];
+
+  objects.push("<< /Type /Catalog /Pages 2 0 R >>");
+  const kidRefs = Array.from({ length: pageCount }, (_, idx) => {
+    const pageId = 3 + idx * 2;
+    return `${pageId} 0 R`;
+  }).join(" ");
+  objects.push(`<< /Type /Pages /Kids [${kidRefs}] /Count ${pageCount} >>`);
+
+  pages.forEach((pageLines, idx) => {
+    const pageId = 3 + idx * 2;
+    const streamId = pageId + 1;
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents ${streamId} 0 R /Resources << /Font << /F1 ${fontId} 0 R >> >> >>`,
+    );
+    const stream = buildStream(pageLines);
+    const streamLen = new TextEncoder().encode(stream).length;
+    objects.push(`<< /Length ${streamLen} >>\nstream\n${stream}\nendstream`);
   });
-  streamLines.push("ET");
 
-  const stream = streamLines.join("\n");
-  const streamLen = new TextEncoder().encode(stream).length;
-
-  const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
-    `<< /Length ${streamLen} >>\nstream\n${stream}\nendstream`,
-    `<< /Type /Font /Subtype /Type1 /BaseFont /${fontName} >>`,
-  ];
+  objects.push(`<< /Type /Font /Subtype /Type1 /BaseFont /${fontName} >>`);
 
   let pdf = "%PDF-1.4\n";
   const offsets: number[] = [];
