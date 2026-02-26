@@ -500,10 +500,15 @@ const DailyReport: React.FC<DailyReportProps> = ({
       0,
     );
     const pageWidth = 595;
-    const marginX = 12;
-    const usableWidth = pageWidth - marginX * 2;
+    const baseMargin = 12;
+    const usableWidth = pageWidth - baseMargin * 2;
     const autoSize = Math.floor(usableWidth / (0.6 * Math.max(1, maxChars)));
     const fontSize = Math.min(12, Math.max(8, autoSize));
+    const tableWidth = Math.ceil(maxChars * fontSize * 0.6);
+    const marginX = Math.max(
+      8,
+      Math.floor((pageWidth - tableWidth) / 2),
+    );
 
     const pdfBlob = createSimplePdfBlob(
       "TRANSACTION STATEMENT",
