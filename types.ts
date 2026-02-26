@@ -70,6 +70,7 @@ export interface GranularPermissions {
   user_manage: boolean;
   user_reset_pass: boolean;
   view_logs: boolean;
+  report_view: boolean;
   settings_manage: boolean;
   [key: string]: boolean;
 }
@@ -104,4 +105,11 @@ export interface SystemConfig {
   lastMaintenance?: string;
 }
 
-export type TabType = 'duty' | 'assessment' | 'ain' | 'admin' | 'logs' | 'settings';
+export type TabType =
+  | 'duty'
+  | 'assessment'
+  | 'ain'
+  | 'reports'
+  | 'admin'
+  | 'logs'
+  | 'settings';

@@ -11,6 +11,7 @@ import AinDatabase from "./components/AinDatabase";
 import AdminPanel from "./components/AdminPanel";
 import AuditLogs from "./components/AuditLogs";
 import Auth from "./components/Auth";
+import DailyReport from "./components/DailyReport";
 import { insertAuditLog, updateSystemSettings } from "./utils/supabaseApi";
 import {
   TabType,
@@ -378,6 +379,7 @@ const App: React.FC = () => {
       duty: "Duty Payment",
       assessment: "Assessment",
       ain: "AIN Database",
+      reports: "Reports",
       admin: "Admin Panel",
       logs: "Audit Logs",
       logout: "Logout",
@@ -387,6 +389,7 @@ const App: React.FC = () => {
       duty: "ডিউটি পেমেন্ট",
       assessment: "অ্যাসেসমেন্ট",
       ain: "AIN ডাটাবেস",
+      reports: "রিপোর্ট",
       admin: "এডমিন প্যানেল",
       logs: "অডিট লগ",
       logout: "লগআউট",
@@ -426,6 +429,7 @@ const App: React.FC = () => {
   );
   const canAccessAssessmentModule = canAccessDutyModule;
   const canAccessAinModule = hasPermission("ain_view");
+  const canAccessReportsModule = hasPermission("report_view");
   const canAccessLogsModule = hasPermission("view_logs");
   const canAccessAdminModule = isAdminUser;
   const tabAccess = useMemo<Record<TabType, boolean>>(
@@ -433,6 +437,7 @@ const App: React.FC = () => {
       duty: canAccessDutyModule,
       assessment: canAccessAssessmentModule,
       ain: canAccessAinModule,
+      reports: canAccessReportsModule,
       admin: canAccessAdminModule,
       logs: canAccessLogsModule,
       settings: false,
@@ -442,6 +447,7 @@ const App: React.FC = () => {
       canAccessAinModule,
       canAccessAssessmentModule,
       canAccessDutyModule,
+      canAccessReportsModule,
       canAccessLogsModule,
     ],
   );
@@ -577,6 +583,7 @@ const App: React.FC = () => {
     { id: "duty", label: t.duty, icon: "fa-file-invoice" },
     { id: "assessment", label: t.assessment, icon: "fa-calculator" },
     { id: "ain", label: t.ain, icon: "fa-database" },
+    { id: "reports", label: t.reports, icon: "fa-chart-line" },
     { id: "logs", label: t.logs, icon: "fa-list-check" },
   ];
   if (isAdminUser) {
@@ -1202,6 +1209,13 @@ const App: React.FC = () => {
               onVisibleRowsChange={setVisibleAinRows}
               systemConfig={config}
               supabase={supabase}
+            />
+          )}
+          {activeTab === "reports" && tabAccess.reports && (
+            <DailyReport
+              dutyHistory={dutyHistory}
+              assessmentHistory={assessmentHistory}
+              systemConfig={config}
             />
           )}
           {activeTab === "admin" && tabAccess.admin && (

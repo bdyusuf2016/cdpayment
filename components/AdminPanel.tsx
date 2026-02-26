@@ -51,6 +51,7 @@ const PERMISSION_ITEMS: {
   { key: "user_manage", label: "Manage Users", code: "USER_MANAGE" },
   { key: "user_reset_pass", label: "Reset Passwords", code: "USER_RESET_PASS" },
   { key: "view_logs", label: "View Logs", code: "VIEW_LOGS" },
+  { key: "report_view", label: "Daily Report", code: "REPORT_VIEW" },
   { key: "settings_manage", label: "Manage Settings", code: "SETTINGS_MANAGE" },
 ];
 
@@ -81,6 +82,7 @@ const userRolePermissions: GranularPermissions = {
 
 const getDefaultPermissionsForRole = (role: string): GranularPermissions =>
   role === "Admin" ? { ...adminRolePermissions } : { ...userRolePermissions };
+
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
   config,
@@ -452,7 +454,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           backup: "ব্যাকআপ ও রিস্টোর",
           maintenance: "সিস্টেম মেইনটেনেন্স",
         };
-
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
