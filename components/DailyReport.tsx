@@ -69,6 +69,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
           reportCollection: "Collection",
           reportDutyRows: "Duty Records",
           reportAssessmentRows: "Assessment Records",
+          reportDutySection: "Duty Report",
+          reportAssessmentSection: "Assessment Report",
+          reportCombinedSection: "Combined",
           reportEmpty: "No transactions for this date range.",
         }
       : {
@@ -84,6 +87,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
           reportCollection: "কালেকশন",
           reportDutyRows: "ডিউটি রেকর্ড",
           reportAssessmentRows: "অ্যাসেসমেন্ট রেকর্ড",
+          reportDutySection: "ডিউটি রিপোর্ট",
+          reportAssessmentSection: "অ্যাসেসমেন্ট রিপোর্ট",
+          reportCombinedSection: "কম্বাইন্ড",
           reportEmpty: "এই রেঞ্জে কোনো লেনদেন নেই।",
         };
 
@@ -570,224 +576,341 @@ const DailyReport: React.FC<DailyReportProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              setActiveView("duty");
-              setStatusFilter("all");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                setActiveView("duty");
-                setStatusFilter("all");
-              }
-            }}
-            className={`p-4 rounded-xl border cursor-pointer transition-all ${
-              activeView === "duty"
-                ? isDark
-                  ? "bg-emerald-900/40 border-emerald-500/60"
-                  : "bg-emerald-50 border-emerald-300"
-                : isDark
-                  ? "bg-slate-900 border-slate-700 hover:border-emerald-500/50"
-                  : "bg-slate-50 border-slate-200 hover:border-emerald-300"
-            }`}
-          >
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
-              {t.reportDuty}
-            </p>
-            <div className="space-y-2 text-xs font-bold">
-              <div className="flex items-center justify-between">
-                <span>Transactions</span>
-                <span>{dutySummary.count}</span>
+        <div className="space-y-6 mb-6">
+          <div>
+            <h5
+              className={`text-[11px] font-black uppercase tracking-widest mb-3 ${isDark ? "text-slate-300" : "text-slate-600"}`}
+            >
+              {t.reportDutySection}
+            </h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setActiveView("duty");
+                  setStatusFilter("all");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setActiveView("duty");
+                    setStatusFilter("all");
+                  }
+                }}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  activeView === "duty" && statusFilter === "all"
+                    ? isDark
+                      ? "bg-emerald-900/40 border-emerald-500/60"
+                      : "bg-emerald-50 border-emerald-300"
+                    : isDark
+                      ? "bg-slate-900 border-slate-700 hover:border-emerald-500/50"
+                      : "bg-slate-50 border-slate-200 hover:border-emerald-300"
+                }`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                  {t.reportDuty}
+                </p>
+                <div className="space-y-2 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span>Transactions</span>
+                    <span>{dutySummary.count}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Amount</span>
+                    <span>{formatMoney(dutySummary.amount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Received</span>
+                    <span>{formatMoney(dutySummary.received)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Due</span>
+                    <span>{formatMoney(dutySummary.due)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Profit</span>
+                    <span>{formatMoney(dutySummary.profit)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span>Amount</span>
-                <span>{formatMoney(dutySummary.amount)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Received</span>
-                <span>{formatMoney(dutySummary.received)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Due</span>
-                <span>{formatMoney(dutySummary.due)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Profit</span>
-                <span>{formatMoney(dutySummary.profit)}</span>
+
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setActiveView("duty");
+                  setStatusFilter("paid");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setActiveView("duty");
+                    setStatusFilter("paid");
+                  }
+                }}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  activeView === "duty" && statusFilter === "paid"
+                    ? isDark
+                      ? "bg-green-900/30 border-green-500/60"
+                      : "bg-green-50 border-green-300"
+                    : isDark
+                      ? "bg-slate-900 border-slate-700 hover:border-green-500/50"
+                      : "bg-slate-50 border-slate-200 hover:border-green-300"
+                }`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                  {t.reportCollection}
+                </p>
+                <div className="space-y-2 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span>Paid</span>
+                    <span>{paidDuty.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Received</span>
+                    <span>
+                      {formatMoney(
+                        paidDuty.reduce(
+                          (sum, rec) => sum + (rec.received || 0),
+                          0,
+                        ),
+                      )}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              setActiveView("assessment");
-              setStatusFilter("all");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                setActiveView("assessment");
-                setStatusFilter("all");
-              }
-            }}
-            className={`p-4 rounded-xl border cursor-pointer transition-all ${
-              activeView === "assessment"
-                ? isDark
-                  ? "bg-amber-900/30 border-amber-500/60"
-                  : "bg-amber-50 border-amber-300"
-                : isDark
-                  ? "bg-slate-900 border-slate-700 hover:border-amber-500/50"
-                  : "bg-slate-50 border-slate-200 hover:border-amber-300"
-            }`}
-          >
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
-              {t.reportAssessment}
-            </p>
-            <div className="space-y-2 text-xs font-bold">
-              <div className="flex items-center justify-between">
-                <span>Transactions</span>
-                <span>{assessmentSummary.count}</span>
+          <div>
+            <h5
+              className={`text-[11px] font-black uppercase tracking-widest mb-3 ${isDark ? "text-slate-300" : "text-slate-600"}`}
+            >
+              {t.reportAssessmentSection}
+            </h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setActiveView("assessment");
+                  setStatusFilter("all");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setActiveView("assessment");
+                    setStatusFilter("all");
+                  }
+                }}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  activeView === "assessment" && statusFilter === "all"
+                    ? isDark
+                      ? "bg-amber-900/30 border-amber-500/60"
+                      : "bg-amber-50 border-amber-300"
+                    : isDark
+                      ? "bg-slate-900 border-slate-700 hover:border-amber-500/50"
+                      : "bg-slate-50 border-slate-200 hover:border-amber-300"
+                }`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                  {t.reportAssessment}
+                </p>
+                <div className="space-y-2 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span>Transactions</span>
+                    <span>{assessmentSummary.count}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Amount</span>
+                    <span>{formatMoney(assessmentSummary.amount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Received</span>
+                    <span>{formatMoney(assessmentSummary.received)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Due</span>
+                    <span>{formatMoney(assessmentSummary.due)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Profit</span>
+                    <span>{formatMoney(assessmentSummary.profit)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span>Amount</span>
-                <span>{formatMoney(assessmentSummary.amount)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Received</span>
-                <span>{formatMoney(assessmentSummary.received)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Due</span>
-                <span>{formatMoney(assessmentSummary.due)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Profit</span>
-                <span>{formatMoney(assessmentSummary.profit)}</span>
+
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setActiveView("assessment");
+                  setStatusFilter("paid");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setActiveView("assessment");
+                    setStatusFilter("paid");
+                  }
+                }}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  activeView === "assessment" && statusFilter === "paid"
+                    ? isDark
+                      ? "bg-green-900/30 border-green-500/60"
+                      : "bg-green-50 border-green-300"
+                    : isDark
+                      ? "bg-slate-900 border-slate-700 hover:border-green-500/50"
+                      : "bg-slate-50 border-slate-200 hover:border-green-300"
+                }`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                  {t.reportCollection}
+                </p>
+                <div className="space-y-2 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span>Paid</span>
+                    <span>{paidAssessment.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Received</span>
+                    <span>
+                      {formatMoney(
+                        paidAssessment.reduce(
+                          (sum, rec) => sum + (rec.received || 0),
+                          0,
+                        ),
+                      )}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              setActiveView("combined");
-              setStatusFilter("all");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                setActiveView("combined");
-                setStatusFilter("all");
-              }
-            }}
-            className={`p-4 rounded-xl border cursor-pointer transition-all ${
-              activeView === "combined"
-                ? isDark
-                  ? "bg-blue-900/30 border-blue-500/60"
-                  : "bg-blue-50 border-blue-300"
-                : isDark
-                  ? "bg-slate-900 border-slate-700 hover:border-blue-500/50"
-                  : "bg-slate-50 border-slate-200 hover:border-blue-300"
-            }`}
-          >
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
-              {t.reportCombined}
-            </p>
-            <div className="space-y-2 text-xs font-bold">
-              <div className="flex items-center justify-between">
-                <span>Transactions</span>
-                <span>{combinedSummary.count}</span>
+          <div>
+            <h5
+              className={`text-[11px] font-black uppercase tracking-widest mb-3 ${isDark ? "text-slate-300" : "text-slate-600"}`}
+            >
+              {t.reportCombinedSection}
+            </h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setActiveView("combined");
+                  setStatusFilter("all");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setActiveView("combined");
+                    setStatusFilter("all");
+                  }
+                }}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  activeView === "combined" && statusFilter === "all"
+                    ? isDark
+                      ? "bg-blue-900/30 border-blue-500/60"
+                      : "bg-blue-50 border-blue-300"
+                    : isDark
+                      ? "bg-slate-900 border-slate-700 hover:border-blue-500/50"
+                      : "bg-slate-50 border-slate-200 hover:border-blue-300"
+                }`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                  {t.reportCombined}
+                </p>
+                <div className="space-y-2 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span>Transactions</span>
+                    <span>{combinedSummary.count}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Amount</span>
+                    <span>{formatMoney(combinedSummary.amount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Received</span>
+                    <span>{formatMoney(combinedSummary.received)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Due</span>
+                    <span>{formatMoney(combinedSummary.due)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Profit</span>
+                    <span>{formatMoney(combinedSummary.profit)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span>Amount</span>
-                <span>{formatMoney(combinedSummary.amount)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Received</span>
-                <span>{formatMoney(combinedSummary.received)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Due</span>
-                <span>{formatMoney(combinedSummary.due)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Profit</span>
-                <span>{formatMoney(combinedSummary.profit)}</span>
-              </div>
-            </div>
-          </div>
 
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              setActiveView("combined");
-              setStatusFilter("paid");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                setActiveView("combined");
-                setStatusFilter("paid");
-              }
-            }}
-            className={`p-4 rounded-xl border cursor-pointer transition-all ${
-              statusFilter === "paid"
-                ? isDark
-                  ? "bg-green-900/30 border-green-500/60"
-                  : "bg-green-50 border-green-300"
-                : isDark
-                  ? "bg-slate-900 border-slate-700 hover:border-green-500/50"
-                  : "bg-slate-50 border-slate-200 hover:border-green-300"
-            }`}
-          >
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
-              {t.reportCollection}
-            </p>
-            <div className="space-y-2 text-xs font-bold">
-              <div className="flex items-center justify-between">
-                <span>Paid</span>
-                <span>{paidDuty.length + paidAssessment.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Duty Received</span>
-                <span>
-                  {formatMoney(
-                    paidDuty.reduce(
-                      (sum, rec) => sum + (rec.received || 0),
-                      0,
-                    ),
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Assessment Received</span>
-                <span>
-                  {formatMoney(
-                    paidAssessment.reduce(
-                      (sum, rec) => sum + (rec.received || 0),
-                      0,
-                    ),
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Total Received</span>
-                <span>
-                  {formatMoney(
-                    paidDuty.reduce(
-                      (sum, rec) => sum + (rec.received || 0),
-                      0,
-                    ) +
-                      paidAssessment.reduce(
-                        (sum, rec) => sum + (rec.received || 0),
-                        0,
-                      ),
-                  )}
-                </span>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setActiveView("combined");
+                  setStatusFilter("paid");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setActiveView("combined");
+                    setStatusFilter("paid");
+                  }
+                }}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  activeView === "combined" && statusFilter === "paid"
+                    ? isDark
+                      ? "bg-green-900/30 border-green-500/60"
+                      : "bg-green-50 border-green-300"
+                    : isDark
+                      ? "bg-slate-900 border-slate-700 hover:border-green-500/50"
+                      : "bg-slate-50 border-slate-200 hover:border-green-300"
+                }`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                  {t.reportCollection}
+                </p>
+                <div className="space-y-2 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span>Paid</span>
+                    <span>{paidDuty.length + paidAssessment.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Duty Received</span>
+                    <span>
+                      {formatMoney(
+                        paidDuty.reduce(
+                          (sum, rec) => sum + (rec.received || 0),
+                          0,
+                        ),
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Assessment Received</span>
+                    <span>
+                      {formatMoney(
+                        paidAssessment.reduce(
+                          (sum, rec) => sum + (rec.received || 0),
+                          0,
+                        ),
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Total Received</span>
+                    <span>
+                      {formatMoney(
+                        paidDuty.reduce(
+                          (sum, rec) => sum + (rec.received || 0),
+                          0,
+                        ) +
+                          paidAssessment.reduce(
+                            (sum, rec) => sum + (rec.received || 0),
+                            0,
+                          ),
+                      )}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
