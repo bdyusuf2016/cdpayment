@@ -48,6 +48,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
 }) => {
   const [startDate, setStartDate] = useState(getTodayDateInputValue);
   const [endDate, setEndDate] = useState(getTodayDateInputValue);
+  const [activeView, setActiveView] = useState<
+    "combined" | "duty" | "assessment"
+  >("combined");
   const isDark = systemConfig.theme === "dark";
 
   const t =
@@ -539,7 +542,21 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div
-            className={`p-4 rounded-xl border ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setActiveView("duty")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") setActiveView("duty");
+            }}
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              activeView === "duty"
+                ? isDark
+                  ? "bg-emerald-900/40 border-emerald-500/60"
+                  : "bg-emerald-50 border-emerald-300"
+                : isDark
+                  ? "bg-slate-900 border-slate-700 hover:border-emerald-500/50"
+                  : "bg-slate-50 border-slate-200 hover:border-emerald-300"
+            }`}
           >
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
               {t.reportDuty}
@@ -569,7 +586,21 @@ const DailyReport: React.FC<DailyReportProps> = ({
           </div>
 
           <div
-            className={`p-4 rounded-xl border ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setActiveView("assessment")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") setActiveView("assessment");
+            }}
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              activeView === "assessment"
+                ? isDark
+                  ? "bg-amber-900/30 border-amber-500/60"
+                  : "bg-amber-50 border-amber-300"
+                : isDark
+                  ? "bg-slate-900 border-slate-700 hover:border-amber-500/50"
+                  : "bg-slate-50 border-slate-200 hover:border-amber-300"
+            }`}
           >
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
               {t.reportAssessment}
@@ -599,7 +630,21 @@ const DailyReport: React.FC<DailyReportProps> = ({
           </div>
 
           <div
-            className={`p-4 rounded-xl border ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setActiveView("combined")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") setActiveView("combined");
+            }}
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              activeView === "combined"
+                ? isDark
+                  ? "bg-blue-900/30 border-blue-500/60"
+                  : "bg-blue-50 border-blue-300"
+                : isDark
+                  ? "bg-slate-900 border-slate-700 hover:border-blue-500/50"
+                  : "bg-slate-50 border-slate-200 hover:border-blue-300"
+            }`}
           >
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
               {t.reportCombined}
@@ -629,140 +674,148 @@ const DailyReport: React.FC<DailyReportProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div
-            className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
-          >
+        <div
+          className={`grid gap-4 ${
+            activeView === "combined" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
+          }`}
+        >
+          {(activeView === "combined" || activeView === "duty") && (
             <div
-              className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+              className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
             >
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                {t.reportDutyRows}
-              </p>
-              <span className="text-[10px] font-bold text-slate-400">
-                {dailyDuty.length}
-              </span>
-            </div>
-            {dailyDuty.length === 0 ? (
-              <p className="px-4 py-6 text-xs font-bold text-slate-400">
-                {t.reportEmpty}
-              </p>
-            ) : (
-              <div className="max-h-72 overflow-auto">
-                <table className="w-full text-left text-xs">
-                  <thead
-                    className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
-                  >
-                    <tr>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest">
-                        Date
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest">
-                        Client
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest">
-                        B/E
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                        Amount
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                        Received
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                    {dailyDuty.map((rec) => (
-                      <tr key={rec.id}>
-                        <td className="px-4 py-2">{rec.date}</td>
-                        <td className="px-4 py-2">{rec.clientName}</td>
-                        <td className="px-4 py-2">{rec.beYear}</td>
-                        <td className="px-4 py-2 text-right">
-                          {formatMoney(rec.duty || 0)}
-                        </td>
-                        <td className="px-4 py-2 text-right">
-                          {formatMoney(rec.received || 0)}
-                        </td>
-                        <td className="px-4 py-2 text-center">{rec.status}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div
+                className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  {t.reportDutyRows}
+                </p>
+                <span className="text-[10px] font-bold text-slate-400">
+                  {dailyDuty.length}
+                </span>
               </div>
-            )}
-          </div>
-
-          <div
-            className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
-          >
-            <div
-              className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
-            >
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                {t.reportAssessmentRows}
-              </p>
-              <span className="text-[10px] font-bold text-slate-400">
-                {dailyAssessment.length}
-              </span>
-            </div>
-            {dailyAssessment.length === 0 ? (
-              <p className="px-4 py-6 text-xs font-bold text-slate-400">
-                {t.reportEmpty}
-              </p>
-            ) : (
-              <div className="max-h-72 overflow-auto">
-                <table className="w-full text-left text-xs">
-                  <thead
-                    className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
-                  >
-                    <tr>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest">
-                        Date
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest">
-                        Client
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest">
-                        BE
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                        Amount
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                        Received
-                      </th>
-                      <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                    {dailyAssessment.map((rec) => {
-                      const base =
-                        rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
-                      return (
+              {dailyDuty.length === 0 ? (
+                <p className="px-4 py-6 text-xs font-bold text-slate-400">
+                  {t.reportEmpty}
+                </p>
+              ) : (
+                <div className="max-h-72 overflow-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead
+                      className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
+                    >
+                      <tr>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest">
+                          Date
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest">
+                          Client
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest">
+                          B/E
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                          Amount
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                          Received
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
+                      {dailyDuty.map((rec) => (
                         <tr key={rec.id}>
                           <td className="px-4 py-2">{rec.date}</td>
                           <td className="px-4 py-2">{rec.clientName}</td>
-                          <td className="px-4 py-2">{rec.nosOfBe}</td>
+                          <td className="px-4 py-2">{rec.beYear}</td>
                           <td className="px-4 py-2 text-right">
-                            {formatMoney(base)}
+                            {formatMoney(rec.duty || 0)}
                           </td>
                           <td className="px-4 py-2 text-right">
                             {formatMoney(rec.received || 0)}
                           </td>
                           <td className="px-4 py-2 text-center">{rec.status}</td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(activeView === "combined" || activeView === "assessment") && (
+            <div
+              className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
+            >
+              <div
+                className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  {t.reportAssessmentRows}
+                </p>
+                <span className="text-[10px] font-bold text-slate-400">
+                  {dailyAssessment.length}
+                </span>
               </div>
-            )}
-          </div>
+              {dailyAssessment.length === 0 ? (
+                <p className="px-4 py-6 text-xs font-bold text-slate-400">
+                  {t.reportEmpty}
+                </p>
+              ) : (
+                <div className="max-h-72 overflow-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead
+                      className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
+                    >
+                      <tr>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest">
+                          Date
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest">
+                          Client
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest">
+                          BE
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                          Amount
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                          Received
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
+                      {dailyAssessment.map((rec) => {
+                        const base =
+                          rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
+                        return (
+                          <tr key={rec.id}>
+                            <td className="px-4 py-2">{rec.date}</td>
+                            <td className="px-4 py-2">{rec.clientName}</td>
+                            <td className="px-4 py-2">{rec.nosOfBe}</td>
+                            <td className="px-4 py-2 text-right">
+                              {formatMoney(base)}
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              {formatMoney(rec.received || 0)}
+                            </td>
+                            <td className="px-4 py-2 text-center">{rec.status}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
