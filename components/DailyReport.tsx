@@ -375,10 +375,15 @@ const DailyReport: React.FC<DailyReportProps> = ({
         ? trimmed.padStart(width, " ")
         : trimmed.padEnd(width, " ");
     };
+    const clamp = (value: string, width: number) => {
+      if (value.length <= width) return value;
+      if (width <= 3) return value.slice(0, width);
+      return `${value.slice(0, width - 3)}...`;
+    };
 
     const makeRow = (cells: string[]) => {
       const padded = cells.map((cell, idx) =>
-        pad(cell, colDefs[idx].width, colDefs[idx].align),
+        pad(clamp(cell, colDefs[idx].width), colDefs[idx].width, colDefs[idx].align),
       );
       return `| ${padded.join(" | ")} |`;
     };
