@@ -500,10 +500,10 @@ const DailyReport: React.FC<DailyReportProps> = ({
       0,
     );
     const pageWidth = 595;
-    const marginX = 24;
+    const marginX = 12;
     const usableWidth = pageWidth - marginX * 2;
     const autoSize = Math.floor(usableWidth / (0.6 * Math.max(1, maxChars)));
-    const fontSize = Math.min(11, Math.max(7, autoSize));
+    const fontSize = Math.min(12, Math.max(8, autoSize));
 
     const pdfBlob = createSimplePdfBlob(
       "TRANSACTION STATEMENT",
@@ -511,8 +511,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
       "Courier",
       fontSize,
       marginX,
-      810,
-      { showPageNumbers: true },
+      820,
+      { showPageNumbers: true, bottomMargin: 20, lineHeight: Math.max(10, Math.round(fontSize * 1.1)) },
     );
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement("a");
