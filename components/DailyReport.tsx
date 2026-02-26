@@ -52,6 +52,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
     "combined" | "duty" | "assessment"
   >("combined");
   const [statusFilter, setStatusFilter] = useState<"all" | "paid">("all");
+  const [dutyClientFilter, setDutyClientFilter] = useState("all");
+  const [showDutyClientGroups, setShowDutyClientGroups] = useState(true);
   const isDark = systemConfig.theme === "dark";
 
   const t =
@@ -121,9 +123,32 @@ const DailyReport: React.FC<DailyReportProps> = ({
     [dailyAssessment],
   );
 
-  const visibleDuty = statusFilter === "paid" ? paidDuty : dailyDuty;
+  const dutyBase = statusFilter === "paid" ? paidDuty : dailyDuty;
+  const visibleDuty = dutyClientFilter === "all"
+    ? dutyBase
+    : dutyBase.filter((rec) => rec.clientName === dutyClientFilter);
   const visibleAssessment =
     statusFilter === "paid" ? paidAssessment : dailyAssessment;
+
+  const dutyClientOptions = useMemo(() => {
+    const names = dailyDuty
+      .map((rec) => rec.clientName)
+      .filter((name) => Boolean(name && name.trim().length > 0));
+    return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+  }, [dailyDuty]);
+
+  const dutyClientGroups = useMemo(() => {
+    const groups = new Map<string, typeof visibleDuty>();
+    visibleDuty.forEach((rec) => {
+      const key = rec.clientName || "Unknown";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(rec);
+    });
+    return Array.from(groups.entries()).map(([client, rows]) => ({
+      client,
+      rows,
+    }));
+  }, [visibleDuty]);
 
   const dutySummary = useMemo(() => {
     const totalAmount = dailyDuty.reduce((sum, rec) => sum + (rec.duty || 0), 0);
@@ -211,79 +236,117 @@ const DailyReport: React.FC<DailyReportProps> = ({
       `Combined,${combinedSummary.count},${combinedSummary.amount},${combinedSummary.received},${combinedSummary.due},${combinedSummary.profit}`,
     );
     lines.push("");
-    lines.push("Duty Payments");
-    lines.push(
-      [
-        "Date",
-        "AIN",
-        "Client",
-        "Phone",
-        "B/E",
-        "Duty",
-        "Received",
-        "Status",
-        "Profit",
-        "Payment Method",
-      ].join(","),
-    );
-    dailyDuty.forEach((rec) => {
+
+    if (activeView === "duty") {
+      dutyClientGroups.forEach((group) => {
+        lines.push(`Client,${group.client}`);
+        lines.push(
+          [
+            "Date",
+            "AIN",
+            "Phone",
+            "B/E",
+            "Duty",
+            "Received",
+            "Status",
+            "Profit",
+            "Payment Method",
+          ].join(","),
+        );
+        group.rows.forEach((rec) => {
+          lines.push(
+            [
+              rec.date,
+              rec.ain,
+              rec.phone,
+              rec.beYear,
+              rec.duty ?? 0,
+              rec.received ?? 0,
+              rec.status ?? "",
+              rec.profit ?? 0,
+              rec.paymentMethod ?? "",
+            ]
+              .map(toCsvValue)
+              .join(","),
+          );
+        });
+        lines.push("");
+      });
+    } else {
+      lines.push("Duty Payments");
       lines.push(
         [
-          rec.date,
-          rec.ain,
-          rec.clientName,
-          rec.phone,
-          rec.beYear,
-          rec.duty ?? 0,
-          rec.received ?? 0,
-          rec.status ?? "",
-          rec.profit ?? 0,
-          rec.paymentMethod ?? "",
-        ]
-          .map(toCsvValue)
-          .join(","),
+          "Date",
+          "AIN",
+          "Client",
+          "Phone",
+          "B/E",
+          "Duty",
+          "Received",
+          "Status",
+          "Profit",
+          "Payment Method",
+        ].join(","),
       );
-    });
-    lines.push("");
-    lines.push("Assessments");
-    lines.push(
-      [
-        "Date",
-        "AIN",
-        "Client",
-        "Phone",
-        "No of BE",
-        "Rate",
-        "Amount",
-        "Discount",
-        "Net",
-        "Received",
-        "Status",
-        "Profit",
-        "Payment Method",
-      ].join(","),
-    );
-    dailyAssessment.forEach((rec) => {
+      dailyDuty.forEach((rec) => {
+        lines.push(
+          [
+            rec.date,
+            rec.ain,
+            rec.clientName,
+            rec.phone,
+            rec.beYear,
+            rec.duty ?? 0,
+            rec.received ?? 0,
+            rec.status ?? "",
+            rec.profit ?? 0,
+            rec.paymentMethod ?? "",
+          ]
+            .map(toCsvValue)
+            .join(","),
+        );
+      });
+      lines.push("");
+      lines.push("Assessments");
       lines.push(
         [
-          rec.date,
-          rec.ain,
-          rec.clientName,
-          rec.phone,
-          rec.nosOfBe ?? 0,
-          rec.rate ?? 0,
-          rec.amount ?? 0,
-          rec.discount ?? 0,
-          rec.net ?? 0,
-          rec.received ?? 0,
-          rec.status ?? "",
-          rec.profit ?? 0,
-          rec.paymentMethod ?? "",
-        ]
-          .map(toCsvValue)
-          .join(","),
+          "Date",
+          "AIN",
+          "Client",
+          "Phone",
+          "No of BE",
+          "Rate",
+          "Amount",
+          "Discount",
+          "Net",
+          "Received",
+          "Status",
+          "Profit",
+          "Payment Method",
+        ].join(","),
       );
-    });
+      dailyAssessment.forEach((rec) => {
+        lines.push(
+          [
+            rec.date,
+            rec.ain,
+            rec.clientName,
+            rec.phone,
+            rec.nosOfBe ?? 0,
+            rec.rate ?? 0,
+            rec.amount ?? 0,
+            rec.discount ?? 0,
+            rec.net ?? 0,
+            rec.received ?? 0,
+            rec.status ?? "",
+            rec.profit ?? 0,
+            rec.paymentMethod ?? "",
+          ]
+            .map(toCsvValue)
+            .join(","),
+        );
+      });
+    }
 
     const blob = new Blob([lines.join("\n")], {
       type: "text/csv;charset=utf-8;",
@@ -299,6 +362,100 @@ const DailyReport: React.FC<DailyReportProps> = ({
   };
 
   const downloadDailyPdf = () => {
+    if (activeView === "duty") {
+      const lines: string[] = [];
+      lines.push(`Report Range: ${startDate} to ${endDate}`);
+      lines.push("Module: Duty");
+      lines.push("");
+      lines.push("CLIENT-WISE DUTY REPORT");
+      const colDefs = [
+        { key: "date", width: 10, align: "left" as const },
+        { key: "ain", width: 10, align: "left" as const },
+        { key: "be", width: 12, align: "left" as const },
+        { key: "duty", width: 10, align: "right" as const },
+        { key: "received", width: 10, align: "right" as const },
+        { key: "status", width: 10, align: "left" as const },
+      ];
+
+      const pad = (value: string, width: number, align: "left" | "right") => {
+        const trimmed = value.length > width ? value.slice(0, width) : value;
+        return align === "right"
+          ? trimmed.padStart(width, " ")
+          : trimmed.padEnd(width, " ");
+      };
+      const clamp = (value: string, width: number) => {
+        if (value.length <= width) return value;
+        if (width <= 3) return value.slice(0, width);
+        return `${value.slice(0, width - 3)}...`;
+      };
+      const makeRow = (cells: string[]) => {
+        const padded = cells.map((cell, idx) =>
+          pad(clamp(cell, colDefs[idx].width), colDefs[idx].width, colDefs[idx].align),
+        );
+        return `| ${padded.join(" | ")} |`;
+      };
+      const makeDivider = (char: string) =>
+        `+${colDefs.map((col) => char.repeat(col.width + 2)).join("+")}+`;
+
+      dutyClientGroups.forEach((group, idx) => {
+        lines.push(`Client: ${group.client}`);
+        lines.push(makeDivider("-"));
+        lines.push(
+          makeRow(["Date", "AIN", "B/E", "Amount", "Received", "Status"]),
+        );
+        lines.push(makeDivider("="));
+        group.rows.forEach((rec) => {
+          lines.push(
+            makeRow([
+              rec.date,
+              rec.ain || "",
+              rec.beYear || "",
+              (rec.duty || 0).toFixed(2),
+              (rec.received || 0).toFixed(2),
+              rec.status || "",
+            ]),
+          );
+          lines.push(makeDivider("-"));
+        });
+        if (idx < dutyClientGroups.length - 1) {
+          lines.push("");
+        }
+      });
+
+      const maxChars = lines.reduce(
+        (max, line) => Math.max(max, line.length),
+        0,
+      );
+      const pageWidth = 595;
+      const baseMargin = 12;
+      const usableWidth = pageWidth - baseMargin * 2;
+      const autoSize = Math.floor(usableWidth / (0.6 * Math.max(1, maxChars)));
+      const fontSize = Math.min(12, Math.max(8, autoSize));
+      const tableWidth = Math.ceil(maxChars * fontSize * 0.6);
+      const marginX = Math.max(
+        8,
+        Math.floor((pageWidth - tableWidth) / 2),
+      );
+
+      const pdfBlob = createSimplePdfBlob(
+        "DUTY CLIENT REPORT",
+        lines,
+        "Courier",
+        fontSize,
+        marginX,
+        820,
+        { showPageNumbers: true, bottomMargin: 20, lineHeight: Math.max(10, Math.round(fontSize * 1.1)) },
+      );
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `duty-client-report-${startDate}_to_${endDate}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
     const combinedEntries = [
       ...dailyDuty.map((rec) => ({
         id: rec.id,
@@ -700,6 +857,42 @@ const DailyReport: React.FC<DailyReportProps> = ({
                 </div>
               </div>
             </div>
+
+            {activeView === "duty" && (
+              <div
+                className={`mt-4 p-4 rounded-xl border flex flex-col md:flex-row md:items-center md:justify-between gap-3 ${
+                  isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Client Filter
+                  </span>
+                  <select
+                    className={`px-3 py-2 rounded-lg border text-xs font-bold outline-none ${
+                      isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-700"
+                    }`}
+                    value={dutyClientFilter}
+                    onChange={(e) => setDutyClientFilter(e.target.value)}
+                  >
+                    <option value="all">All Clients</option>
+                    {dutyClientOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showDutyClientGroups}
+                    onChange={(e) => setShowDutyClientGroups(e.target.checked)}
+                  />
+                  Client-wise Sections
+                </label>
+              </div>
+            )}
           </div>
 
           <div>
@@ -1010,6 +1203,80 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeView === "duty" && showDutyClientGroups && (
+            <div className="space-y-4">
+              {dutyClientGroups.map((group) => (
+                <div
+                  key={group.client}
+                  className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
+                >
+                  <div
+                    className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      {group.client}
+                    </p>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {group.rows.length}
+                    </span>
+                  </div>
+                  {group.rows.length === 0 ? (
+                    <p className="px-4 py-6 text-xs font-bold text-slate-400">
+                      {t.reportEmpty}
+                    </p>
+                  ) : (
+                    <div className="max-h-72 overflow-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead
+                          className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
+                        >
+                          <tr>
+                            <th className="px-4 py-2 font-black uppercase tracking-widest">
+                              Date
+                            </th>
+                            <th className="px-4 py-2 font-black uppercase tracking-widest">
+                              AIN
+                            </th>
+                            <th className="px-4 py-2 font-black uppercase tracking-widest">
+                              B/E
+                            </th>
+                            <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                              Amount
+                            </th>
+                            <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                              Received
+                            </th>
+                            <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
+                          {group.rows.map((rec) => (
+                            <tr key={rec.id}>
+                              <td className="px-4 py-2">{rec.date}</td>
+                              <td className="px-4 py-2">{rec.ain}</td>
+                              <td className="px-4 py-2">{rec.beYear}</td>
+                              <td className="px-4 py-2 text-right">
+                                {formatMoney(rec.duty || 0)}
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                {formatMoney(rec.received || 0)}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                {rec.status}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
