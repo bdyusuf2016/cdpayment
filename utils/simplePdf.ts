@@ -4,7 +4,11 @@ const toAscii = (value: string) =>
 const escapePdfText = (value: string) =>
   toAscii(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 
-export const createSimplePdfBlob = (title: string, lines: string[]): Blob => {
+export const createSimplePdfBlob = (
+  title: string,
+  lines: string[],
+  fontName: "Helvetica" | "Courier" = "Helvetica",
+): Blob => {
   const maxLines = 56;
   const merged = [title, "", ...lines];
   const clipped = merged.slice(0, maxLines);
@@ -30,7 +34,7 @@ export const createSimplePdfBlob = (title: string, lines: string[]): Blob => {
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
     `<< /Length ${streamLen} >>\nstream\n${stream}\nendstream`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< /Type /Font /Subtype /Type1 /BaseFont /${fontName} >>`,
   ];
 
   let pdf = "%PDF-1.4\n";

@@ -322,43 +322,58 @@ const DailyReport: React.FC<DailyReportProps> = ({
         : trimmed.padEnd(width, " ");
     };
 
-    const header = [
-      pad("Date", 10, "left"),
-      pad("Type", 10, "left"),
-      pad("Client", 18, "left"),
-      pad("Ref", 10, "left"),
-      pad("Debit(Tk)", 12, "right"),
-      pad("Credit(Tk)", 12, "right"),
-      pad("Balance(Tk)", 12, "right"),
-    ].join(" | ");
-    const divider = colDefs
-      .map((col) => "-".repeat(col.width))
-      .join("-|-");
-    lines.push(header);
-    lines.push(divider);
+    const makeRow = (cells: string[]) => {
+      const padded = cells.map((cell, idx) =>
+        pad(cell, colDefs[idx].width, colDefs[idx].align),
+      );
+      return `| ${padded.join(" | ")} |`;
+    };
+    const makeDivider = (char: string) =>
+      `+${colDefs.map((col) => char.repeat(col.width + 2)).join("+")}+`;
+
+    lines.push(makeDivider("-"));
+    lines.push(
+      makeRow([
+        "Date",
+        "Type",
+        "Client",
+        "Ref",
+        "Debit(Tk)",
+        "Credit(Tk)",
+        "Balance(Tk)",
+      ]),
+    );
+    lines.push(makeDivider("="));
 
     let runningBalance = 0;
     if (combinedEntries.length === 0) {
-      lines.push("No transactions in this range.");
+      lines.push(makeRow(["-", "-", "No transactions", "-", "-", "-", "-"]));
+      lines.push(makeDivider("-"));
     } else {
       combinedEntries.forEach((entry) => {
         const debit = entry.amount || 0;
         const credit = entry.received || 0;
         runningBalance += credit - debit;
-        const row = [
-          pad(entry.date, 10, "left"),
-          pad(entry.type, 10, "left"),
-          pad(entry.client || "", 18, "left"),
-          pad(entry.ref || "", 10, "left"),
-          pad(debit.toFixed(2), 12, "right"),
-          pad(credit.toFixed(2), 12, "right"),
-          pad(runningBalance.toFixed(2), 12, "right"),
-        ].join(" | ");
-        lines.push(row);
+        lines.push(
+          makeRow([
+            entry.date,
+            entry.type,
+            entry.client || "",
+            entry.ref || "",
+            debit.toFixed(2),
+            credit.toFixed(2),
+            runningBalance.toFixed(2),
+          ]),
+        );
+        lines.push(makeDivider("-"));
       });
     }
 
-    const pdfBlob = createSimplePdfBlob("TRANSACTION STATEMENT", lines);
+    const pdfBlob = createSimplePdfBlob(
+      "TRANSACTION STATEMENT",
+      lines,
+      "Courier",
+    );
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement("a");
     link.href = url;
