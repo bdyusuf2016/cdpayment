@@ -16,6 +16,7 @@ export const createSimplePdfBlob = (
     lineHeight?: number;
     bottomMargin?: number;
     linesPerPage?: number;
+    showPageNumbers?: boolean;
   },
 ): Blob => {
   const repeatTitle = Boolean(options?.repeatTitle);
@@ -46,7 +47,9 @@ export const createSimplePdfBlob = (
     }
   }
 
-  const buildStream = (pageLines: string[]) => {
+  const pageCount = pages.length;
+
+  const buildStream = (pageLines: string[], pageIndex: number) => {
     const streamLines = [
       "BT",
       `/F1 ${fontSize} Tf`,
@@ -59,10 +62,19 @@ export const createSimplePdfBlob = (
       streamLines.push(`(${escapePdfText(line)}) Tj`);
     });
     streamLines.push("ET");
+
+    if (options?.showPageNumbers) {
+      const pageLabel = `Page ${pageIndex + 1} of ${pageCount}`;
+      const footerY = Math.max(20, bottomMargin - 14);
+      streamLines.push("BT");
+      streamLines.push(`/F1 ${Math.max(8, fontSize - 1)} Tf`);
+      streamLines.push(`${startX} ${footerY} Td`);
+      streamLines.push(`(${escapePdfText(pageLabel)}) Tj`);
+      streamLines.push("ET");
+    }
     return streamLines.join("\n");
   };
 
-  const pageCount = pages.length;
   const fontId = 3 + pageCount * 2;
   const objects: string[] = [];
 
@@ -79,7 +91,7 @@ export const createSimplePdfBlob = (
     objects.push(
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents ${streamId} 0 R /Resources << /Font << /F1 ${fontId} 0 R >> >> >>`,
     );
-    const stream = buildStream(pageLines);
+    const stream = buildStream(pageLines, idx);
     const streamLen = new TextEncoder().encode(stream).length;
     objects.push(`<< /Length ${streamLen} >>\nstream\n${stream}\nendstream`);
   });

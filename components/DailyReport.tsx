@@ -380,6 +380,16 @@ const DailyReport: React.FC<DailyReportProps> = ({
       if (width <= 3) return value.slice(0, width);
       return `${value.slice(0, width - 3)}...`;
     };
+    const wrapText = (value: string, width: number) => {
+      if (!value) return [""];
+      const parts: string[] = [];
+      let cursor = value;
+      while (cursor.length > 0) {
+        parts.push(cursor.slice(0, width));
+        cursor = cursor.slice(width);
+      }
+      return parts.length === 0 ? [""] : parts;
+    };
 
     const makeRow = (cells: string[]) => {
       const padded = cells.map((cell, idx) =>
@@ -452,18 +462,24 @@ const DailyReport: React.FC<DailyReportProps> = ({
         const debit = entry.amount || 0;
         const credit = entry.received || 0;
         runningBalance += credit - debit;
-        statementLines.push(
-          makeRow([
-            entry.date,
-            entry.type,
-            entry.ain || "",
-            entry.client || "",
-            entry.ref || "",
-            debit.toFixed(2),
-            credit.toFixed(2),
-            runningBalance.toFixed(2),
-          ]),
-        );
+        const clientLines = wrapText(entry.client || "", colDefs[3].width);
+        const refLines = wrapText(entry.ref || "", colDefs[4].width);
+        const lineCount = Math.max(clientLines.length, refLines.length);
+        for (let i = 0; i < lineCount; i += 1) {
+          const isFirst = i === 0;
+          statementLines.push(
+            makeRow([
+              isFirst ? entry.date : "",
+              isFirst ? entry.type : "",
+              isFirst ? entry.ain || "" : "",
+              clientLines[i] || "",
+              refLines[i] || "",
+              isFirst ? debit.toFixed(2) : "",
+              isFirst ? credit.toFixed(2) : "",
+              isFirst ? runningBalance.toFixed(2) : "",
+            ]),
+          );
+        }
         statementLines.push(makeDivider("-"));
       });
     }
@@ -502,6 +518,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
       fontSize,
       marginX,
       810,
+      { showPageNumbers: true },
     );
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement("a");
