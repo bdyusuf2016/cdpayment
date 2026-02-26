@@ -8,6 +8,9 @@ export const createSimplePdfBlob = (
   title: string,
   lines: string[],
   fontName: "Helvetica" | "Courier" = "Helvetica",
+  fontSize = 11,
+  startX = 40,
+  startY = 810,
 ): Blob => {
   const maxLines = 56;
   const merged = [title, "", ...lines];
@@ -17,7 +20,7 @@ export const createSimplePdfBlob = (
     clipped[maxLines - 1] = `... (${merged.length - maxLines + 1} more lines)`;
   }
 
-  const streamLines = ["BT", "/F1 11 Tf", "40 810 Td"];
+  const streamLines = ["BT", `/F1 ${fontSize} Tf`, `${startX} ${startY} Td`];
   clipped.forEach((line, idx) => {
     if (idx > 0) {
       streamLines.push("0 -14 Td");

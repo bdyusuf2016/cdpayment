@@ -373,6 +373,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
       "TRANSACTION STATEMENT",
       lines,
       "Courier",
+      9,
+      24,
+      810,
     );
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement("a");
