@@ -359,10 +359,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
     lines.push("");
     lines.push("STATEMENT");
     const colDefs = [
-      { key: "date", width: 9, align: "left" as const },
-      { key: "type", width: 8, align: "left" as const },
+      { key: "date", width: 10, align: "left" as const },
       { key: "ain", width: 10, align: "left" as const },
-      { key: "client", width: 14, align: "left" as const },
+      { key: "client", width: 17, align: "left" as const },
       { key: "ref", width: 8, align: "left" as const },
       { key: "debit", width: 9, align: "right" as const },
       { key: "credit", width: 9, align: "right" as const },
@@ -405,7 +404,6 @@ const DailyReport: React.FC<DailyReportProps> = ({
     statementLines.push(
       makeRow([
         "Date",
-        "Type",
         "AIN",
         "Client",
         "Ref",
@@ -430,7 +428,6 @@ const DailyReport: React.FC<DailyReportProps> = ({
       statementLines.push(
         makeRow([
           startDate,
-          "OPEN",
           "-",
           "Opening Balance",
           "-",
@@ -441,14 +438,13 @@ const DailyReport: React.FC<DailyReportProps> = ({
       );
       statementLines.push(makeDivider("-"));
       statementLines.push(
-        makeRow(["-", "-", "-", "No transactions", "-", "-", "-", "-"]),
+        makeRow(["-", "-", "No transactions", "-", "-", "-", "-"]),
       );
       statementLines.push(makeDivider("-"));
     } else {
       statementLines.push(
         makeRow([
           startDate,
-          "OPEN",
           "-",
           "Opening Balance",
           "-",
@@ -462,15 +458,14 @@ const DailyReport: React.FC<DailyReportProps> = ({
         const debit = entry.amount || 0;
         const credit = entry.received || 0;
         runningBalance += credit - debit;
-        const clientLines = wrapText(entry.client || "", colDefs[3].width);
-        const refLines = wrapText(entry.ref || "", colDefs[4].width);
+        const clientLines = wrapText(entry.client || "", colDefs[2].width);
+        const refLines = wrapText(entry.ref || "", colDefs[3].width);
         const lineCount = Math.max(clientLines.length, refLines.length);
         for (let i = 0; i < lineCount; i += 1) {
           const isFirst = i === 0;
           statementLines.push(
             makeRow([
               isFirst ? entry.date : "",
-              isFirst ? entry.type : "",
               isFirst ? entry.ain || "" : "",
               clientLines[i] || "",
               refLines[i] || "",
@@ -488,7 +483,6 @@ const DailyReport: React.FC<DailyReportProps> = ({
     statementLines.push(
       makeRow([
         endDate,
-        "TOTAL",
         "-",
         "Totals",
         "-",

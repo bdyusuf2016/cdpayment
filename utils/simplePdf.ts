@@ -66,9 +66,11 @@ export const createSimplePdfBlob = (
     if (options?.showPageNumbers) {
       const pageLabel = `Page ${pageIndex + 1} of ${pageCount}`;
       const footerY = Math.max(20, bottomMargin - 14);
+      const labelWidth = pageLabel.length * Math.max(5, fontSize * 0.6);
+      const centerX = Math.max(40, Math.floor((595 - labelWidth) / 2));
       streamLines.push("BT");
       streamLines.push(`/F1 ${Math.max(8, fontSize - 1)} Tf`);
-      streamLines.push(`${startX} ${footerY} Td`);
+      streamLines.push(`${centerX} ${footerY} Td`);
       streamLines.push(`(${escapePdfText(pageLabel)}) Tj`);
       streamLines.push("ET");
     }
