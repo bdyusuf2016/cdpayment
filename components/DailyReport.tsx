@@ -306,13 +306,13 @@ const DailyReport: React.FC<DailyReportProps> = ({
     lines.push("");
     lines.push("STATEMENT");
     const colDefs = [
-      { key: "date", width: 10, align: "left" as const },
-      { key: "type", width: 10, align: "left" as const },
-      { key: "client", width: 18, align: "left" as const },
-      { key: "ref", width: 10, align: "left" as const },
-      { key: "debit", width: 12, align: "right" as const },
-      { key: "credit", width: 12, align: "right" as const },
-      { key: "balance", width: 12, align: "right" as const },
+      { key: "date", width: 8, align: "left" as const },
+      { key: "type", width: 8, align: "left" as const },
+      { key: "client", width: 14, align: "left" as const },
+      { key: "ref", width: 8, align: "left" as const },
+      { key: "debit", width: 10, align: "right" as const },
+      { key: "credit", width: 10, align: "right" as const },
+      { key: "balance", width: 10, align: "right" as const },
     ];
 
     const pad = (value: string, width: number, align: "left" | "right") => {
@@ -338,9 +338,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
         "Type",
         "Client",
         "Ref",
-        "Debit(Tk)",
-        "Credit(Tk)",
-        "Balance(Tk)",
+        "Debit",
+        "Credit",
+        "Balance",
       ]),
     );
     lines.push(makeDivider("="));
@@ -373,8 +373,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
       "TRANSACTION STATEMENT",
       lines,
       "Courier",
-      9,
-      24,
+      7,
+      18,
       810,
     );
     const url = URL.createObjectURL(pdfBlob);
