@@ -305,9 +305,37 @@ const DailyReport: React.FC<DailyReportProps> = ({
     );
     lines.push("");
     lines.push("STATEMENT");
-    lines.push(
-      "Date | Description | Debit (Tk) | Credit (Tk) | Balance (Tk)",
-    );
+    const colDefs = [
+      { key: "date", width: 10, align: "left" as const },
+      { key: "type", width: 10, align: "left" as const },
+      { key: "client", width: 18, align: "left" as const },
+      { key: "ref", width: 10, align: "left" as const },
+      { key: "debit", width: 12, align: "right" as const },
+      { key: "credit", width: 12, align: "right" as const },
+      { key: "balance", width: 12, align: "right" as const },
+    ];
+
+    const pad = (value: string, width: number, align: "left" | "right") => {
+      const trimmed = value.length > width ? value.slice(0, width) : value;
+      return align === "right"
+        ? trimmed.padStart(width, " ")
+        : trimmed.padEnd(width, " ");
+    };
+
+    const header = [
+      pad("Date", 10, "left"),
+      pad("Type", 10, "left"),
+      pad("Client", 18, "left"),
+      pad("Ref", 10, "left"),
+      pad("Debit(Tk)", 12, "right"),
+      pad("Credit(Tk)", 12, "right"),
+      pad("Balance(Tk)", 12, "right"),
+    ].join(" | ");
+    const divider = colDefs
+      .map((col) => "-".repeat(col.width))
+      .join("-|-");
+    lines.push(header);
+    lines.push(divider);
 
     let runningBalance = 0;
     if (combinedEntries.length === 0) {
@@ -317,10 +345,16 @@ const DailyReport: React.FC<DailyReportProps> = ({
         const debit = entry.amount || 0;
         const credit = entry.received || 0;
         runningBalance += credit - debit;
-        const description = `${entry.type} - ${entry.client} - Ref ${entry.ref}`;
-        lines.push(
-          `${entry.date} | ${description} | ${debit.toFixed(2)} | ${credit.toFixed(2)} | ${runningBalance.toFixed(2)}`,
-        );
+        const row = [
+          pad(entry.date, 10, "left"),
+          pad(entry.type, 10, "left"),
+          pad(entry.client || "", 18, "left"),
+          pad(entry.ref || "", 10, "left"),
+          pad(debit.toFixed(2), 12, "right"),
+          pad(credit.toFixed(2), 12, "right"),
+          pad(runningBalance.toFixed(2), 12, "right"),
+        ].join(" | ");
+        lines.push(row);
       });
     }
 
