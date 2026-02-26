@@ -51,6 +51,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
   const [activeView, setActiveView] = useState<
     "combined" | "duty" | "assessment"
   >("combined");
+  const [statusFilter, setStatusFilter] = useState<"all" | "paid">("all");
   const isDark = systemConfig.theme === "dark";
 
   const t =
@@ -65,6 +66,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
           reportDuty: "Duty Summary",
           reportAssessment: "Assessment Summary",
           reportCombined: "Combined Summary",
+          reportCollection: "Collection",
           reportDutyRows: "Duty Records",
           reportAssessmentRows: "Assessment Records",
           reportEmpty: "No transactions for this date range.",
@@ -79,6 +81,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
           reportDuty: "ডিউটি সামারি",
           reportAssessment: "অ্যাসেসমেন্ট সামারি",
           reportCombined: "কম্বাইন্ড সামারি",
+          reportCollection: "কালেকশন",
           reportDutyRows: "ডিউটি রেকর্ড",
           reportAssessmentRows: "অ্যাসেসমেন্ট রেকর্ড",
           reportEmpty: "এই রেঞ্জে কোনো লেনদেন নেই।",
@@ -96,6 +99,25 @@ const DailyReport: React.FC<DailyReportProps> = ({
       ),
     [assessmentHistory, endDate, startDate],
   );
+
+  const paidDuty = useMemo(
+    () =>
+      dailyDuty.filter(
+        (rec) => String(rec.status || "").trim().toLowerCase() === "paid",
+      ),
+    [dailyDuty],
+  );
+  const paidAssessment = useMemo(
+    () =>
+      dailyAssessment.filter(
+        (rec) => String(rec.status || "").trim().toLowerCase() === "paid",
+      ),
+    [dailyAssessment],
+  );
+
+  const visibleDuty = statusFilter === "paid" ? paidDuty : dailyDuty;
+  const visibleAssessment =
+    statusFilter === "paid" ? paidAssessment : dailyAssessment;
 
   const dutySummary = useMemo(() => {
     const totalAmount = dailyDuty.reduce((sum, rec) => sum + (rec.duty || 0), 0);
@@ -540,13 +562,19 @@ const DailyReport: React.FC<DailyReportProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div
             role="button"
             tabIndex={0}
-            onClick={() => setActiveView("duty")}
+            onClick={() => {
+              setActiveView("duty");
+              setStatusFilter("all");
+            }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") setActiveView("duty");
+              if (e.key === "Enter" || e.key === " ") {
+                setActiveView("duty");
+                setStatusFilter("all");
+              }
             }}
             className={`p-4 rounded-xl border cursor-pointer transition-all ${
               activeView === "duty"
@@ -588,9 +616,15 @@ const DailyReport: React.FC<DailyReportProps> = ({
           <div
             role="button"
             tabIndex={0}
-            onClick={() => setActiveView("assessment")}
+            onClick={() => {
+              setActiveView("assessment");
+              setStatusFilter("all");
+            }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") setActiveView("assessment");
+              if (e.key === "Enter" || e.key === " ") {
+                setActiveView("assessment");
+                setStatusFilter("all");
+              }
             }}
             className={`p-4 rounded-xl border cursor-pointer transition-all ${
               activeView === "assessment"
@@ -632,9 +666,15 @@ const DailyReport: React.FC<DailyReportProps> = ({
           <div
             role="button"
             tabIndex={0}
-            onClick={() => setActiveView("combined")}
+            onClick={() => {
+              setActiveView("combined");
+              setStatusFilter("all");
+            }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") setActiveView("combined");
+              if (e.key === "Enter" || e.key === " ") {
+                setActiveView("combined");
+                setStatusFilter("all");
+              }
             }}
             className={`p-4 rounded-xl border cursor-pointer transition-all ${
               activeView === "combined"
@@ -672,6 +712,77 @@ const DailyReport: React.FC<DailyReportProps> = ({
               </div>
             </div>
           </div>
+
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              setActiveView("combined");
+              setStatusFilter("paid");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                setActiveView("combined");
+                setStatusFilter("paid");
+              }
+            }}
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              statusFilter === "paid"
+                ? isDark
+                  ? "bg-green-900/30 border-green-500/60"
+                  : "bg-green-50 border-green-300"
+                : isDark
+                  ? "bg-slate-900 border-slate-700 hover:border-green-500/50"
+                  : "bg-slate-50 border-slate-200 hover:border-green-300"
+            }`}
+          >
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+              {t.reportCollection}
+            </p>
+            <div className="space-y-2 text-xs font-bold">
+              <div className="flex items-center justify-between">
+                <span>Paid</span>
+                <span>{paidDuty.length + paidAssessment.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Duty Received</span>
+                <span>
+                  {formatMoney(
+                    paidDuty.reduce(
+                      (sum, rec) => sum + (rec.received || 0),
+                      0,
+                    ),
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Assessment Received</span>
+                <span>
+                  {formatMoney(
+                    paidAssessment.reduce(
+                      (sum, rec) => sum + (rec.received || 0),
+                      0,
+                    ),
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Total Received</span>
+                <span>
+                  {formatMoney(
+                    paidDuty.reduce(
+                      (sum, rec) => sum + (rec.received || 0),
+                      0,
+                    ) +
+                      paidAssessment.reduce(
+                        (sum, rec) => sum + (rec.received || 0),
+                        0,
+                      ),
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div
@@ -690,10 +801,10 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   {t.reportDutyRows}
                 </p>
                 <span className="text-[10px] font-bold text-slate-400">
-                  {dailyDuty.length}
+                  {visibleDuty.length}
                 </span>
               </div>
-              {dailyDuty.length === 0 ? (
+              {visibleDuty.length === 0 ? (
                 <p className="px-4 py-6 text-xs font-bold text-slate-400">
                   {t.reportEmpty}
                 </p>
@@ -725,7 +836,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       </tr>
                     </thead>
                     <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                      {dailyDuty.map((rec) => (
+                      {visibleDuty.map((rec) => (
                         <tr key={rec.id}>
                           <td className="px-4 py-2">{rec.date}</td>
                           <td className="px-4 py-2">{rec.clientName}</td>
@@ -757,10 +868,10 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   {t.reportAssessmentRows}
                 </p>
                 <span className="text-[10px] font-bold text-slate-400">
-                  {dailyAssessment.length}
+                  {visibleAssessment.length}
                 </span>
               </div>
-              {dailyAssessment.length === 0 ? (
+              {visibleAssessment.length === 0 ? (
                 <p className="px-4 py-6 text-xs font-bold text-slate-400">
                   {t.reportEmpty}
                 </p>
@@ -792,7 +903,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       </tr>
                     </thead>
                     <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                      {dailyAssessment.map((rec) => {
+                      {visibleAssessment.map((rec) => {
                         const base =
                           rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
                         return (
