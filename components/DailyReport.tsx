@@ -298,6 +298,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
         id: rec.id,
         date: rec.date,
         type: "Duty",
+        ain: rec.ain,
         client: rec.clientName,
         ref: rec.beYear,
         amount: rec.duty || 0,
@@ -307,6 +308,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
         id: rec.id,
         date: rec.date,
         type: "Assessment",
+        ain: rec.ain,
         client: rec.clientName,
         ref: String(rec.nosOfBe ?? ""),
         amount: rec.net && rec.net > 0 ? rec.net : rec.amount || 0,
@@ -352,12 +354,13 @@ const DailyReport: React.FC<DailyReportProps> = ({
     lines.push("STATEMENT");
     const colDefs = [
       { key: "date", width: 9, align: "left" as const },
-      { key: "type", width: 9, align: "left" as const },
-      { key: "client", width: 16, align: "left" as const },
-      { key: "ref", width: 9, align: "left" as const },
-      { key: "debit", width: 11, align: "right" as const },
-      { key: "credit", width: 11, align: "right" as const },
-      { key: "balance", width: 11, align: "right" as const },
+      { key: "type", width: 8, align: "left" as const },
+      { key: "ain", width: 10, align: "left" as const },
+      { key: "client", width: 14, align: "left" as const },
+      { key: "ref", width: 8, align: "left" as const },
+      { key: "debit", width: 9, align: "right" as const },
+      { key: "credit", width: 9, align: "right" as const },
+      { key: "balance", width: 9, align: "right" as const },
     ];
 
     const pad = (value: string, width: number, align: "left" | "right") => {
@@ -382,6 +385,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
       makeRow([
         "Date",
         "Type",
+        "AIN",
         "Client",
         "Ref",
         "Debit",
@@ -406,6 +410,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
         makeRow([
           startDate,
           "OPEN",
+          "-",
           "Opening Balance",
           "-",
           "-",
@@ -415,7 +420,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
       );
       statementLines.push(makeDivider("-"));
       statementLines.push(
-        makeRow(["-", "-", "No transactions", "-", "-", "-", "-"]),
+        makeRow(["-", "-", "-", "No transactions", "-", "-", "-", "-"]),
       );
       statementLines.push(makeDivider("-"));
     } else {
@@ -423,6 +428,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
         makeRow([
           startDate,
           "OPEN",
+          "-",
           "Opening Balance",
           "-",
           "-",
@@ -439,6 +445,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
           makeRow([
             entry.date,
             entry.type,
+            entry.ain || "",
             entry.client || "",
             entry.ref || "",
             debit.toFixed(2),
@@ -455,6 +462,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
       makeRow([
         endDate,
         "TOTAL",
+        "-",
         "Totals",
         "-",
         totalDebit.toFixed(2),
@@ -822,6 +830,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
                           Client
                         </th>
                         <th className="px-4 py-2 font-black uppercase tracking-widest">
+                          AIN
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest">
                           B/E
                         </th>
                         <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
@@ -839,8 +850,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       {visibleDuty.map((rec) => (
                         <tr key={rec.id}>
                           <td className="px-4 py-2">{rec.date}</td>
-                          <td className="px-4 py-2">{rec.clientName}</td>
-                          <td className="px-4 py-2">{rec.beYear}</td>
+                        <td className="px-4 py-2">{rec.clientName}</td>
+                        <td className="px-4 py-2">{rec.ain}</td>
+                        <td className="px-4 py-2">{rec.beYear}</td>
                           <td className="px-4 py-2 text-right">
                             {formatMoney(rec.duty || 0)}
                           </td>
@@ -889,6 +901,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
                           Client
                         </th>
                         <th className="px-4 py-2 font-black uppercase tracking-widest">
+                          AIN
+                        </th>
+                        <th className="px-4 py-2 font-black uppercase tracking-widest">
                           BE
                         </th>
                         <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
@@ -909,8 +924,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
                         return (
                           <tr key={rec.id}>
                             <td className="px-4 py-2">{rec.date}</td>
-                            <td className="px-4 py-2">{rec.clientName}</td>
-                            <td className="px-4 py-2">{rec.nosOfBe}</td>
+                          <td className="px-4 py-2">{rec.clientName}</td>
+                          <td className="px-4 py-2">{rec.ain}</td>
+                          <td className="px-4 py-2">{rec.nosOfBe}</td>
                             <td className="px-4 py-2 text-right">
                               {formatMoney(base)}
                             </td>
