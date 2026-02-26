@@ -289,6 +289,26 @@ const DailyReport: React.FC<DailyReportProps> = ({
       })),
     ].sort((a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime());
 
+    const startBoundary = new Date(startDate);
+    startBoundary.setHours(0, 0, 0, 0);
+
+    const openingBalance =
+      dutyHistory.reduce((sum, rec) => {
+        const parsed = parseDate(rec.date);
+        if (parsed < startBoundary) {
+          return sum + (rec.received || 0) - (rec.duty || 0);
+        }
+        return sum;
+      }, 0) +
+      assessmentHistory.reduce((sum, rec) => {
+        const parsed = parseDate(rec.date);
+        if (parsed < startBoundary) {
+          const amount = rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
+          return sum + (rec.received || 0) - amount;
+        }
+        return sum;
+      }, 0);
+
     const lines: string[] = [];
     lines.push(`Report Range: ${startDate} to ${endDate}`);
     lines.push(`Statement Style: Bank Statement`);
@@ -346,13 +366,46 @@ const DailyReport: React.FC<DailyReportProps> = ({
     );
     statementLines.push(makeDivider("="));
 
-    let runningBalance = 0;
+    let runningBalance = openingBalance;
+    const totalDebit = combinedEntries.reduce(
+      (sum, entry) => sum + (entry.amount || 0),
+      0,
+    );
+    const totalCredit = combinedEntries.reduce(
+      (sum, entry) => sum + (entry.received || 0),
+      0,
+    );
+
     if (combinedEntries.length === 0) {
+      statementLines.push(
+        makeRow([
+          startDate,
+          "OPEN",
+          "Opening Balance",
+          "-",
+          "-",
+          "-",
+          runningBalance.toFixed(2),
+        ]),
+      );
+      statementLines.push(makeDivider("-"));
       statementLines.push(
         makeRow(["-", "-", "No transactions", "-", "-", "-", "-"]),
       );
       statementLines.push(makeDivider("-"));
     } else {
+      statementLines.push(
+        makeRow([
+          startDate,
+          "OPEN",
+          "Opening Balance",
+          "-",
+          "-",
+          "-",
+          runningBalance.toFixed(2),
+        ]),
+      );
+      statementLines.push(makeDivider("-"));
       combinedEntries.forEach((entry) => {
         const debit = entry.amount || 0;
         const credit = entry.received || 0;
@@ -371,6 +424,20 @@ const DailyReport: React.FC<DailyReportProps> = ({
         statementLines.push(makeDivider("-"));
       });
     }
+
+    statementLines.push(makeDivider("="));
+    statementLines.push(
+      makeRow([
+        endDate,
+        "TOTAL",
+        "Totals",
+        "-",
+        totalDebit.toFixed(2),
+        totalCredit.toFixed(2),
+        runningBalance.toFixed(2),
+      ]),
+    );
+    statementLines.push(makeDivider("="));
 
     lines.push(...statementLines);
 
