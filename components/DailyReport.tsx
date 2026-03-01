@@ -48,6 +48,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
 }) => {
   const [startDate, setStartDate] = useState(getTodayDateInputValue);
   const [endDate, setEndDate] = useState(getTodayDateInputValue);
+  const [ainFilter, setAinFilter] = useState("");
+  const [groupByStatus, setGroupByStatus] = useState<"all" | "paid" | "due">("all");
   const [activeView, setActiveView] = useState<
     "combined" | "duty" | "assessment"
   >("combined");
@@ -95,17 +97,38 @@ const DailyReport: React.FC<DailyReportProps> = ({
           reportEmpty: "এই রেঞ্জে কোনো লেনদেন নেই।",
         };
 
+  const normalizedAinFilter = ainFilter.trim().toLowerCase();
+  const isPaidStatus = (status: string | null | undefined) =>
+    String(status || "").trim().toLowerCase() === "paid";
+  const applyStatusGroup = <T extends { status?: string | null }>(rows: T[]) => {
+    if (groupByStatus === "paid") {
+      return rows.filter((rec) => isPaidStatus(rec.status));
+    }
+    if (groupByStatus === "due") {
+      return rows.filter((rec) => !isPaidStatus(rec.status));
+    }
+    return rows;
+  };
+
   const dailyDuty = useMemo(
     () =>
-      dutyHistory.filter((rec) => isWithinRange(rec.date, startDate, endDate)),
-    [dutyHistory, endDate, startDate],
+      dutyHistory.filter((rec) => {
+        const inRange = isWithinRange(rec.date, startDate, endDate);
+        if (!inRange) return false;
+        if (!normalizedAinFilter) return true;
+        return String(rec.ain || "").toLowerCase().includes(normalizedAinFilter);
+      }),
+    [dutyHistory, endDate, normalizedAinFilter, startDate],
   );
   const dailyAssessment = useMemo(
     () =>
-      assessmentHistory.filter((rec) =>
-        isWithinRange(rec.date, startDate, endDate),
-      ),
-    [assessmentHistory, endDate, startDate],
+      assessmentHistory.filter((rec) => {
+        const inRange = isWithinRange(rec.date, startDate, endDate);
+        if (!inRange) return false;
+        if (!normalizedAinFilter) return true;
+        return String(rec.ain || "").toLowerCase().includes(normalizedAinFilter);
+      }),
+    [assessmentHistory, endDate, normalizedAinFilter, startDate],
   );
 
   const paidDuty = useMemo(
@@ -124,11 +147,13 @@ const DailyReport: React.FC<DailyReportProps> = ({
   );
 
   const dutyBase = statusFilter === "paid" ? paidDuty : dailyDuty;
-  const visibleDuty = dutyClientFilter === "all"
+  const dutyByClient = dutyClientFilter === "all"
     ? dutyBase
     : dutyBase.filter((rec) => rec.clientName === dutyClientFilter);
-  const visibleAssessment =
+  const visibleDuty = applyStatusGroup(dutyByClient);
+  const assessmentByStatusFilter =
     statusFilter === "paid" ? paidAssessment : dailyAssessment;
+  const visibleAssessment = applyStatusGroup(assessmentByStatusFilter);
 
   const dutyClientOptions = useMemo(() => {
     const names = dailyDuty
@@ -149,6 +174,15 @@ const DailyReport: React.FC<DailyReportProps> = ({
       rows,
     }));
   }, [visibleDuty]);
+
+  const exportDutyRows = useMemo(
+    () => applyStatusGroup(dailyDuty),
+    [dailyDuty, groupByStatus],
+  );
+  const exportAssessmentRows = useMemo(
+    () => applyStatusGroup(dailyAssessment),
+    [dailyAssessment, groupByStatus],
+  );
 
   const dutySummary = useMemo(() => {
     const totalAmount = dailyDuty.reduce((sum, rec) => sum + (rec.duty || 0), 0);
@@ -224,6 +258,12 @@ const DailyReport: React.FC<DailyReportProps> = ({
   const downloadDailyCsv = () => {
     const lines: string[] = [];
     lines.push(`Report Range,${startDate} to ${endDate}`);
+    if (ainFilter.trim()) {
+      lines.push(`AIN Filter,${ainFilter.trim()}`);
+    }
+    if (groupByStatus !== "all") {
+      lines.push(`Status Group,${groupByStatus.toUpperCase()}`);
+    }
     lines.push("");
     lines.push("Summary,Transactions,Amount,Received,Due,Profit");
     lines.push(
@@ -288,7 +328,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
           "Payment Method",
         ].join(","),
       );
-      dailyDuty.forEach((rec) => {
+      exportDutyRows.forEach((rec) => {
         lines.push(
           [
             rec.date,
@@ -325,7 +365,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
           "Payment Method",
         ].join(","),
       );
-      dailyAssessment.forEach((rec) => {
+      exportAssessmentRows.forEach((rec) => {
         lines.push(
           [
             rec.date,
@@ -365,6 +405,12 @@ const DailyReport: React.FC<DailyReportProps> = ({
     if (activeView === "duty") {
       const lines: string[] = [];
       lines.push(`Report Range: ${startDate} to ${endDate}`);
+      if (ainFilter.trim()) {
+        lines.push(`AIN Filter: ${ainFilter.trim()}`);
+      }
+      if (groupByStatus !== "all") {
+        lines.push(`Status Group: ${groupByStatus.toUpperCase()}`);
+      }
       lines.push("Module: Duty");
       lines.push("");
       lines.push("CLIENT-WISE DUTY REPORT");
@@ -457,7 +503,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
       return;
     }
     const combinedEntries = [
-      ...dailyDuty.map((rec) => ({
+      ...exportDutyRows.map((rec) => ({
         id: rec.id,
         date: rec.date,
         type: "Duty",
@@ -467,7 +513,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
         amount: rec.duty || 0,
         received: rec.received || 0,
       })),
-      ...dailyAssessment.map((rec) => ({
+      ...exportAssessmentRows.map((rec) => ({
         id: rec.id,
         date: rec.date,
         type: "Assessment",
@@ -501,6 +547,12 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
     const lines: string[] = [];
     lines.push(`Report Range: ${startDate} to ${endDate}`);
+    if (ainFilter.trim()) {
+      lines.push(`AIN Filter: ${ainFilter.trim()}`);
+    }
+    if (groupByStatus !== "all") {
+      lines.push(`Status Group: ${groupByStatus.toUpperCase()}`);
+    }
     lines.push(`Statement Style: Bank Statement`);
     lines.push("");
     lines.push("SUMMARY");
@@ -733,6 +785,34 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   }}
                   className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"}`}
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  AIN
+                </span>
+                <input
+                  type="text"
+                  value={ainFilter}
+                  onChange={(e) => setAinFilter(e.target.value)}
+                  placeholder="Search by AIN"
+                  className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none w-44 ${isDark ? "bg-slate-900 border-slate-700 text-slate-200 placeholder-slate-500" : "bg-white border-slate-300 text-slate-800 placeholder-slate-400"}`}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Group by Status
+                </span>
+                <select
+                  value={groupByStatus}
+                  onChange={(e) =>
+                    setGroupByStatus(e.target.value as "all" | "paid" | "due")
+                  }
+                  className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"}`}
+                >
+                  <option value="all">All</option>
+                  <option value="paid">Paid</option>
+                  <option value="due">Due</option>
+                </select>
               </div>
             </div>
           </div>
