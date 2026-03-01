@@ -208,6 +208,14 @@ const DailyReport: React.FC<DailyReportProps> = ({
     };
   }, [dailyDuty]);
 
+  const dutyPaidSubtotal = useMemo(
+    () =>
+      visibleDuty
+        .filter((rec) => isPaidStatus(rec.status))
+        .reduce((sum, rec) => sum + (rec.duty || 0), 0),
+    [visibleDuty],
+  );
+
   const assessmentSummary = useMemo(() => {
     const totalAmount = dailyAssessment.reduce((sum, rec) => {
       const base = rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
@@ -233,6 +241,17 @@ const DailyReport: React.FC<DailyReportProps> = ({
       profit: totalProfit,
     };
   }, [dailyAssessment]);
+
+  const assessmentPaidSubtotal = useMemo(
+    () =>
+      visibleAssessment
+        .filter((rec) => isPaidStatus(rec.status))
+        .reduce((sum, rec) => {
+          const base = rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
+          return sum + base;
+        }, 0),
+    [visibleAssessment],
+  );
 
   const combinedSummary = useMemo(
     () => ({
@@ -1225,9 +1244,14 @@ const DailyReport: React.FC<DailyReportProps> = ({
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                   {t.reportDutyRows}
                 </p>
-                <span className="text-[10px] font-bold text-slate-400">
-                  {visibleDuty.length}
-                </span>
+                <div className="text-right space-y-1">
+                  <span className="block text-[10px] font-bold text-slate-400">
+                    {visibleDuty.length}
+                  </span>
+                  <span className="block text-[10px] font-black uppercase tracking-widest text-emerald-500">
+                    Paid Subtotal: {formatMoney(dutyPaidSubtotal)}
+                  </span>
+                </div>
               </div>
               {visibleDuty.length === 0 ? (
                 <p className="px-4 py-6 text-xs font-bold text-slate-400">
@@ -1370,9 +1394,14 @@ const DailyReport: React.FC<DailyReportProps> = ({
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                   {t.reportAssessmentRows}
                 </p>
-                <span className="text-[10px] font-bold text-slate-400">
-                  {visibleAssessment.length}
-                </span>
+                <div className="text-right space-y-1">
+                  <span className="block text-[10px] font-bold text-slate-400">
+                    {visibleAssessment.length}
+                  </span>
+                  <span className="block text-[10px] font-black uppercase tracking-widest text-emerald-500">
+                    Paid Subtotal: {formatMoney(assessmentPaidSubtotal)}
+                  </span>
+                </div>
               </div>
               {visibleAssessment.length === 0 ? (
                 <p className="px-4 py-6 text-xs font-bold text-slate-400">
