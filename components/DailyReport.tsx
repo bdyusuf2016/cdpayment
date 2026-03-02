@@ -218,7 +218,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
       string,
       {
         ain: string;
-        name: string;
+        client: string;
         totalBe: number;
         duty: number;
       }
@@ -228,7 +228,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
       const ain = String(rec.ain || "").trim() || "N/A";
       const current = grouped.get(ain) || {
         ain,
-        name: rec.clientName || "-",
+        client: rec.clientName || "-",
         totalBe: 0,
         duty: 0,
       };
@@ -238,11 +238,11 @@ const DailyReport: React.FC<DailyReportProps> = ({
         current.totalBe += 1;
         current.duty += due;
         if (
-          current.name === "-" &&
+          current.client === "-" &&
           rec.clientName &&
           rec.clientName.trim().length > 0
         ) {
-          current.name = rec.clientName;
+          current.client = rec.clientName;
         }
       }
       grouped.set(ain, current);
@@ -1439,7 +1439,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       AIN
                     </th>
                     <th className="px-4 py-2 font-black uppercase tracking-widest">
-                      Name
+                      Client
                     </th>
                     <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
                       Total B/E
@@ -1453,7 +1453,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   {dutyDueByAin.map((row) => (
                     <tr key={row.ain}>
                       <td className="px-4 py-2 font-bold">{row.ain}</td>
-                      <td className="px-4 py-2">{row.name}</td>
+                      <td className="px-4 py-2">{row.client}</td>
                       <td className="px-4 py-2 text-right">
                         {row.totalBe}
                       </td>
