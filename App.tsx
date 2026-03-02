@@ -795,20 +795,7 @@ const App: React.FC = () => {
             ],
           };
         }
-        const dueRows = visibleDutyRows.filter(
-          (r) => Math.max(0, (r.duty || 0) - (r.received || 0)) > 0,
-        );
-        const totalDue = dueRows.reduce(
-          (sum, r) => sum + Math.max(0, (r.duty || 0) - (r.received || 0)),
-          0,
-        );
-        return {
-          title: "Due Details",
-          items: [
-            `Due Records: ${dueRows.length}`,
-            `Total Due Amount: ${money(totalDue)}`,
-          ],
-        };
+        return null;
       }
       case "assessment": {
         if (activeStatIndex === 0) {
@@ -833,20 +820,7 @@ const App: React.FC = () => {
           };
         }
         if (activeStatIndex === 2) {
-          const dueRows = visibleAssessmentRows.filter(
-            (r) => Math.max(0, (r.net || 0) - (r.received || 0)) > 0,
-          );
-          const totalDue = dueRows.reduce(
-            (sum, r) => sum + Math.max(0, (r.net || 0) - (r.received || 0)),
-            0,
-          );
-          return {
-            title: "Due Amount Details",
-            items: [
-              `Due Rows: ${dueRows.length}`,
-              `Total Due Amount: ${money(totalDue)}`,
-            ],
-          };
+          return null;
         }
         return {
           title: "Total B/E Details",
