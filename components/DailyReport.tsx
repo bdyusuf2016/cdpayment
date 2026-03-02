@@ -229,7 +229,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     return map;
   }, [assessmentHistory, dutyHistory]);
 
-  const dutyDueByAin = useMemo(() => {
+  const allTimeDueByAin = useMemo(() => {
     const grouped = new Map<
       string,
       {
@@ -240,7 +240,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
       }
     >();
 
-    dailyDuty.forEach((rec) => {
+    dutyHistory.forEach((rec) => {
       const ain = String(rec.ain || "").trim() || "N/A";
       const fallbackClient = clientNameByAin.get(ain) || "-";
       const current = grouped.get(ain) || {
@@ -268,7 +268,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     return Array.from(grouped.values())
       .filter((row) => row.duty > 0)
       .sort((a, b) => b.duty - a.duty);
-  }, [clientNameByAin, dailyDuty]);
+  }, [clientNameByAin, dutyHistory]);
 
   const assessmentSummary = useMemo(() => {
     const totalAmount = dailyAssessment.reduce((sum, rec) => {
@@ -308,6 +308,14 @@ const DailyReport: React.FC<DailyReportProps> = ({
   );
 
   const formatMoney = (value: number) => `Tk ${value.toLocaleString("en-BD")}`;
+
+  const clearFilters = () => {
+    const today = getTodayDateInputValue();
+    setStartDate(today);
+    setEndDate(today);
+    setAinFilter("");
+    setGroupByStatus("all");
+  };
 
   const toCsvValue = (value: string | number | null | undefined) => {
     const str = String(value ?? "");
@@ -805,16 +813,15 @@ const DailyReport: React.FC<DailyReportProps> = ({
       <div
         className={`p-8 rounded-[2rem] border shadow-xl transition-all ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-300"}`}
       >
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6">
-          <div className="space-y-2">
-            <h4 className="font-black uppercase text-xs tracking-widest text-blue-600 flex items-center gap-2">
-              <i className="fas fa-chart-line"></i> {t.report}
-            </h4>
-            <div className="flex flex-wrap items-center gap-3">
+        <div className="mb-6">
+          <h4 className="font-black uppercase text-xs tracking-widest text-blue-600 flex items-center gap-2 mb-3">
+            <i className="fas fa-chart-line"></i> {t.report}
+          </h4>
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                 {t.reportRange}
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   {t.reportFrom}
                 </span>
@@ -831,7 +838,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"}`}
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   {t.reportTo}
                 </span>
@@ -848,7 +855,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"}`}
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   AIN
                 </span>
@@ -860,7 +867,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none w-44 ${isDark ? "bg-slate-900 border-slate-700 text-slate-200 placeholder-slate-500" : "bg-white border-slate-300 text-slate-800 placeholder-slate-400"}`}
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   Group by Status
                 </span>
@@ -876,21 +883,29 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   <option value="due">Due</option>
                 </select>
               </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={clearFilters}
+              className={`px-3 py-2 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${
+                isDark
+                  ? "bg-slate-900 border-slate-600 text-slate-200 hover:bg-slate-800"
+                  : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <i className="fas fa-eraser mr-1"></i>
+              Clear
+            </button>
             <button
               onClick={downloadDailyCsv}
-              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
+              className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest shadow transition-all shrink-0"
             >
-              <i className="fas fa-file-csv mr-2"></i>
+              <i className="fas fa-file-csv mr-1"></i>
               {t.reportCsv}
             </button>
             <button
               onClick={downloadDailyPdf}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
+              className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow transition-all shrink-0"
             >
-              <i className="fas fa-file-pdf mr-2"></i>
+              <i className="fas fa-file-pdf mr-1"></i>
               {t.reportPdf}
             </button>
           </div>
@@ -1438,12 +1453,12 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   AIN-wise Due Summary
                 </p>
                 <span className="text-[10px] font-bold text-slate-400">
-                  {dutyDueByAin.length} AIN
+                  {allTimeDueByAin.length} AIN
                 </span>
               </div>
-              {dutyDueByAin.length === 0 ? (
+              {allTimeDueByAin.length === 0 ? (
                 <p className="px-4 py-6 text-xs font-bold text-slate-400">
-                  No due balance found for selected range.
+                  No due balance found.
                 </p>
               ) : (
                 <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
@@ -1467,7 +1482,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   </tr>
                 </thead>
                 <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                  {dutyDueByAin.map((row) => (
+                  {allTimeDueByAin.map((row) => (
                     <tr key={row.ain}>
                       <td className="px-4 py-2 font-bold">{row.ain}</td>
                       <td className="px-4 py-2">{row.client}</td>
