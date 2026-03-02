@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { PaymentRecord, AssessmentRecord, SystemConfig } from "../types";
 import { createSimplePdfBlob } from "../utils/simplePdf";
 
@@ -56,6 +56,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
   const [statusFilter, setStatusFilter] = useState<"all" | "paid">("all");
   const [dutyClientFilter, setDutyClientFilter] = useState("all");
   const [showDutyClientGroups, setShowDutyClientGroups] = useState(true);
+  const dutyTableRef = useRef<HTMLDivElement | null>(null);
   const isDark = systemConfig.theme === "dark";
 
   const t =
@@ -309,12 +310,50 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
   const formatMoney = (value: number) => `Tk ${value.toLocaleString("en-BD")}`;
 
+  const dutyDateRange = useMemo(() => {
+    if (dutyHistory.length === 0) return null;
+    let minTs = Number.POSITIVE_INFINITY;
+    let maxTs = Number.NEGATIVE_INFINITY;
+
+    dutyHistory.forEach((rec) => {
+      const ts = parseDate(rec.date).getTime();
+      if (!Number.isFinite(ts) || ts <= 0) return;
+      if (ts < minTs) minTs = ts;
+      if (ts > maxTs) maxTs = ts;
+    });
+
+    if (!Number.isFinite(minTs) || !Number.isFinite(maxTs)) return null;
+    const toInputDate = (ts: number) => {
+      const d = new Date(ts);
+      const offset = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - offset * 60000);
+      return local.toISOString().split("T")[0];
+    };
+    return { start: toInputDate(minTs), end: toInputDate(maxTs) };
+  }, [dutyHistory]);
+
   const clearFilters = () => {
     const today = getTodayDateInputValue();
     setStartDate(today);
     setEndDate(today);
     setAinFilter("");
     setGroupByStatus("all");
+  };
+
+  const handleDueItemClick = (ain: string) => {
+    setActiveView("duty");
+    setStatusFilter("all");
+    setGroupByStatus("all");
+    setDutyClientFilter("all");
+    setShowDutyClientGroups(true);
+    setAinFilter(ain === "N/A" ? "" : ain);
+    if (dutyDateRange) {
+      setStartDate(dutyDateRange.start);
+      setEndDate(dutyDateRange.end);
+    }
+    setTimeout(() => {
+      dutyTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   };
 
   const toCsvValue = (value: string | number | null | undefined) => {
@@ -1294,6 +1333,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
         >
           {(activeView === "combined" || activeView === "duty") && (
             <div
+              ref={dutyTableRef}
               className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
             >
               <div
@@ -1483,7 +1523,11 @@ const DailyReport: React.FC<DailyReportProps> = ({
                 </thead>
                 <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
                   {allTimeDueByAin.map((row) => (
-                    <tr key={row.ain}>
+                    <tr
+                      key={row.ain}
+                      onClick={() => handleDueItemClick(row.ain)}
+                      className={`cursor-pointer transition-colors ${isDark ? "hover:bg-slate-800/70" : "hover:bg-blue-50"}`}
+                    >
                       <td className="px-4 py-2 font-bold">{row.ain}</td>
                       <td className="px-4 py-2">{row.client}</td>
                       <td className="px-4 py-2 text-right">
