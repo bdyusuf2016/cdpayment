@@ -216,6 +216,52 @@ const DailyReport: React.FC<DailyReportProps> = ({
     [visibleDuty],
   );
 
+  const dutyDueByAin = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        ain: string;
+        clientName: string;
+        grossDuty: number;
+        paid: number;
+        due: number;
+        records: number;
+      }
+    >();
+
+    dailyDuty.forEach((rec) => {
+      const ain = String(rec.ain || "").trim() || "N/A";
+      const current = grouped.get(ain) || {
+        ain,
+        clientName: rec.clientName || "-",
+        grossDuty: 0,
+        paid: 0,
+        due: 0,
+        records: 0,
+      };
+
+      current.grossDuty += rec.duty || 0;
+      current.paid += rec.received || 0;
+      current.records += 1;
+      if (
+        current.clientName === "-" &&
+        rec.clientName &&
+        rec.clientName.trim().length > 0
+      ) {
+        current.clientName = rec.clientName;
+      }
+      grouped.set(ain, current);
+    });
+
+    return Array.from(grouped.values())
+      .map((row) => ({
+        ...row,
+        due: Math.max(0, row.grossDuty - row.paid),
+      }))
+      .filter((row) => row.due > 0)
+      .sort((a, b) => b.due - a.due);
+  }, [dailyDuty]);
+
   const assessmentSummary = useMemo(() => {
     const totalAmount = dailyAssessment.reduce((sum, rec) => {
       const base = rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
@@ -1227,6 +1273,75 @@ const DailyReport: React.FC<DailyReportProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        <div
+          className={`rounded-xl border overflow-hidden mb-6 ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
+        >
+          <div
+            className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+          >
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              AIN-wise Due List
+            </p>
+            <span className="text-[10px] font-bold text-slate-400">
+              {dutyDueByAin.length} AIN
+            </span>
+          </div>
+          {dutyDueByAin.length === 0 ? (
+            <p className="px-4 py-6 text-xs font-bold text-slate-400">
+              No due balance found for selected range.
+            </p>
+          ) : (
+            <div className="max-h-80 overflow-auto">
+              <table className="w-full text-left text-xs">
+                <thead
+                  className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
+                >
+                  <tr>
+                    <th className="px-4 py-2 font-black uppercase tracking-widest">
+                      AIN
+                    </th>
+                    <th className="px-4 py-2 font-black uppercase tracking-widest">
+                      Client
+                    </th>
+                    <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                      Records
+                    </th>
+                    <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                      Gross Duty
+                    </th>
+                    <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                      Paid
+                    </th>
+                    <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                      Due
+                    </th>
+                  </tr>
+                </thead>
+                <tbody
+                  className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}
+                >
+                  {dutyDueByAin.map((row) => (
+                    <tr key={row.ain}>
+                      <td className="px-4 py-2 font-bold">{row.ain}</td>
+                      <td className="px-4 py-2">{row.clientName}</td>
+                      <td className="px-4 py-2 text-right">{row.records}</td>
+                      <td className="px-4 py-2 text-right">
+                        {formatMoney(row.grossDuty)}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {formatMoney(row.paid)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-black text-rose-500">
+                        {formatMoney(row.due)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div
