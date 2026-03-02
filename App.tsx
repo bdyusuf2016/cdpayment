@@ -795,25 +795,19 @@ const App: React.FC = () => {
             ],
           };
         }
-        const dueRows = visibleDutyRows
-          .map((r) => ({
-            ain: r.ain || "N/A",
-            name: r.clientName || "Unknown",
-            be: r.beYear || "N/A",
-            due: Math.max(0, (r.duty || 0) - (r.received || 0)),
-          }))
-          .filter((r) => r.due > 0)
-          .sort((a, b) => b.due - a.due)
-          .slice(0, 8);
+        const dueRows = visibleDutyRows.filter(
+          (r) => Math.max(0, (r.duty || 0) - (r.received || 0)) > 0,
+        );
+        const totalDue = dueRows.reduce(
+          (sum, r) => sum + Math.max(0, (r.duty || 0) - (r.received || 0)),
+          0,
+        );
         return {
-          title: "Due Details (Top Records)",
-          items:
-            dueRows.length > 0
-              ? dueRows.map(
-                  (r) =>
-                    `AIN ${r.ain} (${r.name}) | B/E ${r.be} | Due ${money(r.due)}`,
-                )
-              : ["No due records in current view."],
+          title: "Due Details",
+          items: [
+            `Due Records: ${dueRows.length}`,
+            `Total Due Amount: ${money(totalDue)}`,
+          ],
         };
       }
       case "assessment": {
@@ -839,25 +833,19 @@ const App: React.FC = () => {
           };
         }
         if (activeStatIndex === 2) {
-          const dueRows = visibleAssessmentRows
-            .map((r) => ({
-              ain: r.ain || "N/A",
-              name: r.clientName || "Unknown",
-              be: r.nosOfBe || 0,
-              due: Math.max(0, (r.net || 0) - (r.received || 0)),
-            }))
-            .filter((r) => r.due > 0)
-            .sort((a, b) => b.due - a.due)
-            .slice(0, 8);
+          const dueRows = visibleAssessmentRows.filter(
+            (r) => Math.max(0, (r.net || 0) - (r.received || 0)) > 0,
+          );
+          const totalDue = dueRows.reduce(
+            (sum, r) => sum + Math.max(0, (r.net || 0) - (r.received || 0)),
+            0,
+          );
           return {
-            title: "Due Amount Details (Top Records)",
-            items:
-              dueRows.length > 0
-                ? dueRows.map(
-                    (r) =>
-                      `AIN ${r.ain} (${r.name}) | Qty ${r.be} B/E | Due ${money(r.due)}`,
-                  )
-                : ["No due records in current view."],
+            title: "Due Amount Details",
+            items: [
+              `Due Rows: ${dueRows.length}`,
+              `Total Due Amount: ${money(totalDue)}`,
+            ],
           };
         }
         return {
