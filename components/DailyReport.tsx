@@ -213,6 +213,22 @@ const DailyReport: React.FC<DailyReportProps> = ({
     [visibleDuty],
   );
 
+  const clientNameByAin = useMemo(() => {
+    const map = new Map<string, string>();
+    const writeName = (ainValue: string | null | undefined, rawName: string | null | undefined) => {
+      const ain = String(ainValue || "").trim();
+      const name = String(rawName || "").trim();
+      if (!ain || !name) return;
+      if (!map.has(ain)) {
+        map.set(ain, name);
+      }
+    };
+
+    dutyHistory.forEach((rec) => writeName(rec.ain, rec.clientName));
+    assessmentHistory.forEach((rec) => writeName(rec.ain, rec.clientName));
+    return map;
+  }, [assessmentHistory, dutyHistory]);
+
   const dutyDueByAin = useMemo(() => {
     const grouped = new Map<
       string,
@@ -226,9 +242,10 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
     dailyDuty.forEach((rec) => {
       const ain = String(rec.ain || "").trim() || "N/A";
+      const fallbackClient = clientNameByAin.get(ain) || "-";
       const current = grouped.get(ain) || {
         ain,
-        client: rec.clientName || "-",
+        client: String(rec.clientName || "").trim() || fallbackClient,
         totalBe: 0,
         duty: 0,
       };
@@ -251,7 +268,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     return Array.from(grouped.values())
       .filter((row) => row.duty > 0)
       .sort((a, b) => b.duty - a.duty);
-  }, [dailyDuty]);
+  }, [clientNameByAin, dailyDuty]);
 
   const assessmentSummary = useMemo(() => {
     const totalAmount = dailyAssessment.reduce((sum, rec) => {
