@@ -1301,8 +1301,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   {t.reportEmpty}
                 </p>
               ) : (
-                <div className="max-h-72 overflow-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
+                  <table className="w-full min-w-[720px] text-left text-xs">
                     <thead
                       className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
                     >
@@ -1375,8 +1375,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       {t.reportEmpty}
                     </p>
                   ) : (
-                    <div className="max-h-72 overflow-auto">
-                      <table className="w-full text-left text-xs">
+                    <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
+                      <table className="w-full min-w-[640px] text-left text-xs">
                         <thead
                           className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
                         >
@@ -1446,8 +1446,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   No due balance found for selected range.
                 </p>
               ) : (
-                <div className="max-h-72 overflow-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
+                  <table className="w-full min-w-[560px] text-left text-xs">
                     <thead
                       className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
                     >
