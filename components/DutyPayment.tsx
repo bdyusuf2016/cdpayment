@@ -11,6 +11,7 @@ interface DutyPaymentProps {
   onVisibleRowsChange: (rows: PaymentRecord[]) => void;
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
+  dashboardFilter?: "all" | "collection" | "profit" | "due";
 }
 
 const getTodayDateInputValue = (): string => {
@@ -27,6 +28,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   onVisibleRowsChange,
   systemConfig,
   supabase,
+  dashboardFilter = "all",
 }) => {
   const [ain, setAin] = useState("");
   const [clientName, setClientName] = useState("");
@@ -113,12 +115,22 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         recBeYear.includes(filterSearch);
 
       const isDue = (rec.received || 0) < (rec.duty || 0);
+      const isCollected = (rec.received || 0) > 0;
+      const isProfit = String(rec.status || "").trim().toLowerCase() === "paid";
       const matchesStatus =
         filterStatus === "All"
           ? true
           : filterStatus === "Due"
             ? isDue
             : rec.status === filterStatus;
+      const matchesDashboardFilter =
+        dashboardFilter === "all"
+          ? true
+          : dashboardFilter === "collection"
+            ? isCollected
+            : dashboardFilter === "profit"
+              ? isProfit
+              : isDue;
       const matchesMethod =
         filterPaymentMethod === "All" ||
         rec.paymentMethod === filterPaymentMethod;
@@ -135,7 +147,13 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         matchesDate = matchesDate && recDate <= end;
       }
 
-      return matchesSearch && matchesStatus && matchesDate && matchesMethod;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesDate &&
+        matchesMethod &&
+        matchesDashboardFilter
+      );
     });
   }, [
     allHistory,
@@ -144,7 +162,22 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     filterPaymentMethod,
     startDate,
     endDate,
+    dashboardFilter,
   ]);
+
+  useEffect(() => {
+    setFilterSearch("");
+    setFilterPaymentMethod("All");
+    if (dashboardFilter === "due") {
+      setFilterStatus("Due");
+      return;
+    }
+    if (dashboardFilter === "profit") {
+      setFilterStatus("Paid");
+      return;
+    }
+    setFilterStatus("All");
+  }, [dashboardFilter]);
 
   const sortedHistory = useMemo(() => {
     const rows = [...filteredHistory];

@@ -113,6 +113,9 @@ interface StatDetailView {
 }
 
 const App: React.FC = () => {
+  const [dutyCardFilter, setDutyCardFilter] = useState<
+    "all" | "collection" | "profit" | "due"
+  >("all");
   const [session, setSession] = useState<any>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
@@ -1124,9 +1127,29 @@ const App: React.FC = () => {
         <StatsCards
           cards={stats}
           activeIndex={activeStatIndex}
-          onCardClick={(index) =>
-            setActiveStatIndex((prev) => (prev === index ? null : index))
-          }
+          onCardClick={(index) => {
+            if (activeTab === "duty") {
+              setActiveStatIndex((prev) => {
+                const isSame = prev === index;
+                if (isSame) {
+                  setDutyCardFilter("all");
+                  return null;
+                }
+                const mapped: "all" | "collection" | "profit" | "due" =
+                  index === 1
+                    ? "collection"
+                    : index === 2
+                      ? "profit"
+                      : index === 3
+                        ? "due"
+                        : "all";
+                setDutyCardFilter(mapped);
+                return index;
+              });
+              return;
+            }
+            setActiveStatIndex((prev) => (prev === index ? null : index));
+          }}
         />
         {statDetail && (
           <div
@@ -1196,6 +1219,7 @@ const App: React.FC = () => {
               onVisibleRowsChange={setVisibleDutyRows}
               systemConfig={config}
               supabase={supabase}
+              dashboardFilter={dutyCardFilter}
             />
           )}
           {activeTab === "assessment" && tabAccess.assessment && (
