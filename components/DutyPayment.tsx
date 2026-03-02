@@ -954,14 +954,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const isDark = systemConfig.theme === "dark";
   const isBn = systemConfig.language === "bn";
-  const statusBeCount = useMemo(() => {
-    const counts = new Map<string, number>();
-    sortedHistory.forEach((rec) => {
-      const key = String(rec.status || "").trim() || "Unknown";
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    return counts;
-  }, [sortedHistory]);
   const selectedRecords = allHistory.filter((r) => selectedIds.includes(r.id));
   const selectedTotalAmount = selectedRecords.reduce((sum, rec) => sum + rec.duty, 0);
   const selectedDueAmount = selectedRecords.reduce(
@@ -1558,30 +1550,19 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                       : "-"}
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <div className="inline-flex flex-col items-center gap-1">
-                      <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                          rec.status === "Paid"
-                            ? "bg-green-100 text-green-700"
-                            : rec.status === "Completed"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-indigo-100 text-indigo-700"
-                        }`}
-                      >
-                        {`${rec.status}${
-                          statusBeCount.get(String(rec.status || "").trim() || "Unknown")
-                            ? ` (${statusBeCount.get(String(rec.status || "").trim() || "Unknown")})`
-                            : ""
-                        }${
-                          rec.status === "Paid" && rec.paymentMethod
-                            ? ` | ${rec.paymentMethod}`
-                            : ""
-                        }`}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        B/E: {rec.beYear || "-"}
-                      </span>
-                    </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                        rec.status === "Paid"
+                          ? "bg-green-100 text-green-700"
+                          : rec.status === "Completed"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-indigo-100 text-indigo-700"
+                      }`}
+                    >
+                      {rec.status === "Paid" && rec.paymentMethod
+                        ? `${rec.status} | ${rec.paymentMethod}`
+                        : rec.status}
+                    </span>
                   </td>
                   <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
                     {rec.status === "Paid"
