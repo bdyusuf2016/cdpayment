@@ -6,6 +6,7 @@ interface StatsProps {
     label: string;
     value: string | number;
     color: string;
+    subtitle?: string;
   }[];
   onCardClick?: (index: number) => void;
   activeIndex?: number | null;
@@ -39,6 +40,11 @@ const StatsCards: React.FC<StatsProps> = ({ cards, onCardClick, activeIndex }) =
           <p className="text-3xl font-black tracking-tighter" style={{ color: card.color }}>
             {card.value}
           </p>
+          {card.subtitle ? (
+            <p className="mt-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+              {card.subtitle}
+            </p>
+          ) : null}
           <div className="mt-4 w-12 h-1.5 rounded-full opacity-30" style={{ backgroundColor: card.color }}></div>
         </div>
       ))}

@@ -692,6 +692,8 @@ const App: React.FC = () => {
         const paidRows = rows.filter(
           (r) => String(r.status || "").trim().toLowerCase() === "paid",
         );
+        const dueRows = rows.filter((r) => Math.max(0, r.duty - (r.received || 0)) > 0);
+        const collectionRows = rows.filter((r) => (r.received || 0) > 0);
         const grossDuty = rows.reduce((acc, r) => acc + r.duty, 0);
         const collection = rows.reduce(
           (acc, r) => acc + r.received,
@@ -710,21 +712,25 @@ const App: React.FC = () => {
             label: "Gross Duty",
             value: `Tk ${grossDuty.toLocaleString()}`,
             color: "#2563eb",
+            subtitle: `${rows.length.toLocaleString()} B/E`,
           },
           {
             label: "Collection",
             value: `Tk ${collection.toLocaleString()}`,
             color: "#10b981",
+            subtitle: `${collectionRows.length.toLocaleString()} B/E`,
           },
           {
             label: "Profit",
             value: `Tk ${profit.toLocaleString()}`,
             color: "#f59e0b",
+            subtitle: `${paidRows.length.toLocaleString()} B/E`,
           },
           {
             label: "Due",
             value: `Tk ${dueAmount.toLocaleString()}`,
             color: "#ef4444",
+            subtitle: `${dueRows.length.toLocaleString()} B/E`,
           },
         ];
       }

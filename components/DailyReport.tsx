@@ -307,6 +307,19 @@ const DailyReport: React.FC<DailyReportProps> = ({
     }),
     [assessmentSummary, dutySummary],
   );
+  const dutyBeCount = useMemo(() => dailyDuty.length, [dailyDuty]);
+  const assessmentBeCount = useMemo(
+    () =>
+      dailyAssessment.reduce(
+        (sum, rec) => sum + Math.max(0, Number(rec.nosOfBe || 0)),
+        0,
+      ),
+    [dailyAssessment],
+  );
+  const combinedBeCount = useMemo(
+    () => dutyBeCount + assessmentBeCount,
+    [assessmentBeCount, dutyBeCount],
+  );
 
   const formatMoney = (value: number) => `Tk ${value.toLocaleString("en-BD")}`;
 
@@ -993,6 +1006,10 @@ const DailyReport: React.FC<DailyReportProps> = ({
                     <span>Amount</span>
                     <span>{formatMoney(dutySummary.amount)}</span>
                   </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span>B/E Count</span>
+                    <span>{dutyBeCount}</span>
+                  </div>
                   <div className="flex items-center justify-between">
                     <span>Received</span>
                     <span>{formatMoney(dutySummary.received)}</span>
@@ -1133,6 +1150,10 @@ const DailyReport: React.FC<DailyReportProps> = ({
                     <span>Amount</span>
                     <span>{formatMoney(assessmentSummary.amount)}</span>
                   </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span>B/E Count</span>
+                    <span>{assessmentBeCount}</span>
+                  </div>
                   <div className="flex items-center justify-between">
                     <span>Received</span>
                     <span>{formatMoney(assessmentSummary.received)}</span>
@@ -1236,6 +1257,10 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   <div className="flex items-center justify-between">
                     <span>Amount</span>
                     <span>{formatMoney(combinedSummary.amount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span>B/E Count</span>
+                    <span>{combinedBeCount}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Received</span>
