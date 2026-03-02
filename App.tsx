@@ -1106,8 +1106,13 @@ const App: React.FC = () => {
                         ? "due"
                         : "all";
                 setDutyCardFilter(mapped);
+                if (index === 3) return null;
                 return index;
               });
+              return;
+            }
+            if (activeTab === "assessment" && index === 2) {
+              setActiveStatIndex(null);
               return;
             }
             setActiveStatIndex((prev) => (prev === index ? null : index));
