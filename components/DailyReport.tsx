@@ -218,11 +218,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
       string,
       {
         ain: string;
-        clientName: string;
-        grossDuty: number;
-        paid: number;
-        due: number;
-        records: number;
+        totalBe: number;
+        duty: number;
       }
     >();
 
@@ -230,33 +227,21 @@ const DailyReport: React.FC<DailyReportProps> = ({
       const ain = String(rec.ain || "").trim() || "N/A";
       const current = grouped.get(ain) || {
         ain,
-        clientName: rec.clientName || "-",
-        grossDuty: 0,
-        paid: 0,
-        due: 0,
-        records: 0,
+        totalBe: 0,
+        duty: 0,
       };
 
-      current.grossDuty += rec.duty || 0;
-      current.paid += rec.received || 0;
-      current.records += 1;
-      if (
-        current.clientName === "-" &&
-        rec.clientName &&
-        rec.clientName.trim().length > 0
-      ) {
-        current.clientName = rec.clientName;
+      const due = Math.max(0, (rec.duty || 0) - (rec.received || 0));
+      if (due > 0) {
+        current.totalBe += 1;
+        current.duty += due;
       }
       grouped.set(ain, current);
     });
 
     return Array.from(grouped.values())
-      .map((row) => ({
-        ...row,
-        due: Math.max(0, row.grossDuty - row.paid),
-      }))
-      .filter((row) => row.due > 0)
-      .sort((a, b) => b.due - a.due);
+      .filter((row) => row.duty > 0)
+      .sort((a, b) => b.duty - a.duty);
   }, [dailyDuty]);
 
   const assessmentSummary = useMemo(() => {
@@ -1441,44 +1426,30 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
                     >
                       <tr>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest">
-                          AIN
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest">
-                          Client
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                          Records
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                          Gross Duty
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                          Paid
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                          Due
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                      {dutyDueByAin.map((row) => (
-                        <tr key={row.ain}>
-                          <td className="px-4 py-2 font-bold">{row.ain}</td>
-                          <td className="px-4 py-2">{row.clientName}</td>
-                          <td className="px-4 py-2 text-right">{row.records}</td>
-                          <td className="px-4 py-2 text-right">
-                            {formatMoney(row.grossDuty)}
-                          </td>
-                          <td className="px-4 py-2 text-right">
-                            {formatMoney(row.paid)}
-                          </td>
-                          <td className="px-4 py-2 text-right font-black text-rose-500">
-                            {formatMoney(row.due)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
+                    <th className="px-4 py-2 font-black uppercase tracking-widest">
+                      AIN
+                    </th>
+                    <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                      Total B/E
+                    </th>
+                    <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                      Duty
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
+                  {dutyDueByAin.map((row) => (
+                    <tr key={row.ain}>
+                      <td className="px-4 py-2 font-bold">{row.ain}</td>
+                      <td className="px-4 py-2 text-right">
+                        {row.totalBe}
+                      </td>
+                      <td className="px-4 py-2 text-right font-black text-rose-500">
+                        {formatMoney(row.duty)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
                   </table>
                 </div>
               )}
