@@ -276,6 +276,11 @@ const DailyReport: React.FC<DailyReportProps> = ({
     [allTimeDueByAin],
   );
 
+  const allTimeDueBeTotal = useMemo(
+    () => allTimeDueByAin.reduce((sum, row) => sum + row.totalBe, 0),
+    [allTimeDueByAin],
+  );
+
   const assessmentSummary = useMemo(() => {
     const totalAmount = dailyAssessment.reduce((sum, rec) => {
       const base = rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
@@ -1574,6 +1579,22 @@ const DailyReport: React.FC<DailyReportProps> = ({
                     </tr>
                   ))}
                 </tbody>
+                <tfoot
+                  className={`${isDark ? "bg-slate-800/90 text-slate-200" : "bg-slate-100 text-slate-700"}`}
+                >
+                  <tr>
+                    <td className="px-4 py-2 font-black uppercase tracking-widest">
+                      Grand Total
+                    </td>
+                    <td className="px-4 py-2" />
+                    <td className="px-4 py-2 text-right font-black">
+                      {allTimeDueBeTotal}
+                    </td>
+                    <td className="px-4 py-2 text-right font-black text-rose-500">
+                      {formatMoney(allTimeDueTotal)}
+                    </td>
+                  </tr>
+                </tfoot>
                   </table>
                 </div>
               )}
