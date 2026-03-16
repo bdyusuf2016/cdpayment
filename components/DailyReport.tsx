@@ -271,6 +271,11 @@ const DailyReport: React.FC<DailyReportProps> = ({
       .sort((a, b) => b.duty - a.duty);
   }, [clientNameByAin, dutyHistory]);
 
+  const allTimeDueTotal = useMemo(
+    () => allTimeDueByAin.reduce((sum, row) => sum + row.duty, 0),
+    [allTimeDueByAin],
+  );
+
   const assessmentSummary = useMemo(() => {
     const totalAmount = dailyAssessment.reduce((sum, rec) => {
       const base = rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
@@ -1517,9 +1522,14 @@ const DailyReport: React.FC<DailyReportProps> = ({
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                   AIN-wise Due Summary
                 </p>
-                <span className="text-[10px] font-bold text-slate-400">
-                  {allTimeDueByAin.length} AIN
-                </span>
+                <div className="text-right space-y-1">
+                  <span className="block text-[10px] font-bold text-slate-400">
+                    {allTimeDueByAin.length} AIN
+                  </span>
+                  <span className="block text-[10px] font-black uppercase tracking-widest text-rose-500">
+                    Total Due: {formatMoney(allTimeDueTotal)}
+                  </span>
+                </div>
               </div>
               {allTimeDueByAin.length === 0 ? (
                 <p className="px-4 py-6 text-xs font-bold text-slate-400">
