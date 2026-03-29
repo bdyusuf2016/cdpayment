@@ -117,10 +117,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       const recClientName = (rec.clientName || "").toLowerCase();
       const recAin = rec.ain || "";
       const recBeYear = rec.beYear || "";
+      const recPhone = rec.phone || "";
       const matchesSearch =
         recClientName.includes(filterSearch.toLowerCase()) ||
         recAin.includes(filterSearch) ||
-        recBeYear.includes(filterSearch);
+        recBeYear.includes(filterSearch) ||
+        recPhone.includes(filterSearch);
 
       const isDue = (rec.received || 0) < (rec.duty || 0);
       const isCollected = (rec.received || 0) > 0;
@@ -1251,7 +1253,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search name / AIN / phone..."
                 className={`pl-9 pr-4 py-2 rounded-lg border text-xs font-bold outline-none w-32 focus:w-48 transition-all ${isDark ? "bg-slate-900 border-slate-600 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                 value={filterSearch}
                 onChange={(e) => setFilterSearch(e.target.value)}
