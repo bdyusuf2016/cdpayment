@@ -21,13 +21,6 @@ const getTodayDateInputValue = (): string => {
   return local.toISOString().split("T")[0];
 };
 
-const formatInputDateForStorage = (value: string): string => {
-  if (!value) return new Date().toLocaleDateString("en-GB");
-  const [year, month, day] = value.split("-");
-  if (!year || !month || !day) return new Date().toLocaleDateString("en-GB");
-  return `${day}/${month}/${year}`;
-};
-
 const DutyPayment: React.FC<DutyPaymentProps> = ({
   clients,
   history,
@@ -70,7 +63,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [paymentIds, setPaymentIds] = useState<string[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [paymentDate, setPaymentDate] = useState(getTodayDateInputValue);
 
   // Delete Confirmation State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -709,7 +701,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     setPaymentIds(ids);
     setPaymentAmount(""); // Received Amount set to blank
     setPaymentMethod(systemConfig.paymentMethods[0] || "Cash");
-    setPaymentDate(getTodayDateInputValue());
     setShowPaymentModal(true);
   };
 
@@ -768,7 +759,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     };
 
     const receivedById = allocateByWeight(targetRecords, amount, (r) => r.duty);
-    const selectedPaymentDate = formatInputDateForStorage(paymentDate);
+    const paymentDate = new Date().toLocaleDateString("en-GB");
 
     // Optimistic UI update first
     setUpdatedRecords((prev) => {
@@ -776,7 +767,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       for (const rec of targetRecords) {
         const received = receivedById[rec.id] ?? 0;
         const patched: Partial<PaymentRecord> = {
-          date: selectedPaymentDate,
+          date: paymentDate,
           status: "Paid",
           received,
           profit: received - rec.duty,
@@ -791,7 +782,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         paymentIds.includes(rec.id)
             ? ({
               ...rec,
-              date: selectedPaymentDate,
+              date: paymentDate,
               status: "Paid",
               received: receivedById[rec.id] ?? 0,
               profit: (receivedById[rec.id] ?? 0) - rec.duty,
@@ -807,7 +798,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         targetRecords.map(async (rec) => {
           const received = receivedById[rec.id] ?? 0;
           const patched: Partial<PaymentRecord> = {
-            date: selectedPaymentDate,
+            date: paymentDate,
             status: "Paid",
             received,
             profit: received - rec.duty,
@@ -1696,18 +1687,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none focus:border-green-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  Payment Date
-                </label>
-                <input
-                  type="date"
-                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-base outline-none focus:border-green-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
                 />
               </div>
 
