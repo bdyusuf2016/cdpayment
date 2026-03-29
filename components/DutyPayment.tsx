@@ -1,0 +1,1786 @@
+import React, { useState, useRef, useMemo, useEffect } from "react";
+import { DutyItem, PaymentRecord, Client, SystemConfig } from "../types";
+import { insertDuty, updateDuty, deleteDuty } from "../utils/supabaseApi";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { createSimplePdfBlob } from "../utils/simplePdf";
+
+interface DutyPaymentProps {
+  clients: Client[];
+  history: PaymentRecord[];
+  setHistory: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
+  onVisibleRowsChange: (rows: PaymentRecord[]) => void;
+  systemConfig: SystemConfig;
+  supabase: SupabaseClient | null;
+  dashboardFilter?: "all" | "collection" | "profit" | "due";
+}
+
+const getTodayDateInputValue = (): string => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().split("T")[0];
+};
+
+const formatDateInputForRecord = (value: string): string => {
+  if (!value) return new Date().toLocaleDateString("en-GB");
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+};
+
+const DutyPayment: React.FC<DutyPaymentProps> = ({
+  clients,
+  history,
+  setHistory,
+  onVisibleRowsChange,
+  systemConfig,
+  supabase,
+  dashboardFilter = "all",
+}) => {
+  const [ain, setAin] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [beNumber, setBeNumber] = useState("");
+  const [beYear, setBeYear] = useState(new Date().getFullYear().toString());
+  const [dutyAmount, setDutyAmount] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [queue, setQueue] = useState<DutyItem[]>([]);
+  const [insertedRecords, setInsertedRecords] = useState<PaymentRecord[]>([]);
+  const [updatedRecords, setUpdatedRecords] = useState<
+    Record<string, PaymentRecord>
+  >({});
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+
+  // Filters
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState("All");
+  const [startDate, setStartDate] = useState(getTodayDateInputValue);
+  const [endDate, setEndDate] = useState(getTodayDateInputValue);
+  const [sortKey, setSortKey] = useState<
+    "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit"
+  >("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Payment Modal State
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentIds, setPaymentIds] = useState<string[]>([]);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentDate, setPaymentDate] = useState(getTodayDateInputValue);
+
+  // Delete Confirmation State
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    ids: string[];
+  }>({ show: false, ids: [] });
+
+  const beInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus B/E Number on mount
+  useEffect(() => {
+    if (beInputRef.current) {
+      beInputRef.current.focus();
+    }
+  }, []);
+
+  const parseDate = (dateStr: string) => {
+    if (!dateStr) return new Date(0);
+    if (dateStr.includes("/")) {
+      const [day, month, year] = dateStr.split("/");
+      const parsed = new Date(`${year}-${month}-${day}`);
+      return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+    }
+    const parsed = new Date(dateStr);
+    return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+  };
+
+  const allHistory = useMemo(() => {
+    // Merge local inserted records with parent-provided history and dedupe by id
+    const combined = [...insertedRecords, ...history].filter(
+      (v, i, a) => a.findIndex((x) => x.id === v.id) === i,
+    );
+    const applied = combined
+      .map((rec) => updatedRecords[rec.id] || rec)
+      .filter((rec) => !deletedIds.includes(rec.id));
+    return [...applied].sort(
+      (a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime(),
+    );
+  }, [insertedRecords, history, updatedRecords, deletedIds]);
+
+  const filteredHistory = useMemo(() => {
+    return allHistory.filter((rec) => {
+      const recDate = parseDate(rec.date);
+      const recClientName = (rec.clientName || "").toLowerCase();
+      const recAin = rec.ain || "";
+      const recBeYear = rec.beYear || "";
+      const matchesSearch =
+        recClientName.includes(filterSearch.toLowerCase()) ||
+        recAin.includes(filterSearch) ||
+        recBeYear.includes(filterSearch);
+
+      const isDue = (rec.received || 0) < (rec.duty || 0);
+      const isCollected = (rec.received || 0) > 0;
+      const isProfit = String(rec.status || "").trim().toLowerCase() === "paid";
+      const matchesStatus =
+        filterStatus === "All"
+          ? true
+          : filterStatus === "Due"
+            ? isDue
+            : rec.status === filterStatus;
+      const matchesDashboardFilter =
+        dashboardFilter === "all"
+          ? true
+          : dashboardFilter === "collection"
+            ? isCollected
+            : dashboardFilter === "profit"
+              ? isProfit
+              : isDue;
+      const matchesMethod =
+        filterPaymentMethod === "All" ||
+        rec.paymentMethod === filterPaymentMethod;
+
+      let matchesDate = true;
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        matchesDate = matchesDate && recDate >= start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchesDate = matchesDate && recDate <= end;
+      }
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesDate &&
+        matchesMethod &&
+        matchesDashboardFilter
+      );
+    });
+  }, [
+    allHistory,
+    filterSearch,
+    filterStatus,
+    filterPaymentMethod,
+    startDate,
+    endDate,
+    dashboardFilter,
+  ]);
+
+  useEffect(() => {
+    setFilterSearch("");
+    setFilterPaymentMethod("All");
+    if (dashboardFilter === "due") {
+      setFilterStatus("Due");
+      return;
+    }
+    if (dashboardFilter === "profit") {
+      setFilterStatus("Paid");
+      return;
+    }
+    setFilterStatus("All");
+  }, [dashboardFilter]);
+
+  const sortedHistory = useMemo(() => {
+    const rows = [...filteredHistory];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "date") {
+        left = parseDate(a.date).getTime();
+        right = parseDate(b.date).getTime();
+      } else if (sortKey === "clientName") {
+        left = (a.clientName || "").toLowerCase();
+        right = (b.clientName || "").toLowerCase();
+      } else if (sortKey === "beYear") {
+        left = (a.beYear || "").toLowerCase();
+        right = (b.beYear || "").toLowerCase();
+      } else if (sortKey === "duty") {
+        left = a.duty || 0;
+        right = b.duty || 0;
+      } else if (sortKey === "received") {
+        left = a.received || 0;
+        right = b.received || 0;
+      } else if (sortKey === "status") {
+        left = (a.status || "").toLowerCase();
+        right = (b.status || "").toLowerCase();
+      } else {
+        left = a.profit || 0;
+        right = b.profit || 0;
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredHistory, sortKey, sortDir]);
+
+  const toggleSort = (
+    key: "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit",
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "date" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit",
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-600"
+      : "fa-sort-down text-blue-600";
+  };
+
+  useEffect(() => {
+    onVisibleRowsChange(sortedHistory);
+  }, [sortedHistory, onVisibleRowsChange]);
+
+  const handleAinChange = (val: string) => {
+    const normalizedAin = String(val || "")
+      .split("|")[0]
+      .trim();
+    setAin(normalizedAin);
+    const client = clients.find((c) => c.ain === normalizedAin);
+    if (client) {
+      setClientName(client.name);
+      setPhone(client.phone || "");
+    } else {
+      setClientName("");
+      setPhone("");
+    }
+  };
+
+  const handleAddOrUpdate = async () => {
+    if (!beNumber || !dutyAmount || !beYear || !supabase) return;
+
+    let formattedBe = beNumber.trim().toUpperCase();
+    if (!formattedBe.startsWith("C-")) {
+      formattedBe = `C-${formattedBe}`;
+    }
+
+    if (editingId) {
+      const updatedRec: Partial<PaymentRecord> = {
+        ain,
+        clientName,
+        phone,
+        beYear: `${formattedBe}(${beYear})`,
+        duty: parseFloat(dutyAmount),
+      };
+      await updateDuty(supabase, editingId, updatedRec);
+      setEditingId(null);
+    } else {
+      setQueue([
+        ...queue,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          beNumber: formattedBe,
+          year: beYear,
+          duty: parseFloat(dutyAmount),
+        },
+      ]);
+    }
+    setBeNumber("");
+    setDutyAmount("");
+    beInputRef.current?.focus();
+  };
+
+  const submitQueue = async () => {
+    if (queue.length === 0) return;
+
+    const newRecords: PaymentRecord[] = queue.map((item) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      date: new Date().toLocaleDateString("en-GB"),
+      ain,
+      clientName,
+      phone,
+      beYear: `${item.beNumber}(${item.year})`,
+      duty: item.duty,
+      received: 0,
+      status: "New",
+      profit: 0,
+    }));
+
+    if (supabase) {
+      for (const record of newRecords) {
+        const res = await insertDuty(supabase, {
+          date: record.date,
+          ain: record.ain,
+          clientName: record.clientName,
+          phone: record.phone,
+          beYear: record.beYear,
+          duty: record.duty,
+          received: record.received,
+          status: record.status,
+          profit: record.profit,
+        });
+        console.debug("insertDuty result:", res, record);
+        if (res) {
+          setInsertedRecords((prev) => [res, ...prev]);
+          setHistory((prev) => {
+            const next = prev.filter((p) => p.id !== res.id);
+            return [res, ...next];
+          });
+        }
+        else {
+          // If insert failed or returned null, still render locally so UX reflects the queue
+          console.warn(
+            "insertDuty returned null â€” rendering local record instead.",
+          );
+          setInsertedRecords((prev) => [record, ...prev]);
+          setHistory((prev) => {
+            const next = prev.filter((p) => p.id !== record.id);
+            return [record, ...next];
+          });
+        }
+      }
+    } else {
+      // No supabase client â€” render locally
+      setInsertedRecords((prev) => [...newRecords, ...prev]);
+      setHistory((prev) => [...newRecords, ...prev]);
+    }
+
+    setQueue([]);
+    setAin("");
+    setClientName("");
+    setPhone("");
+  };
+
+  const generateWAMessage = (recs: PaymentRecord[]) => {
+    const clientName = recs[0].clientName;
+    const subtotal = recs.reduce((a, b) => a + (b.duty || 0), 0);
+    const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
+    const serviceCharge = recs.reduce((a, b) => a + (b.profit || 0), 0);
+    const due = Math.max(0, subtotal - totalReceived);
+    const isAllPaid = recs.every(
+      (r) => String(r.status || "").trim().toLowerCase() === "paid",
+    );
+    const settlementLabel = isAllPaid ? "Paid" : "Payable";
+    const settlementValue = isAllPaid ? Math.max(totalReceived, subtotal) : due;
+    const showReceivedLine = settlementLabel === "Paid";
+    const groupedByAin = Array.from(
+      recs.reduce(
+        (acc, rec) => {
+          const key = (rec.ain || "N/A").trim() || "N/A";
+          if (!acc.has(key)) acc.set(key, []);
+          acc.get(key)!.push(rec);
+          return acc;
+        },
+        new Map<string, PaymentRecord[]>(),
+      ),
+    );
+
+    let msg = `*INVOICE SUMMARY*\n`;
+    msg += `--------------------------------\n`;
+    msg += `*Agency:* ${systemConfig.agencyName}\n`;
+    msg += `*Client:* ${clientName}\n`;
+    msg += `*Date:* ${new Date().toLocaleDateString("en-GB")}\n`;
+    msg += `--------------------------------\n\n`;
+
+    groupedByAin.forEach(([ainValue, ainRecords]) => {
+      const ainName = ainRecords[0]?.clientName || "Unknown";
+      msg += `*AIN:* ${ainValue} | *Name:* ${ainName}\n`;
+      ainRecords.forEach((r, i) => {
+        msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* Tk ${r.duty.toLocaleString("en-BD")}\n`;
+      });
+      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
+      msg += `*Subtotal (${ainValue} - ${ainName}):* Tk ${ainSubtotal.toLocaleString("en-BD")}\n\n`;
+    });
+
+    msg += `--------------------------------\n`;
+    msg += `*Grand Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
+    msg += `*Service Charge:* Tk ${serviceCharge.toLocaleString("en-BD")}\n`;
+    if (showReceivedLine) {
+      msg += `*Received Amount:* Tk ${totalReceived.toLocaleString("en-BD")}\n`;
+    }
+    msg += `*Due:* Tk ${due.toLocaleString("en-BD")}\n`;
+    msg += `*Grand Total:* Tk ${settlementValue.toLocaleString("en-BD")}\n`;
+    msg += `*Status:* ${settlementLabel}\n`;
+    msg += `--------------------------------\n`;
+    msg += `Thank you for your business.`;
+
+    return msg;
+  };
+
+  const shareWhatsApp = (recs: PaymentRecord[]) => {
+    if (recs.length === 0) return;
+    const targetPhone = recs.find((r) => r.phone)?.phone || "";
+    const digits = targetPhone.replace(/\D/g, "");
+    const waPhone = digits.startsWith("880")
+      ? digits
+      : digits.startsWith("0")
+        ? `88${digits}`
+        : digits.length === 10 && digits.startsWith("1")
+          ? `880${digits}`
+          : digits;
+
+    if (!waPhone || waPhone.length < 11) {
+      alert("No phone number found for this client.");
+      return;
+    }
+    const msg = generateWAMessage(recs);
+    const encodedMsg = encodeURIComponent(msg);
+    const waUrl = `https://api.whatsapp.com/send/?phone=${waPhone}&text=${encodedMsg}&type=phone_number&app_absent=0`;
+    window.open(waUrl, "_blank");
+  };
+
+  const shareInvoicePdfToWhatsApp = async (recs: PaymentRecord[]) => {
+    if (recs.length === 0) return;
+
+    const targetPhone = recs.find((r) => r.phone)?.phone || "";
+    const digits = targetPhone.replace(/\D/g, "");
+    const waPhone = digits.startsWith("880")
+      ? digits
+      : digits.startsWith("0")
+        ? `88${digits}`
+        : digits.length === 10 && digits.startsWith("1")
+          ? `880${digits}`
+          : digits;
+
+    if (!waPhone || waPhone.length < 11) {
+      alert("No phone number found for this client.");
+      return;
+    }
+
+    const subtotal = recs.reduce((a, b) => a + (b.duty || 0), 0);
+    const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
+    const serviceCharge = recs.reduce((a, b) => a + (b.profit || 0), 0);
+    const due = Math.max(0, subtotal - totalReceived);
+    const isAllPaid = recs.every(
+      (r) => String(r.status || "").trim().toLowerCase() === "paid",
+    );
+    const settlementLabel = isAllPaid ? "Paid" : "Payable";
+    const settlementValue = isAllPaid ? Math.max(totalReceived, subtotal) : due;
+    const showReceivedLine = settlementLabel === "Paid";
+    const groupedByAin = Array.from(
+      recs.reduce(
+        (acc, rec) => {
+          const key = (rec.ain || "N/A").trim() || "N/A";
+          if (!acc.has(key)) acc.set(key, []);
+          acc.get(key)!.push(rec);
+          return acc;
+        },
+        new Map<string, PaymentRecord[]>(),
+      ),
+    );
+    const lines: string[] = [
+      `Agency: ${systemConfig.agencyName}`,
+      `Client: ${recs[0].clientName}`,
+      `Date: ${new Date().toLocaleDateString("en-GB")}`,
+      "",
+    ];
+    groupedByAin.forEach(([ainValue, ainRecords]) => {
+      const ainName = ainRecords[0]?.clientName || "Unknown";
+      lines.push(`AIN: ${ainValue} | Name: ${ainName}`);
+      ainRecords.forEach((r, idx) => {
+        lines.push(
+          `${idx + 1}. B/E ${r.beYear} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
+        );
+      });
+      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
+      lines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      lines.push("");
+    });
+    lines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
+    lines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
+    if (showReceivedLine) {
+      lines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
+    }
+    lines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
+    lines.push(`Grand Total: Tk ${settlementValue.toLocaleString("en-BD")}`);
+    lines.push(`Status: ${settlementLabel}`);
+
+    const pdfBlob = createSimplePdfBlob("DUTY PAYMENT INVOICE", lines);
+    const filename = `duty-invoice-${Date.now()}.pdf`;
+    const pdfFile = new File([pdfBlob], filename, { type: "application/pdf" });
+
+    try {
+      if (
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare({ files: [pdfFile] })
+      ) {
+        await navigator.share({
+          title: "Duty Invoice",
+          text: "Invoice PDF attached.",
+          files: [pdfFile],
+        });
+        return;
+      }
+    } catch {
+      return;
+    }
+
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    const summaryLines: string[] = ["INVOICE SUMMARY", ""];
+    groupedByAin.forEach(([ainValue, ainRecords]) => {
+      const ainName = ainRecords[0]?.clientName || "Unknown";
+      summaryLines.push(`AIN: ${ainValue} | Name: ${ainName}`);
+      ainRecords.forEach((r, idx) => {
+        summaryLines.push(
+          `${idx + 1}. B/E ${r.beYear} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
+        );
+      });
+      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
+      summaryLines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      summaryLines.push("");
+    });
+    summaryLines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
+    summaryLines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
+    if (showReceivedLine) {
+      summaryLines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
+    }
+    summaryLines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
+    summaryLines.push(`Grand Total: Tk ${settlementValue.toLocaleString("en-BD")}`);
+    summaryLines.push(`Status: ${settlementLabel}`);
+    summaryLines.push("");
+    summaryLines.push(
+      "Invoice PDF downloaded. Please attach the downloaded file and send it.",
+    );
+    const waSummaryText = summaryLines.join("\n");
+    const waText = encodeURIComponent(waSummaryText);
+    const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
+    const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
+
+    window.location.href = desktopUrl;
+    setTimeout(() => {
+      window.open(webUrl, "_blank");
+    }, 700);
+
+    alert(
+      "PDF download হয়েছে। WhatsApp খুলে গেলে downloaded PDF টি attach করে Send করুন।",
+    );
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const getPaymentMethodVisual = (method: string) => {
+    const key = String(method || "").trim().toLowerCase();
+
+    if (key.includes("cash")) {
+      return <i className="fas fa-money-bill-wave text-emerald-600" />;
+    }
+    if (key.includes("bank")) {
+      return <i className="fas fa-university text-blue-600" />;
+    }
+    if (key.includes("card")) {
+      return <i className="fas fa-credit-card text-indigo-600" />;
+    }
+    if (key.includes("bkash")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-600 px-1 text-[10px] font-black text-white">
+          bK
+        </span>
+      );
+    }
+    if (key.includes("nagad")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-black text-white">
+          NG
+        </span>
+      );
+    }
+    if (key.includes("rocket")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-fuchsia-600 px-1 text-[10px] font-black text-white">
+          RK
+        </span>
+      );
+    }
+    if (key.includes("upay")) {
+      return (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">
+          UP
+        </span>
+      );
+    }
+    if (key.includes("mobile")) {
+      return <i className="fas fa-mobile-alt text-cyan-600" />;
+    }
+    return <i className="fas fa-wallet text-slate-500" />;
+  };
+
+  const printDutyInvoice = (recs: PaymentRecord[]) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const client = recs[0];
+    const fmt = (n: number) =>
+      n.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    const settlementLabel = recs.every((r) => r.status === "Paid")
+      ? "Paid"
+      : "Payable";
+    const subtotal = recs.reduce((a, b) => a + b.duty, 0);
+    const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
+    const serviceCharge = recs.reduce((a, b) => a + (b.profit || 0), 0);
+    const due = Math.max(0, subtotal - totalReceived);
+    const settlementValue =
+      settlementLabel === "Paid" ? Math.max(totalReceived, subtotal) : due;
+    const groupedByAin = Array.from(
+      recs.reduce(
+        (acc, rec) => {
+          const key = (rec.ain || "N/A").trim() || "N/A";
+          if (!acc.has(key)) acc.set(key, []);
+          acc.get(key)!.push(rec);
+          return acc;
+        },
+        new Map<string, PaymentRecord[]>(),
+      ),
+    );
+    const items = groupedByAin
+      .map(([ainValue, ainRecords]) => {
+        const ainName = ainRecords[0]?.clientName || "Unknown";
+        const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
+        const ainRows = ainRecords
+          .map(
+            (r, i) => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${i + 1}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">Duty Payment for B/E: <strong>${r.beYear}</strong></td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${fmt(r.duty)}</td>
+      </tr>`,
+          )
+          .join("");
+        return `
+      <tr>
+        <td colspan="3" style="padding: 12px; border-bottom: 1px solid #ddd; background: #f8fafc; font-weight: 700;">AIN: ${ainValue} | Name: ${ainName}</td>
+      </tr>
+      ${ainRows}
+      <tr>
+        <td colspan="2" style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">Subtotal (${ainValue} - ${ainName})</td>
+        <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right; font-weight: 700;">${fmt(ainSubtotal)}</td>
+      </tr>`;
+      })
+      .join("");
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Duty Invoice</title>
+          <style>body { font-family: 'Inter', 'Hind Siliguri', 'Noto Sans Bengali', 'Segoe UI', sans-serif; padding: 40px; color: #1e293b; padding-bottom: 92px; } .header { display: flex; justify-content: space-between; border-bottom: 2px solid #1e293b; padding-bottom: 20px; margin-bottom: 30px; } table { width: 100%; border-collapse: collapse; } th { background: #f1f5f9; text-align: left; padding: 12px; font-weight: 600; } .summary-wrap { margin-top: 20px; display: flex; justify-content: flex-end; align-items: flex-end; gap: 22px; } .summary { width: 320px; } .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #cbd5e1; font-size: 14px; } .summary-row.total { font-weight: 700; border-bottom: 0; padding-top: 10px; font-size: 16px; } .status-seal { align-self: flex-end; margin-bottom: 2px; padding: 14px 30px; border: 4px solid ${settlementLabel === "Paid" ? "#166534" : "#92400e"}; border-radius: 999px; font-size: 28px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: ${settlementLabel === "Paid" ? "#166534" : "#92400e"}; background: transparent; opacity: 0.23; transform: rotate(-14deg); } .print-footer { position: fixed; left: 40px; right: 40px; bottom: 18px; border-top: 1px solid #cbd5e1; padding-top: 8px; text-align: center; font-size: 11px; color: #475569; }</style>
+        </head>
+        <body onload="window.print()">
+          <div class="header">
+            <div><h1 style="margin:0">${systemConfig.agencyName}</h1><p>${systemConfig.agencyAddress}</p></div>
+            <div style="text-align: right"><h2>PAYMENT RECEIPT</h2><p>Date: ${new Date().toLocaleDateString("en-GB")}</p></div>
+          </div>
+          <p><strong>Customer:</strong> ${client.clientName} (AIN: ${client.ain})</p>
+          <table><thead><tr><th>SL</th><th>Description</th><th style="text-align: right">Amount</th></tr></thead><tbody>${items}</tbody></table>
+          <div class="summary-wrap">
+            <div class="status-seal">${settlementLabel}</div>
+            <div class="summary">
+              <div class="summary-row"><span>Grand Subtotal</span><span>${fmt(subtotal)}</span></div>
+              <div class="summary-row"><span>Service Charge</span><span>${fmt(serviceCharge)}</span></div>
+              <div class="summary-row"><span>Due</span><span>${fmt(due)}</span></div>
+              <div class="summary-row total"><span>Grand Total</span><span>${fmt(settlementValue)}</span></div>
+            </div>
+          </div>
+          <div class="print-footer">
+            This is system-generated invoice. Powered by ${systemConfig.agencyName} â€¢ Printed on ${new Date().toLocaleString("en-GB")}
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const initiatePayment = (ids: string[]) => {
+    setPaymentIds(ids);
+    setPaymentAmount(""); // Received Amount set to blank
+    setPaymentMethod(systemConfig.paymentMethods[0] || "Cash");
+    setPaymentDate(getTodayDateInputValue());
+    setShowPaymentModal(true);
+  };
+
+  const processPayment = async () => {
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount)) return;
+
+    const targetRecords = allHistory.filter((r) => paymentIds.includes(r.id));
+    if (targetRecords.length === 0) return;
+
+    const allocateByWeight = (
+      records: PaymentRecord[],
+      totalAmount: number,
+      getWeight: (r: PaymentRecord) => number,
+    ) => {
+      const n = records.length;
+      if (n === 0) return {} as Record<string, number>;
+      const totalCents = Math.max(0, Math.round(totalAmount * 100));
+      const weights = records.map((r) => Math.max(0, getWeight(r)));
+      const weightSum = weights.reduce((a, b) => a + b, 0);
+
+      const centsById: Record<string, number> = {};
+      if (weightSum <= 0) {
+        const base = Math.floor(totalCents / n);
+        let rem = totalCents - base * n;
+        records.forEach((r) => {
+          centsById[r.id] = base + (rem > 0 ? 1 : 0);
+          if (rem > 0) rem -= 1;
+        });
+      } else {
+        const raw = records.map((r, i) => {
+          const exact = (totalCents * weights[i]) / weightSum;
+          const floor = Math.floor(exact);
+          return { id: r.id, floor, frac: exact - floor };
+        });
+        let used = 0;
+        raw.forEach((x) => {
+          centsById[x.id] = x.floor;
+          used += x.floor;
+        });
+        let rem = totalCents - used;
+        raw
+          .sort((a, b) => b.frac - a.frac)
+          .forEach((x) => {
+            if (rem <= 0) return;
+            centsById[x.id] += 1;
+            rem -= 1;
+          });
+      }
+
+      const amountById: Record<string, number> = {};
+      Object.keys(centsById).forEach((id) => {
+        amountById[id] = centsById[id] / 100;
+      });
+      return amountById;
+    };
+
+    const receivedById = allocateByWeight(targetRecords, amount, (r) => r.duty);
+    const paymentDateValue = formatDateInputForRecord(paymentDate);
+
+    // Optimistic UI update first
+    setUpdatedRecords((prev) => {
+      const next = { ...prev };
+      for (const rec of targetRecords) {
+        const received = receivedById[rec.id] ?? 0;
+        const patched: Partial<PaymentRecord> = {
+          date: paymentDateValue,
+          status: "Paid",
+          received,
+          profit: received - rec.duty,
+          paymentMethod: paymentMethod,
+        };
+        next[rec.id] = { ...rec, ...patched } as PaymentRecord;
+      }
+      return next;
+    });
+    setHistory((prev) =>
+      prev.map((rec) =>
+        paymentIds.includes(rec.id)
+            ? ({
+              ...rec,
+              date: paymentDateValue,
+              status: "Paid",
+              received: receivedById[rec.id] ?? 0,
+              profit: (receivedById[rec.id] ?? 0) - rec.duty,
+              paymentMethod: paymentMethod,
+            } as PaymentRecord)
+          : rec,
+      ),
+    );
+
+    // Then sync with server in parallel
+    if (supabase) {
+      const results = await Promise.all(
+        targetRecords.map(async (rec) => {
+          const received = receivedById[rec.id] ?? 0;
+          const patched: Partial<PaymentRecord> = {
+            date: paymentDateValue,
+            status: "Paid",
+            received,
+            profit: received - rec.duty,
+            paymentMethod: paymentMethod,
+          };
+          const res = await updateDuty(supabase, rec.id, patched);
+          return { id: rec.id, res };
+        }),
+      );
+      setUpdatedRecords((prev) => {
+        const next = { ...prev };
+        for (const { id, res } of results) {
+          if (res) next[id] = res;
+        }
+        return next;
+      });
+      setHistory((prev) =>
+        prev.map((rec) => {
+          const updated = results.find((r) => r.id === rec.id)?.res;
+          return updated ? updated : rec;
+        }),
+      );
+    }
+
+    setShowPaymentModal(false);
+    setSelectedIds([]);
+    setPaymentIds([]);
+  };
+
+  // Trigger Delete Confirmation
+  const handleDeleteClick = (id?: string) => {
+    const idsToDelete = id ? [id] : selectedIds;
+    if (idsToDelete.length === 0) return;
+    setDeleteConfirm({ show: true, ids: idsToDelete });
+  };
+
+  // Execute Delete
+  const executeDelete = async (ids = deleteConfirm.ids) => {
+    const idsToDelete = [...ids];
+    if (idsToDelete.length === 0) return;
+
+    // Optimistic remove for instant UI feedback
+    setDeletedIds((prev) => Array.from(new Set([...prev, ...idsToDelete])));
+    setHistory((prev) => prev.filter((rec) => !idsToDelete.includes(rec.id)));
+    setInsertedRecords((prev) =>
+      prev.filter((r) => !idsToDelete.includes(r.id)),
+    );
+    setUpdatedRecords((prev) => {
+      const next = { ...prev };
+      idsToDelete.forEach((id) => delete next[id]);
+      return next;
+    });
+    setSelectedIds([]);
+    setDeleteConfirm({ show: false, ids: [] });
+
+    if (!supabase) return;
+
+    const results = await Promise.all(
+      idsToDelete.map(async (id) => {
+        const res = await deleteDuty(supabase, id);
+        return { id, ok: Boolean(res) };
+      }),
+    );
+
+    const failedIds = results.filter((r) => !r.ok).map((r) => r.id);
+    if (failedIds.length > 0) {
+      // Roll back only failed deletions
+      setDeletedIds((prev) => prev.filter((id) => !failedIds.includes(id)));
+      console.error("Failed to delete some duty rows:", failedIds);
+    }
+  };
+
+  const handleStatusUpdate = async (
+    status: "Completed" | "Pending",
+    targetId?: string,
+  ) => {
+    const idsToUpdate = targetId ? [targetId] : selectedIds;
+    if (idsToUpdate.length === 0) return;
+
+    const targetRecords = allHistory.filter((r) => idsToUpdate.includes(r.id));
+
+    // Optimistic update first for instant UI response
+    setUpdatedRecords((prev) => {
+      const next = { ...prev };
+      for (const rec of targetRecords) {
+        next[rec.id] = { ...rec, status } as PaymentRecord;
+      }
+      return next;
+    });
+    setHistory((prev) =>
+      prev.map((rec) =>
+        idsToUpdate.includes(rec.id)
+          ? ({ ...rec, status } as PaymentRecord)
+          : rec,
+      ),
+    );
+
+    // Sync with server in parallel
+    if (supabase) {
+      const results = await Promise.all(
+        idsToUpdate.map(async (id) => {
+          const res = await updateDuty(supabase, id, { status });
+          return { id, res };
+        }),
+      );
+      setUpdatedRecords((prev) => {
+        const next = { ...prev };
+        for (const { id, res } of results) {
+          if (res) next[id] = res;
+        }
+        return next;
+      });
+      setHistory((prev) =>
+        prev.map((rec) => {
+          const updated = results.find((r) => r.id === rec.id)?.res;
+          return updated ? updated : rec;
+        }),
+      );
+    }
+
+  };
+
+  const handleEdit = (id: string) => {
+    const rec = allHistory.find((r) => r.id === id);
+    if (rec) {
+      setEditingId(rec.id);
+      setAin(rec.ain);
+      setClientName(rec.clientName);
+      setPhone(rec.phone || "");
+      const [num, yearPart] = rec.beYear.split("(");
+      setBeNumber(num.replace("C-", ""));
+      setBeYear(yearPart?.replace(")", "") || "");
+      setDutyAmount(rec.duty.toString());
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => beInputRef.current?.focus(), 50);
+    }
+  };
+
+  const getRowBackground = (status: string) => {
+    if (status === "New")
+      return isDark
+        ? "bg-indigo-900/30"
+        : "bg-indigo-50/70 border-l-4 border-l-indigo-500";
+    if (status === "Completed")
+      return isDark
+        ? "bg-amber-900/30"
+        : "bg-amber-50/70 border-l-4 border-l-amber-500";
+    // Paid (Normal)
+    return isDark
+      ? "hover:bg-slate-700/30"
+      : "bg-white hover:bg-slate-50 border-l-4 border-l-transparent";
+  };
+
+  const isDark = systemConfig.theme === "dark";
+  const isBn = systemConfig.language === "bn";
+  const selectedRecords = allHistory.filter((r) => selectedIds.includes(r.id));
+  const selectedTotalAmount = selectedRecords.reduce((sum, rec) => sum + rec.duty, 0);
+  const selectedDueAmount = selectedRecords.reduce(
+    (sum, rec) => sum + Math.max(0, rec.duty - (rec.received || 0)),
+    0,
+  );
+  const totalDueForPayment = allHistory
+    .filter((r) => paymentIds.includes(r.id))
+    .reduce((a, b) => a + b.duty, 0);
+
+  return (
+    <div className="flex flex-col gap-8 animate-in fade-in duration-500">
+      {/* Top Section: Split Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Left: Input Form Card */}
+        <div
+          className={`lg:col-span-2 rounded-[1.5rem] shadow-sm border p-6 flex flex-col gap-4 relative overflow-hidden transition-all ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"} ${editingId ? "ring-2 ring-red-500 ring-offset-2" : ""}`}
+        >
+          <div className="flex items-center justify-between pb-4 border-b dark:border-slate-700">
+            <h3
+              className={`font-bold text-sm uppercase tracking-widest flex items-center gap-3 ${editingId ? "text-red-600" : isDark ? "text-slate-200" : "text-slate-700"}`}
+            >
+              <span
+                className={`w-8 h-8 rounded-lg text-white flex items-center justify-center shadow-lg ${editingId ? "bg-red-600 shadow-red-500/30" : "bg-blue-600 shadow-blue-500/30"}`}
+              >
+                <i
+                  className={`fas ${editingId ? "fa-pen" : "fa-keyboard"}`}
+                ></i>
+              </span>
+              {editingId ? "Update Existing Entry" : "New Duty Entry"}
+            </h3>
+            {editingId && (
+              <button
+                onClick={() => {
+                  setEditingId(null);
+                  setBeNumber("");
+                  setDutyAmount("");
+                }}
+                className="text-[10px] uppercase font-bold text-red-500 hover:underline"
+              >
+                Cancel Edit
+              </button>
+            )}
+          </div>
+
+          {/* Client Info Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Client AIN
+              </label>
+              <div className="relative">
+                <i className="fas fa-id-badge absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input
+                  type="text"
+                  placeholder="Search AIN..."
+                  list="client-ain-options-duty"
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  value={ain}
+                  onChange={(e) => handleAinChange(e.target.value)}
+                />
+                <datalist id="client-ain-options-duty">
+                  {clients.map((c) => (
+                    <option key={c.ain} value={`${c.ain} | ${c.name}`} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                WhatsApp Number
+              </label>
+              <div className="relative">
+                <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input
+                  type="text"
+                  placeholder="Mobile No"
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Client Name (Auto)
+              </label>
+              <input
+                type="text"
+                readOnly
+                className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"}`}
+                value={clientName}
+                placeholder="Client name will appear here..."
+              />
+            </div>
+          </div>
+
+          {/* Duty Info Grid */}
+          <div
+            className={`p-5 rounded-xl border-2 border-dashed ${isDark ? "border-slate-700 bg-slate-900/30" : "border-slate-200 bg-slate-50/50"}`}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Swapped Year and BE Number */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">
+                  B/E Year
+                </label>
+                <input
+                  type="text"
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-base text-center outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-800"}`}
+                  value={beYear}
+                  onChange={(e) => setBeYear(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">
+                  B/E Number
+                </label>
+                <input
+                  ref={beInputRef}
+                  autoFocus
+                  type="text"
+                  placeholder="XXXXX"
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-base text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-800"}`}
+                  value={beNumber}
+                  onChange={(e) => setBeNumber(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">
+                  Duty Amount (BDT)
+                </label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-base text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all ${isDark ? "bg-slate-800 border-slate-600 text-blue-400" : "bg-white border-slate-300 text-blue-600"}`}
+                  value={dutyAmount}
+                  onChange={(e) => setDutyAmount(e.target.value)}
+                />
+              </div>
+            </div>
+            <button
+              onClick={handleAddOrUpdate}
+              className={`w-full mt-4 text-white font-bold py-3 rounded-xl uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all flex justify-center items-center gap-2 ${editingId ? "bg-red-600 hover:bg-red-700 shadow-red-600/20" : "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"}`}
+            >
+              {editingId ? (
+                <>
+                  <i className="fas fa-save"></i> Update Entry
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-plus"></i> Add to Batch
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Right: Live Queue Summary (Sticky) */}
+        <div
+          className={`lg:col-span-1 rounded-[1.5rem] shadow-sm overflow-hidden flex flex-col h-full min-h-[400px] border ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
+        >
+          <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white flex justify-between items-center">
+            <div>
+              <h4 className="font-bold text-sm uppercase tracking-widest">
+                Current Batch
+              </h4>
+              <p className="text-[10px] opacity-70 font-bold uppercase mt-1">
+                {queue.length} Items Pending
+              </p>
+            </div>
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+              <i className="fas fa-receipt"></i>
+            </div>
+          </div>
+
+          <div className="flex-grow p-4 overflow-y-auto max-h-[400px] space-y-3">
+            {queue.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-50 gap-3 min-h-[200px]">
+                <i className="fas fa-basket-shopping text-4xl"></i>
+                <p className="text-xs font-bold uppercase">Queue Empty</p>
+              </div>
+            ) : (
+              queue.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className={`p-4 rounded-xl flex justify-between items-center group relative border ${isDark ? "bg-slate-800 border-slate-700 hover:border-slate-600" : "bg-slate-50 border-slate-100 hover:border-slate-200"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-slate-400 w-5">
+                      #{idx + 1}
+                    </span>
+                    <div>
+                      <p
+                        className={`font-bold text-sm ${isDark ? "text-white" : "text-slate-800"}`}
+                      >
+                        {item.beNumber}
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-500">
+                        Year: {item.year}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-blue-600">
+                      ৳{item.duty.toLocaleString()}
+                    </p>
+                    <button
+                      onClick={() =>
+                        setQueue(queue.filter((q) => q.id !== item.id))
+                      }
+                      className="text-[10px] text-red-400 hover:text-red-600 font-bold uppercase mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div
+            className={`p-6 border-t ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-100"}`}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-xs font-bold text-slate-500 uppercase">
+                Total Payable
+              </span>
+              <span
+                className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-800"}`}
+              >
+                ৳{queue.reduce((a, b) => a + b.duty, 0).toLocaleString()}
+              </span>
+            </div>
+            <button
+              onClick={submitQueue}
+              disabled={queue.length === 0}
+              className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-4 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
+            >
+              Confirm & Post
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Ledger Table */}
+      <div
+        className={`rounded-[1.5rem] shadow-sm border overflow-visible ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
+      >
+        <div
+          className={`px-8 py-6 border-b flex flex-col md:flex-row gap-4 justify-between items-center ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-300"}`}
+        >
+          <div className="flex items-center gap-4 flex-wrap">
+            <h3
+              className={`font-bold uppercase text-xs tracking-widest flex items-center gap-2 ${isDark ? "text-slate-300" : "text-slate-600"}`}
+            >
+              <i className="fas fa-list text-blue-500"></i> Transaction History
+            </h3>
+            <span
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                isDark
+                  ? "bg-slate-900 border-slate-600 text-slate-300"
+                  : "bg-slate-50 border-slate-200 text-slate-600"
+              }`}
+            >
+              {isBn
+                ? `ফিল্টার: ${sortedHistory.length} / মোট: ${allHistory.length}`
+                : `Filtered: ${sortedHistory.length} / Total: ${allHistory.length}`}
+            </span>
+            {selectedIds.length > 0 && (
+              <span
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                  isDark
+                    ? "bg-slate-900 border-slate-600 text-slate-300"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
+                }`}
+              >
+                Bulk actions moved to sticky top bar
+              </span>
+            )}
+          </div>
+
+          <div className="flex gap-3 items-center flex-wrap">
+            {/* Search Box */}
+            <div className="relative">
+              <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input
+                type="text"
+                placeholder="Search..."
+                className={`pl-9 pr-4 py-2 rounded-lg border text-xs font-bold outline-none w-32 focus:w-48 transition-all ${isDark ? "bg-slate-900 border-slate-600 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
+              />
+            </div>
+
+            <select
+              className={`px-3 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-600 text-white" : "bg-slate-50 border-slate-200"}`}
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="All">All Status</option>
+              <option value="Due">Due</option>
+              <option value="Pending">Pending</option>
+              <option value="Paid">Paid</option>
+              <option value="Completed">Completed</option>
+              <option value="New">New</option>
+            </select>
+
+            <select
+              className={`px-3 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-600 text-white" : "bg-slate-50 border-slate-200"}`}
+              value={filterPaymentMethod}
+              onChange={(e) => setFilterPaymentMethod(e.target.value)}
+            >
+              <option value="All">All Methods</option>
+              {systemConfig.paymentMethods.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+
+            <div
+              className={`flex items-center gap-2 px-2 rounded-lg border ${isDark ? "border-slate-600" : "border-slate-200"}`}
+            >
+              <input
+                type="date"
+                className={`py-1.5 bg-transparent text-xs font-bold outline-none ${isDark ? "text-white" : "text-slate-700"}`}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <span className="text-slate-400 text-[10px]">TO</span>
+              <input
+                type="date"
+                className={`py-1.5 bg-transparent text-xs font-bold outline-none ${isDark ? "text-white" : "text-slate-700"}`}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                const today = getTodayDateInputValue();
+                setStartDate(today);
+                setEndDate(today);
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-blue-700"
+            >
+              Today
+            </button>
+            <button
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+                setFilterSearch("");
+              }}
+              className="bg-slate-100 text-slate-900 px-4 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-200"
+            >
+              Clear
+            </button>
+            {selectedIds.length > 0 && (
+              <button
+                onClick={() => printDutyInvoice(selectedRecords)}
+                title="Print selected invoices"
+                className="bg-white/80 text-slate-700 px-3 py-2 rounded-lg border shadow-sm hover:bg-slate-50 text-sm font-bold"
+              >
+                {" "}
+                <i className="fas fa-print"></i> Print Selected
+              </button>
+            )}
+          </div>
+        </div>
+
+        {selectedIds.length > 0 && !showPaymentModal && !deleteConfirm.show && (
+          <div className="fixed top-[112px] md:top-[116px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
+            <div
+              className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
+                isDark
+                  ? "bg-slate-900/95 border-slate-700 text-slate-100"
+                  : "bg-white/95 border-slate-200 text-slate-700"
+              }`}
+            >
+              <span className="text-xs font-black uppercase tracking-wider">
+                Selected {selectedIds.length}
+              </span>
+              <span className="text-base md:text-lg font-extrabold tracking-wide">
+                Total ৳{selectedTotalAmount.toLocaleString()}
+              </span>
+              <span className="text-base md:text-lg font-extrabold tracking-wide text-red-500">
+                Settlement ৳{selectedDueAmount.toLocaleString()}
+              </span>
+              <button
+                onClick={() => initiatePayment(selectedIds)}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
+              >
+                Bulk Settle
+              </button>
+              <button
+                onClick={() => printDutyInvoice(selectedRecords)}
+                className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
+              >
+                <i className="fas fa-print"></i> Invoice
+              </button>
+              <button
+                onClick={() => handleDeleteClick()}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() =>
+                  shareWhatsApp(allHistory.filter((h) => selectedIds.includes(h.id)))
+                }
+                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
+              >
+                <i className="fab fa-whatsapp"></i> Summary
+              </button>
+              <button
+                onClick={() =>
+                  shareInvoicePdfToWhatsApp(
+                    allHistory.filter((h) => selectedIds.includes(h.id)),
+                  )
+                }
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all flex items-center gap-1.5"
+              >
+                <i className="fas fa-file-pdf"></i> WA PDF
+              </button>
+              <button
+                onClick={() => setSelectedIds([])}
+                className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <i className="fas fa-times"></i> Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table id="duty-table" className="w-full text-left border-collapse">
+            <thead>
+              <tr
+                className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
+              >
+                <th className="px-6 py-3 w-12 text-center">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                    checked={
+                      selectedIds.length === sortedHistory.length &&
+                      sortedHistory.length > 0
+                    }
+                    onChange={() =>
+                      setSelectedIds(
+                        selectedIds.length === sortedHistory.length
+                          ? []
+                          : sortedHistory.map((h) => h.id),
+                      )
+                    }
+                  />
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("date")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Date <i className={`fas ${getSortIcon("date")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("clientName")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Client Information{" "}
+                    <i className={`fas ${getSortIcon("clientName")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("beYear")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    B/E Reference <i className={`fas ${getSortIcon("beYear")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("duty")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Amount <i className={`fas ${getSortIcon("duty")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("received")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Received <i className={`fas ${getSortIcon("received")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("status")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Status <i className={`fas ${getSortIcon("status")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("profit")}
+                    className="inline-flex items-center gap-1"
+                  >
+                    Profit <i className={`fas ${getSortIcon("profit")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                  Controls
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
+            >
+              {sortedHistory.map((rec, index) => (
+                <tr
+                  key={rec.id}
+                  className={`group transition-all ${getRowBackground(rec.status)} ${selectedIds.includes(rec.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""}`}
+                >
+                  <td className="px-6 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                      checked={selectedIds.includes(rec.id)}
+                      onChange={() =>
+                        setSelectedIds((prev) =>
+                          prev.includes(rec.id)
+                            ? prev.filter((i) => i !== rec.id)
+                            : [...prev, rec.id],
+                        )
+                      }
+                    />
+                  </td>
+                  <td
+                    className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-400" : "text-slate-900"}`}
+                  >
+                    {rec.date}
+                  </td>
+                  <td className="px-6 py-3">
+                    <p
+                      className={`text-base font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}
+                    >
+                      {rec.clientName}
+                    </p>
+                    <p
+                      className={`text-xs font-bold mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}
+                    >
+                      AIN: {rec.ain || "-"}
+                    </p>
+                    <div
+                      className="flex items-center gap-2 mt-1.5 text-base font-bold text-slate-600 hover:text-blue-600 cursor-pointer w-fit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(rec.phone);
+                      }}
+                    >
+                      <i className="fas fa-phone-alt text-[10px]"></i>{" "}
+                      {rec.phone}{" "}
+                      <i className="fas fa-copy ml-1 opacity-50 hover:opacity-100 text-xs"></i>
+                    </div>
+                  </td>
+                  <td
+                    className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-900"}`}
+                  >
+                    {rec.beYear}
+                  </td>
+                  <td
+                    className={`px-6 py-3 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
+                  >
+                    ৳{rec.duty.toLocaleString()}
+                  </td>
+                  <td
+                    className={`px-6 py-3 text-sm font-bold text-right ${rec.received > 0 ? "text-green-600" : "text-slate-400"}`}
+                  >
+                    {rec.received > 0
+                      ? `৳${rec.received.toLocaleString()}`
+                      : "-"}
+                  </td>
+                  <td className="px-6 py-3 text-center">
+                    <span
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                        rec.status === "Paid"
+                          ? "bg-green-100 text-green-700"
+                          : rec.status === "Completed"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-indigo-100 text-indigo-700"
+                      }`}
+                    >
+                      {rec.status === "Paid" && rec.paymentMethod
+                        ? `${rec.status} | ${rec.paymentMethod}`
+                        : rec.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
+                    {rec.status === "Paid"
+                      ? `৳${rec.profit.toLocaleString()}`
+                      : "-"}
+                  </td>
+                  <td className="px-6 py-3">
+                    <div className="flex justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                      {/* Workflow Action Buttons */}
+                      {rec.status === "New" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleStatusUpdate("Completed", rec.id)
+                          }
+                          title="Mark as Completed"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md animate-in zoom-in"
+                        >
+                          <i className="fas fa-check pointer-events-none"></i>
+                        </button>
+                      )}
+
+                      {rec.status === "Completed" && (
+                        <button
+                          type="button"
+                          onClick={() => initiatePayment([rec.id])}
+                          title="Settle Payment"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-md animate-in zoom-in"
+                        >
+                          <i className="fas fa-hand-holding-dollar pointer-events-none"></i>
+                        </button>
+                      )}
+
+                      {/* Standard Actions */}
+                      <button
+                        type="button"
+                        onClick={() => shareWhatsApp([rec])}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                      >
+                        <i className="fab fa-whatsapp pointer-events-none"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => printDutyInvoice([rec])}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-600 hover:bg-slate-600 hover:text-white transition-all shadow-sm"
+                      >
+                        <i className="fas fa-print pointer-events-none"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(rec.id)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
+                      >
+                        <i className="fas fa-pen pointer-events-none"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(rec.id);
+                        }}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                      >
+                        <i className="fas fa-trash pointer-events-none"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      {/* Payment Settlement Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
+          <div
+            className={`w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95 ${isDark ? "bg-slate-800" : "bg-white"}`}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3
+                  className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-800"}`}
+                >
+                  Settle Payment
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Processing {paymentIds.length} invoice(s)
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div
+                className={`p-4 rounded-xl border flex justify-between items-center ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-100"}`}
+              >
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  Total Duty Due
+                </span>
+                <span
+                  className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
+                >
+                  ৳{totalDueForPayment.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Received Amount
+                </label>
+                <input
+                  type="number"
+                  placeholder="Enter Amount"
+                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none focus:border-green-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Payment Date
+                </label>
+                <input
+                  type="date"
+                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold outline-none focus:border-green-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Payment Method
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {systemConfig.paymentMethods.map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setPaymentMethod(m)}
+                      className={`py-3 px-2 rounded-xl text-xs font-bold uppercase border-2 transition-all ${paymentMethod === m ? "border-green-500 bg-green-50 text-green-700" : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        {getPaymentMethodVisual(m)}
+                        <span>{m}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={processPayment}
+                className="w-full py-4 mt-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl uppercase tracking-widest text-xs shadow-xl shadow-green-200 transition-all active:scale-95"
+              >
+                Confirm Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal (NEW) */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div
+            className={`rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center animate-in zoom-in-95 ${isDark ? "bg-slate-800" : "bg-white"}`}
+          >
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-red-100">
+              <i className="fas fa-trash-alt text-2xl"></i>
+            </div>
+            <h3
+              className={`text-xl font-black leading-tight mb-2 ${isDark ? "text-white" : "text-slate-900"}`}
+            >
+              Delete Record?
+            </h3>
+            <p
+              className={`font-medium text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}
+            >
+              You are about to permanently delete {deleteConfirm.ids.length}{" "}
+              selected item(s). This action cannot be reversed.
+            </p>
+            <div className="flex flex-col gap-3 mt-8">
+              <button
+                onClick={() => executeDelete()}
+                className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-xl shadow-red-100 transition-all active:scale-95 uppercase text-[10px] tracking-widest"
+              >
+                Yes, Delete Permanently
+              </button>
+              <button
+                onClick={() => setDeleteConfirm({ show: false, ids: [] })}
+                className={`w-full py-3.5 font-black rounded-xl transition-all uppercase text-[10px] tracking-widest ${isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default DutyPayment;
