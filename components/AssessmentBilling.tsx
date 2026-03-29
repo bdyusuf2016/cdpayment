@@ -29,6 +29,13 @@ const getTodayDateInputValue = (): string => {
   return local.toISOString().split("T")[0];
 };
 
+const formatDateInputForRecord = (value: string): string => {
+  if (!value) return new Date().toLocaleDateString("en-GB");
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+};
+
 const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   clients,
   systemConfig,
@@ -72,6 +79,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const [paymentIds, setPaymentIds] = useState<string[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentDate, setPaymentDate] = useState(getTodayDateInputValue);
   const [deleteConfirm, setDeleteConfirm] = useState<{
     show: boolean;
     ids: string[];
@@ -655,6 +663,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     setPaymentIds(ids);
     setPaymentAmount(""); // Received Amount starts blank
     setPaymentMethod(systemConfig.paymentMethods[0] || "Cash");
+    setPaymentDate(getTodayDateInputValue());
     setShowPaymentModal(true);
   };
 
@@ -714,7 +723,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     };
 
     const receivedById = allocateByWeight(targetRecords, amount, (r) => r.net);
-    const paymentDate = new Date().toLocaleDateString("en-GB");
+    const paymentDateValue = formatDateInputForRecord(paymentDate);
 
     const apply = async () => {
       setHistory((prev) =>
@@ -722,7 +731,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           paymentIds.includes(rec.id)
             ? ({
                 ...rec,
-                date: paymentDate,
+                date: paymentDateValue,
                 status: "Paid",
                 received: receivedById[rec.id] ?? 0,
                 paymentMethod,
@@ -733,7 +742,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       for (const rec of targetRecords) {
         const received = receivedById[rec.id] ?? 0;
         const patched: Partial<AssessmentRecord> = {
-          date: paymentDate,
+          date: paymentDateValue,
           status: "Paid",
           received,
           paymentMethod: paymentMethod,
@@ -1437,6 +1446,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Payment Date
+                </label>
+                <input
+                  type="date"
+                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
                 />
               </div>
 
