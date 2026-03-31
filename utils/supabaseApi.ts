@@ -7,6 +7,7 @@ import {
   SystemConfig,
   LogEntry,
 } from "../types";
+import { formatAuditLogDate } from "./auditLogDate";
 
 const toDutyDb = (record: Partial<PaymentRecord>) => ({
   date: record.date,
@@ -443,7 +444,7 @@ export async function insertAuditLog(
 ): Promise<LogEntry | null> {
   try {
     const payload = {
-      timestamp: entry.timestamp ?? new Date().toLocaleString(),
+      timestamp: formatAuditLogDate(entry.timestamp),
       user_name: entry.user_name ?? "system",
       action: entry.action,
       module: entry.module,
@@ -458,7 +459,9 @@ export async function insertAuditLog(
     if (error) throw error;
     return {
       id: data.id,
-      timestamp: data.timestamp || data.created_at || payload.timestamp,
+      timestamp: formatAuditLogDate(
+        data.createdAt ?? data.created_at ?? data.timestamp ?? payload.timestamp,
+      ),
       createdAt: data.createdAt ?? data.created_at ?? undefined,
       user: data.user_name ?? data.user ?? payload.user_name,
       action: data.action || payload.action,

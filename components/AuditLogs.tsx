@@ -2,6 +2,7 @@
 import { LogEntry, SystemConfig } from "../types";
 import { printElement } from "../utils/printTable";
 import { fetchData } from "../utils/supabaseApi";
+import { formatAuditLogDate, parseAuditLogDate } from "../utils/auditLogDate";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 interface AuditLogsProps {
@@ -23,7 +24,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
 
   const mapLog = (d: any): LogEntry => ({
     id: d.id,
-    timestamp: d.timestamp || d.created_at || new Date().toLocaleString(),
+    timestamp: formatAuditLogDate(d.createdAt ?? d.created_at ?? d.timestamp),
     createdAt: d.createdAt ?? d.created_at ?? undefined,
     user: d.user_name ?? d.user ?? "system",
     action: d.action || "",
@@ -40,21 +41,6 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
       l.action.toLowerCase().includes(filter.toLowerCase()),
   );
 
-  const parseTimestamp = (value: string) => {
-    if (!value) return 0;
-    const normalized = value.trim();
-    if (normalized.includes("/") && normalized.includes(",")) {
-      const [datePart, timePart] = normalized.split(",");
-      const [day, month, year] = datePart.trim().split("/");
-      const parsed = new Date(
-        `${year}-${month}-${day}T${(timePart || "00:00:00").trim()}`,
-      ).getTime();
-      return Number.isNaN(parsed) ? 0 : parsed;
-    }
-    const parsed = new Date(normalized).getTime();
-    return Number.isNaN(parsed) ? 0 : parsed;
-  };
-
   const sortedLogs = useMemo(() => {
     const rows = [...filteredLogs];
     rows.sort((a, b) => {
@@ -62,8 +48,8 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
       let right: string | number = "";
 
       if (sortKey === "timestamp") {
-        left = parseTimestamp(a.createdAt || a.timestamp);
-        right = parseTimestamp(b.createdAt || b.timestamp);
+        left = parseAuditLogDate(a.createdAt || a.timestamp);
+        right = parseAuditLogDate(b.createdAt || b.timestamp);
       } else if (sortKey === "user") {
         left = (a.user || "").toLowerCase();
         right = (b.user || "").toLowerCase();

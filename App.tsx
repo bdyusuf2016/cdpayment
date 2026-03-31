@@ -19,6 +19,7 @@ import {
   DEFAULT_AUTO_BACKUP_FREQUENCY_HOURS,
   downloadBackupFile,
 } from "./utils/backup";
+import { formatAuditLogDate, parseAuditLogDate } from "./utils/auditLogDate";
 import {
   TabType,
   Client,
@@ -88,7 +89,7 @@ const normalizeStaffUser = (row: any): StaffUser => ({
 
 const normalizeAuditLog = (row: any): LogEntry => ({
   id: row.id,
-  timestamp: row.timestamp || row.created_at || new Date().toLocaleString(),
+  timestamp: formatAuditLogDate(row.createdAt ?? row.created_at ?? row.timestamp),
   createdAt: row.createdAt ?? row.created_at ?? undefined,
   user: row.user ?? row.user_name ?? "system",
   action: row.action || "",
@@ -96,21 +97,6 @@ const normalizeAuditLog = (row: any): LogEntry => ({
   details: row.details || "",
   type: row.type || "info",
 });
-
-const parseLogTimestamp = (value?: string): number => {
-  if (!value) return 0;
-  const normalized = value.trim();
-  if (normalized.includes("/") && normalized.includes(",")) {
-    const [datePart, timePart] = normalized.split(",");
-    const [day, month, year] = datePart.trim().split("/");
-    const parsed = new Date(
-      `${year}-${month}-${day}T${(timePart || "00:00:00").trim()}`,
-    ).getTime();
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-  const parsed = new Date(normalized).getTime();
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
 
 const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
   agencyName: row.agencyName ?? row.agency_name,
@@ -227,8 +213,8 @@ const App: React.FC = () => {
     () =>
       [...auditLogs].sort(
         (a, b) =>
-          parseLogTimestamp(b.createdAt || b.timestamp) -
-          parseLogTimestamp(a.createdAt || a.timestamp),
+          parseAuditLogDate(b.createdAt || b.timestamp) -
+          parseAuditLogDate(a.createdAt || a.timestamp),
       ),
     [auditLogs],
   );
