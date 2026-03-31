@@ -240,6 +240,12 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                 printElement(
                   document.getElementById("auditlogs-table"),
                   "System Audit Logs",
+                  {
+                    header: {
+                      organization: systemConfig.agencyName || undefined,
+                      subtext: systemConfig.agencyAddress || undefined,
+                    },
+                  },
                 )
               }
               className="bg-white/10 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/10 hover:bg-white/20 transition-all ml-2"

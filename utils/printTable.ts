@@ -1,4 +1,8 @@
 type PrintOptions = {
+  header?: {
+    organization?: string;
+    subtext?: string;
+  };
   excludeColumnIndexes?: number[];
   autoExcludeControls?: boolean;
   grandTotal?: {
@@ -278,6 +282,19 @@ export function printElement(
             margin: 0 0 4px;
             letter-spacing: 0.02em;
           }
+          .brand {
+            margin: 0 0 2px;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #1d4ed8;
+          }
+          .subtext {
+            margin: 0 0 10px;
+            color: #334155;
+            font-size: 11px;
+          }
           .meta {
             margin: 0 0 14px;
             color: #475569;
@@ -316,7 +333,9 @@ export function printElement(
       </head>
       <body>
         <div class="sheet">
+          ${options.header?.organization ? `<div class="brand">${options.header.organization}</div>` : ""}
           ${title ? `<div class="title">${title}</div>` : ""}
+          ${options.header?.subtext ? `<div class="subtext">${options.header.subtext}</div>` : ""}
           <div class="meta">Printed on ${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
           ${table.outerHTML}
         </div>
