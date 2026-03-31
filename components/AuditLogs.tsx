@@ -24,6 +24,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
   const mapLog = (d: any): LogEntry => ({
     id: d.id,
     timestamp: d.timestamp || d.created_at || new Date().toLocaleString(),
+    createdAt: d.createdAt ?? d.created_at ?? undefined,
     user: d.user_name ?? d.user ?? "system",
     action: d.action || "",
     module: d.module || "",
@@ -61,8 +62,8 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
       let right: string | number = "";
 
       if (sortKey === "timestamp") {
-        left = parseTimestamp(a.timestamp);
-        right = parseTimestamp(b.timestamp);
+        left = parseTimestamp(a.createdAt || a.timestamp);
+        right = parseTimestamp(b.createdAt || b.timestamp);
       } else if (sortKey === "user") {
         left = (a.user || "").toLowerCase();
         right = (b.user || "").toLowerCase();
@@ -153,7 +154,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
   }, [supabase, loadLogs, logs]);
 
   function exportCSV() {
-    if (!sourceLogs || sourceLogs.length === 0) return;
+    if (!sortedLogs || sortedLogs.length === 0) return;
     const headers = [
       "timestamp",
       "user",
@@ -162,7 +163,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
       "details",
       "type",
     ];
-    const rows = sourceLogs.map((l) => [
+    const rows = sortedLogs.map((l) => [
       l.timestamp,
       l.user,
       l.action,

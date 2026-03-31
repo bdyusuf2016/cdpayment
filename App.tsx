@@ -89,12 +89,28 @@ const normalizeStaffUser = (row: any): StaffUser => ({
 const normalizeAuditLog = (row: any): LogEntry => ({
   id: row.id,
   timestamp: row.timestamp || row.created_at || new Date().toLocaleString(),
+  createdAt: row.createdAt ?? row.created_at ?? undefined,
   user: row.user ?? row.user_name ?? "system",
   action: row.action || "",
   module: row.module || "",
   details: row.details || "",
   type: row.type || "info",
 });
+
+const parseLogTimestamp = (value?: string): number => {
+  if (!value) return 0;
+  const normalized = value.trim();
+  if (normalized.includes("/") && normalized.includes(",")) {
+    const [datePart, timePart] = normalized.split(",");
+    const [day, month, year] = datePart.trim().split("/");
+    const parsed = new Date(
+      `${year}-${month}-${day}T${(timePart || "00:00:00").trim()}`,
+    ).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  const parsed = new Date(normalized).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
   agencyName: row.agencyName ?? row.agency_name,
@@ -207,6 +223,16 @@ const App: React.FC = () => {
     return null;
   }, [config.supabaseUrl, config.supabaseKey]);
 
+  const sortedAuditLogs = useMemo(
+    () =>
+      [...auditLogs].sort(
+        (a, b) =>
+          parseLogTimestamp(b.createdAt || b.timestamp) -
+          parseLogTimestamp(a.createdAt || a.timestamp),
+      ),
+    [auditLogs],
+  );
+
   // Check for existing session on mount
   useEffect(() => {
     if (supabase) {
@@ -261,7 +287,11 @@ const App: React.FC = () => {
       const getRowKey = (row: any) => row?.id ?? row?.ain;
 
       // Fetch initial data
-      const { data, error } = await supabase.from(tableName).select("*");
+      const query = supabase.from(tableName).select("*");
+      const { data, error } =
+        tableName === "audit_logs"
+          ? await query.order("created_at", { ascending: false })
+          : await query;
       if (error) {
         console.error(`Error fetching ${tableName}:`, error);
       } else {
@@ -803,10 +833,10 @@ const App: React.FC = () => {
         ];
       }
       case "logs": {
-        const totalLogs = auditLogs.length;
-        const warningCount = auditLogs.filter((l) => l.type === "warning").length;
-        const dangerCount = auditLogs.filter((l) => l.type === "danger").length;
-        const successCount = auditLogs.filter((l) => l.type === "success").length;
+        const totalLogs = sortedAuditLogs.length;
+        const warningCount = sortedAuditLogs.filter((l) => l.type === "warning").length;
+        const dangerCount = sortedAuditLogs.filter((l) => l.type === "danger").length;
+        const successCount = sortedAuditLogs.filter((l) => l.type === "success").length;
         return [
           { label: "Total Logs", value: totalLogs, color: "#2563eb" },
           { label: "Success", value: successCount, color: "#10b981" },
@@ -869,7 +899,7 @@ const App: React.FC = () => {
     visibleAssessmentRows,
     visibleAinRows,
     users,
-    auditLogs,
+    sortedAuditLogs,
   ]);
 
   useEffect(() => {
@@ -968,7 +998,7 @@ const App: React.FC = () => {
         };
       }
       case "logs": {
-        const latest = auditLogs
+        const latest = sortedAuditLogs
           .slice(0, 8)
           .map((l) => `${l.timestamp} | ${l.module} | ${l.action}`);
         return {
@@ -996,7 +1026,7 @@ const App: React.FC = () => {
     visibleDutyRows,
     visibleAssessmentRows,
     visibleAinRows,
-    auditLogs,
+    sortedAuditLogs,
     users,
   ]);
 
@@ -1357,7 +1387,7 @@ const App: React.FC = () => {
             />
           )}
           {activeTab === "logs" && tabAccess.logs && (
-            <AuditLogs systemConfig={config} supabase={supabase} logs={auditLogs} />
+            <AuditLogs systemConfig={config} supabase={supabase} logs={sortedAuditLogs} />
           )}
           {!tabAccess[activeTab] && (
             <div

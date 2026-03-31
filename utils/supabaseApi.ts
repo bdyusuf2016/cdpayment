@@ -459,6 +459,7 @@ export async function insertAuditLog(
     return {
       id: data.id,
       timestamp: data.timestamp || data.created_at || payload.timestamp,
+      createdAt: data.createdAt ?? data.created_at ?? undefined,
       user: data.user_name ?? data.user ?? payload.user_name,
       action: data.action || payload.action,
       module: data.module || payload.module,

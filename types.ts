@@ -47,6 +47,7 @@ export interface AssessmentRecord extends Omit<PaymentRecord, 'duty' | 'beYear'>
 export interface LogEntry {
   id: string;
   timestamp: string;
+  createdAt?: string;
   user: string;
   action: string;
   module: string;
