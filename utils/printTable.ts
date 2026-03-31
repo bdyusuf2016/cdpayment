@@ -261,17 +261,65 @@ export function printElement(
         <meta charset="utf-8" />
         <title>${title || "Print"}</title>
         <style>
-          body { font-family: Inter, 'Segoe UI', Arial, sans-serif; padding: 20px; color: #0f172a; }
-          table { width: 100%; border-collapse: collapse; font-size: 13px; }
-          th, td { padding: 10px; border: 1px solid #cbd5e1; }
-          th { background: #f8fafc; font-weight: 700; text-align: left; }
-          thead tr { background: #f1f5f9; }
-          .title { font-size: 16px; font-weight: 800; margin-bottom: 12px; }
+          @page { margin: 14mm; }
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            color: #0f172a;
+            background: #ffffff;
+          }
+          .sheet {
+            width: 100%;
+          }
+          .title {
+            font-size: 20px;
+            font-weight: 800;
+            margin: 0 0 4px;
+            letter-spacing: 0.02em;
+          }
+          .meta {
+            margin: 0 0 14px;
+            color: #475569;
+            font-size: 11px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+          }
+          thead { display: table-header-group; }
+          tr { page-break-inside: avoid; }
+          th, td {
+            padding: 9px 10px;
+            border: 1px solid #cbd5e1;
+            vertical-align: top;
+          }
+          th {
+            background: #e2e8f0;
+            color: #0f172a;
+            font-weight: 800;
+            text-align: left;
+            white-space: nowrap;
+          }
+          tbody tr:nth-child(even) td {
+            background: #f8fafc;
+          }
+          tfoot td {
+            background: #eef2ff;
+            font-weight: 800;
+          }
+          span {
+            font: inherit;
+          }
         </style>
       </head>
       <body>
-        ${title ? `<div class="title">${title}</div>` : ""}
-        ${table.outerHTML}
+        <div class="sheet">
+          ${title ? `<div class="title">${title}</div>` : ""}
+          <div class="meta">Printed on ${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
+          ${table.outerHTML}
+        </div>
       </body>
     </html>
   `;
