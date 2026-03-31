@@ -986,7 +986,10 @@ const App: React.FC = () => {
       case "logs": {
         const latest = sortedAuditLogs
           .slice(0, 8)
-          .map((l) => `${l.timestamp} | ${l.module} | ${l.action}`);
+          .map(
+            (l) =>
+              `${formatAuditLogDate(l.createdAt ?? l.timestamp)} | ${l.module} | ${l.action}`,
+          );
         return {
           title: `${stats[activeStatIndex].label} Details`,
           items: latest.length > 0 ? latest : ["No logs available."],

@@ -37,6 +37,12 @@ export function printElement(
       .replace(/\s+/g, " ")
       .trim();
 
+  table.querySelectorAll("button").forEach((button) => {
+    const replacement = document.createElement("span");
+    replacement.textContent = (button.textContent || "").trim();
+    button.replaceWith(replacement);
+  });
+
   if (options.autoExcludeControls) {
     const headerCells = Array.from(table.querySelectorAll("thead th"));
     headerCells.forEach((th, idx) => {

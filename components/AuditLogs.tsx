@@ -150,7 +150,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
       "type",
     ];
     const rows = sortedLogs.map((l) => [
-      l.timestamp,
+      formatAuditLogDate(l.createdAt ?? l.timestamp),
       l.user,
       l.action,
       l.module,
@@ -335,7 +335,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                     }`}
                   >
                     <td className="px-6 py-3 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
-                      {log.timestamp}
+                      {formatAuditLogDate(log.createdAt ?? log.timestamp)}
                     </td>
                     <td className="px-6 py-3">
                       <span
