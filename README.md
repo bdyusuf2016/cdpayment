@@ -1,20 +1,107 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Customs Duty Payment
 
-# Run and deploy your AI Studio app
+Customs Duty Payment is a React + Vite application for managing customs duty billing, assessment billing, client records, audit logs, staff access, and printable operational reports.
 
-This contains everything you need to run your app locally.
+## Stack
 
-View your app in AI Studio: https://ai.studio/apps/drive/1dFW1_tOPGvVxYGUjzbNL3N6PixvtlwkG
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- Supabase
+- GitHub Pages for publishing
 
-## Run Locally
+## Main Features
 
-**Prerequisites:**  Node.js
+- Duty payment management
+- Assessment billing workflow
+- Client/AIN database
+- Role-based staff management
+- Audit logs with latest-first ordering
+- Audit log print/export support
+- Daily reporting
+- GitHub Pages publishing via `gh-pages`
 
+## Branch Strategy
+
+- `main` keeps source code only
+- `gh-pages` is used for published build output
+- `backup/pre-secret-purge` exists as a post-rewrite safety backup branch
+
+## Local Setup
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+
+```bash
+npm install
+```
+
+2. Create local environment values from `.env.example`.
+
+Required variables:
+
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_public_key_here
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+```
+
+3. Start development server:
+
+```bash
+npm run dev
+```
+
+## Production Build
+
+```bash
+npm run build
+npm run preview
+```
+
+## Publish
+
+This project publishes to GitHub Pages.
+
+```bash
+npm run deploy
+```
+
+Published URL:
+
+`https://bdyusuf2016.github.io/cdpayment`
+
+## Database
+
+Use the SQL/schema files in this repo to prepare Supabase:
+
+- `supabase_schema.sql`
+- `sql/run_admin_sql.sql`
+- `sql/tenant_isolation_rls.sql`
+
+## Security Notes
+
+- Real `.env` files are ignored and should never be committed
+- Secret leakage history for `.env` files has already been purged from Git history
+- Rotate Supabase keys if you have ever exposed them in commits or screenshots
+- Keep `SUPABASE_SERVICE_ROLE_KEY` server-side only
+
+## Useful Commands
+
+```bash
+npm run dev
+npm run build
+npm run preview
+npm run deploy
+npm run sql:init
+```
+
+## Recent Hardening
+
+- Removed tracked local env files from Git
+- Cleaned `.gitignore`
+- Patched vulnerable build dependencies
+- Cleared `npm audit` findings
+- Kept `main` source-only and `gh-pages` publish-only
+
