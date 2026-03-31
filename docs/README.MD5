@@ -104,4 +104,3 @@ npm run sql:init
 - Patched vulnerable build dependencies
 - Cleared `npm audit` findings
 - Kept `main` source-only and `gh-pages` publish-only
-
