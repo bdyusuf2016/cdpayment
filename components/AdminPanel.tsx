@@ -27,6 +27,8 @@ interface AdminPanelProps {
   setUsers: React.Dispatch<React.SetStateAction<StaffUser[]>>;
   setAuditLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
   currentUserEmail: string;
+  onBackup: (trigger?: "manual" | "auto") => void;
+  nextAutoBackupAt: string;
   supabase: SupabaseClient | null;
 }
 
@@ -94,6 +96,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   setUsers,
   setAuditLogs,
   currentUserEmail,
+  onBackup,
+  nextAutoBackupAt,
   supabase,
 }) => {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -344,36 +348,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (log) appendAuditLog(log);
   };
 
-  const togglePermission = (key: string) => {
+  const togglePermission = (key: keyof GranularPermissions) => {
     setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   // Backup Functions
-  const handleBackup = () => {
-    const backupData = {
-      timestamp: new Date().toISOString(),
-      config,
-      clients,
-      dutyHistory,
-      assessmentHistory,
-      users,
-    };
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `backup_${config.agencyName.replace(
-      /\s+/g,
-      "_",
-    )}_${new Date().toISOString().split("T")[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    updateConfig("lastBackup", new Date().toLocaleString());
-  };
-
   const handleRestoreClick = () => {
     setShowRestoreConfirm(true);
   };
@@ -513,9 +492,70 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             {/* Backup Controls */}
+            <div
+              className={`p-4 rounded-xl border space-y-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p
+                    className={`text-xs font-black uppercase ${isDark ? "text-white" : "text-slate-800"}`}
+                  >
+                    Auto Backup
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Downloads a JSON backup automatically while the app stays
+                    open.
+                  </p>
+                </div>
+                <label className="inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={Boolean(config.autoBackupEnabled)}
+                    onChange={(e) =>
+                      updateConfig("autoBackupEnabled", e.target.checked)
+                    }
+                  />
+                  <span className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:bg-blue-600 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></span>
+                </label>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                    Frequency
+                  </label>
+                  <select
+                    value={config.autoBackupFrequencyHours || 24}
+                    onChange={(e) =>
+                      updateConfig(
+                        "autoBackupFrequencyHours",
+                        Number(e.target.value),
+                      )
+                    }
+                    className={`w-full px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300"}`}
+                  >
+                    <option value={1}>Every 1 hour</option>
+                    <option value={6}>Every 6 hours</option>
+                    <option value={12}>Every 12 hours</option>
+                    <option value={24}>Every 24 hours</option>
+                  </select>
+                </div>
+                <div
+                  className={`rounded-lg border px-4 py-3 ${isDark ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-600"}`}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Next Auto Backup
+                  </p>
+                  <p className="text-xs font-bold mt-2">
+                    {config.autoBackupEnabled ? nextAutoBackupAt : "Disabled"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <button
-                onClick={handleBackup}
+                onClick={() => onBackup("manual")}
                 className="py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all flex flex-col items-center gap-2"
               >
                 <i className="fas fa-download text-lg"></i>

@@ -14,6 +14,12 @@ import Auth from "./components/Auth";
 import DailyReport from "./components/DailyReport";
 import { insertAuditLog, updateSystemSettings } from "./utils/supabaseApi";
 import {
+  BACKUP_STORAGE_KEYS,
+  buildBackupPayload,
+  DEFAULT_AUTO_BACKUP_FREQUENCY_HOURS,
+  downloadBackupFile,
+} from "./utils/backup";
+import {
   TabType,
   Client,
   SystemConfig,
@@ -107,6 +113,17 @@ const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
   paymentMethods: row.paymentMethods ?? row.payment_methods,
 });
 
+const getStoredBoolean = (key: string, fallback: boolean): boolean => {
+  const value = localStorage.getItem(key);
+  if (value === null) return fallback;
+  return value === "true";
+};
+
+const getStoredNumber = (key: string, fallback: number): number => {
+  const value = Number(localStorage.getItem(key));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+};
+
 interface StatDetailView {
   title: string;
   items: string[];
@@ -163,6 +180,19 @@ const App: React.FC = () => {
     paymentMethods: ["Cash", "Bank", "bKash", "Nagad"],
     supabaseUrl: SUPABASE_SITE_URL || "",
     supabaseKey: SUPABASE_SITE_KEY || "",
+    lastBackup: localStorage.getItem(BACKUP_STORAGE_KEYS.lastBackupAt)
+      ? new Date(
+          localStorage.getItem(BACKUP_STORAGE_KEYS.lastBackupAt) as string,
+        ).toLocaleString()
+      : "",
+    autoBackupEnabled: getStoredBoolean(
+      BACKUP_STORAGE_KEYS.autoBackupEnabled,
+      false,
+    ),
+    autoBackupFrequencyHours: getStoredNumber(
+      BACKUP_STORAGE_KEYS.autoBackupFrequencyHours,
+      DEFAULT_AUTO_BACKUP_FREQUENCY_HOURS,
+    ),
   });
 
   const supabase = useMemo(() => {
@@ -357,6 +387,100 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.lang = config.language === "bn" ? "bn" : "en";
   }, [config.language]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      BACKUP_STORAGE_KEYS.autoBackupEnabled,
+      String(Boolean(config.autoBackupEnabled)),
+    );
+    localStorage.setItem(
+      BACKUP_STORAGE_KEYS.autoBackupFrequencyHours,
+      String(
+        config.autoBackupFrequencyHours || DEFAULT_AUTO_BACKUP_FREQUENCY_HOURS,
+      ),
+    );
+  }, [config.autoBackupEnabled, config.autoBackupFrequencyHours]);
+
+  const handleBackup = useCallback(
+    (trigger: "manual" | "auto" = "manual") => {
+      const payload = buildBackupPayload({
+        config,
+        clients,
+        dutyHistory,
+        assessmentHistory,
+        users,
+        trigger,
+      });
+      downloadBackupFile(payload, config.agencyName);
+      localStorage.setItem(BACKUP_STORAGE_KEYS.lastBackupAt, payload.timestamp);
+      setConfig((prev) => ({
+        ...prev,
+        lastBackup: new Date(payload.timestamp).toLocaleString(),
+      }));
+    },
+    [assessmentHistory, clients, config, dutyHistory, users],
+  );
+
+  useEffect(() => {
+    if (!session || !config.autoBackupEnabled) return;
+
+    const checkForAutoBackup = () => {
+      if (document.hidden) return;
+
+      const hasData =
+        clients.length > 0 ||
+        dutyHistory.length > 0 ||
+        assessmentHistory.length > 0 ||
+        users.length > 0;
+      if (!hasData) return;
+
+      const lastBackupAt = localStorage.getItem(BACKUP_STORAGE_KEYS.lastBackupAt);
+      const lastBackupMs = lastBackupAt ? Date.parse(lastBackupAt) : 0;
+      const intervalMs =
+        (config.autoBackupFrequencyHours ||
+          DEFAULT_AUTO_BACKUP_FREQUENCY_HOURS) *
+        60 *
+        60 *
+        1000;
+
+      if (!lastBackupMs || Date.now() - lastBackupMs >= intervalMs) {
+        handleBackup("auto");
+      }
+    };
+
+    checkForAutoBackup();
+    const timerId = window.setInterval(checkForAutoBackup, 60 * 1000);
+    return () => window.clearInterval(timerId);
+  }, [
+    assessmentHistory.length,
+    clients.length,
+    config.autoBackupEnabled,
+    config.autoBackupFrequencyHours,
+    dutyHistory.length,
+    handleBackup,
+    session,
+    users.length,
+  ]);
+
+  const nextAutoBackupAt = useMemo(() => {
+    if (!config.autoBackupEnabled) return "";
+    const lastBackupAt = localStorage.getItem(BACKUP_STORAGE_KEYS.lastBackupAt);
+    if (!lastBackupAt) return "Runs after the first synced backup";
+
+    const nextRun = new Date(
+      Date.parse(lastBackupAt) +
+        (config.autoBackupFrequencyHours ||
+          DEFAULT_AUTO_BACKUP_FREQUENCY_HOURS) *
+          60 *
+          60 *
+          1000,
+    );
+    return nextRun.toLocaleString();
+  }, [
+    config.autoBackupEnabled,
+    config.autoBackupFrequencyHours,
+    config.lastBackup,
+  ]);
 
   // Handle Login from Auth Component
   const handleLoginSuccess = (newSession: any, url: string, key: string) => {
@@ -1227,6 +1351,8 @@ const App: React.FC = () => {
               setUsers={setUsers}
               setAuditLogs={setAuditLogs}
               currentUserEmail={session?.user?.email || "system"}
+              onBackup={handleBackup}
+              nextAutoBackupAt={nextAutoBackupAt}
               supabase={supabase}
             />
           )}

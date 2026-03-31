@@ -102,6 +102,8 @@ export interface SystemConfig {
   supabaseUrl?: string;
   supabaseKey?: string;
   lastBackup?: string;
+  autoBackupEnabled?: boolean;
+  autoBackupFrequencyHours?: number;
   lastMaintenance?: string;
 }
 
