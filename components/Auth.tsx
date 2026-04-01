@@ -179,6 +179,22 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
     }
   };
 
+  const openSupabaseTestLink = () => {
+    const runtimeUrl = supabaseUrl.trim();
+    const resolvedUrl = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
+      ? SUPABASE_SITE_URL
+      : runtimeUrl;
+
+    if (!resolvedUrl) {
+      setShowConfig(true);
+      setConnectionStatus("failed");
+      setConnectionMessage("Supabase URL পাওয়া যায়নি.");
+      return;
+    }
+
+    window.open(`${resolvedUrl}/auth/v1/settings`, "_blank", "noopener,noreferrer");
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -332,14 +348,25 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={runConnectionTest}
-            disabled={isTestingConnection}
-            className="w-full mb-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isTestingConnection ? "Testing Connection..." : "Test Supabase Connection"}
-          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <button
+              type="button"
+              onClick={runConnectionTest}
+              disabled={isTestingConnection}
+              className="w-full py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isTestingConnection
+                ? "Testing Connection..."
+                : "Test Supabase Connection"}
+            </button>
+            <button
+              type="button"
+              onClick={openSupabaseTestLink}
+              className="w-full py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-widest hover:border-emerald-400 hover:text-emerald-600 transition-all"
+            >
+              Open Supabase Test Link
+            </button>
+          </div>
 
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-1">
