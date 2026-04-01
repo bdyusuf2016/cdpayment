@@ -263,6 +263,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     return phones;
   }, [phone, selectedClient]);
 
+  const hasMultiplePhones = availablePhones.length > 1;
+
   const handleAinChange = (val: string) => {
     const normalizedAin = String(val || "")
       .split("|")[0]
@@ -1051,7 +1053,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 WhatsApp Number
               </label>
-              {selectedClient && availablePhones.length > 0 ? (
+              {selectedClient && hasMultiplePhones ? (
                 <div className="relative">
                   <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                   <select
