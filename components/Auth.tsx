@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import supabaseDefault, {
-  SUPABASE_SITE_URL,
   SUPABASE_SITE_KEY,
+  SUPABASE_SITE_URL,
 } from "../utils/supabaseClient";
 
-const isValidSupabaseConfig = (url: string, key: string): boolean => {
-  const normalizedUrl = url.trim();
-  const normalizedKey = key.trim();
-  return /^https?:\/\/.+/i.test(normalizedUrl) && normalizedKey.length > 20;
-};
+const isValidSupabaseConfig = (url: string, key: string): boolean =>
+  /^https?:\/\/.+/i.test(url.trim()) && key.trim().length > 20;
 
 const getAuthErrorMessage = (error: unknown): string => {
   const rawMessage =
@@ -17,21 +14,10 @@ const getAuthErrorMessage = (error: unknown): string => {
   const normalized = rawMessage.toLowerCase();
 
   if (normalized.includes("failed to fetch")) {
-    return "Supabase server-এ connect করা যাচ্ছে না। সাধারণত এটা wrong Supabase URL/key, browser cache, বা network block-এর জন্য হয়। Settings icon থেকে Project URL এবং anon key verify করুন, তারপর hard refresh দিয়ে আবার login দিন.";
+    return "Supabase server-এ connect করা যাচ্ছে না।";
   }
 
-  if (normalized.includes("invalid api key") || normalized.includes("apikey")) {
-    return "Supabase anon key ঠিক নেই। Settings icon থেকে সঠিক anon key দিন।";
-  }
-
-  if (normalized.includes("invalid url") || normalized.includes("url")) {
-    return "Supabase Project URL ঠিক নেই। Settings icon থেকে সঠিক project URL দিন।";
-  }
-
-  return (
-    rawMessage ||
-    "Authentication failed. Please verify the Supabase URL/key and your network connection."
-  );
+  return rawMessage || "Authentication failed.";
 };
 
 interface AuthProps {
@@ -44,175 +30,35 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  // Supabase Config State
-  const [showConfig, setShowConfig] = useState(false); // kept for compatibility but UI hidden
   const [supabaseUrl, setSupabaseUrl] = useState("");
   const [supabaseKey, setSupabaseKey] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<
-    "idle" | "checking" | "ok" | "failed"
-  >("idle");
-  const [connectionMessage, setConnectionMessage] = useState("");
-  const [isTestingConnection, setIsTestingConnection] = useState(false);
 
-  // Do not show config inputs on login page. Prefer build-time env or saved values.
   useEffect(() => {
     const savedUrl = localStorage.getItem("supabase_url") || "";
     const savedKey = localStorage.getItem("supabase_key") || "";
-    let nextUrl = "";
-    let nextKey = "";
 
-    // If Vite env keys are present, we prefer them (supabaseDefault will be used)
     if (isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)) {
-      nextUrl = SUPABASE_SITE_URL;
-      nextKey = SUPABASE_SITE_KEY;
-    } else if (isValidSupabaseConfig(savedUrl, savedKey)) {
-      nextUrl = savedUrl;
-      nextKey = savedKey;
-    } else if (isValidSupabaseConfig(initialConfig.url, initialConfig.key)) {
-      nextUrl = initialConfig.url;
-      nextKey = initialConfig.key;
-    } else {
-      nextUrl = savedUrl || initialConfig.url || "";
-      nextKey = savedKey || initialConfig.key || "";
-      setShowConfig(true);
+      setSupabaseUrl(SUPABASE_SITE_URL);
+      setSupabaseKey(SUPABASE_SITE_KEY);
+      return;
     }
 
-    setSupabaseUrl(nextUrl);
-    setSupabaseKey(nextKey);
-
-    if (nextUrl && nextKey && isValidSupabaseConfig(nextUrl, nextKey)) {
-      setShowConfig(false);
+    if (isValidSupabaseConfig(savedUrl, savedKey)) {
+      setSupabaseUrl(savedUrl);
+      setSupabaseKey(savedKey);
+      return;
     }
+
+    setSupabaseUrl(initialConfig.url || "");
+    setSupabaseKey(initialConfig.key || "");
   }, [initialConfig]);
-
-  useEffect(() => {
-    const runtimeUrl = supabaseUrl.trim();
-    const runtimeKey = supabaseKey.trim();
-    const resolvedUrl = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
-      ? SUPABASE_SITE_URL
-      : runtimeUrl;
-    const resolvedKey = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
-      ? SUPABASE_SITE_KEY
-      : runtimeKey;
-
-    if (!isValidSupabaseConfig(resolvedUrl, resolvedKey)) {
-      setConnectionStatus("idle");
-      setConnectionMessage("");
-      return;
-    }
-
-    let cancelled = false;
-    setConnectionStatus("checking");
-    setConnectionMessage("Supabase connection checking...");
-
-    fetch(`${resolvedUrl}/auth/v1/settings`, {
-      headers: {
-        apikey: resolvedKey,
-      },
-    })
-      .then(async (response) => {
-        if (cancelled) return;
-        if (!response.ok) {
-          throw new Error(`Connection test failed (${response.status})`);
-        }
-        setConnectionStatus("ok");
-        setConnectionMessage("Supabase connected.");
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setConnectionStatus("failed");
-        setConnectionMessage(
-          "Browser থেকে Supabase reach করা যাচ্ছে না. Network, browser cache, extension, বা project setting check করুন.",
-        );
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [supabaseUrl, supabaseKey]);
-
-  const runConnectionTest = async () => {
-    const runtimeUrl = supabaseUrl.trim();
-    const runtimeKey = supabaseKey.trim();
-    const resolvedUrl = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
-      ? SUPABASE_SITE_URL
-      : runtimeUrl;
-    const resolvedKey = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
-      ? SUPABASE_SITE_KEY
-      : runtimeKey;
-
-    if (!isValidSupabaseConfig(resolvedUrl, resolvedKey)) {
-      setShowConfig(true);
-      setConnectionStatus("failed");
-      setConnectionMessage(
-        "Supabase URL বা anon key missing/invalid। আগে valid config দিন.",
-      );
-      return;
-    }
-
-    setIsTestingConnection(true);
-    setConnectionStatus("checking");
-    setConnectionMessage("Testing Supabase connection...");
-
-    try {
-      const response = await fetch(`${resolvedUrl}/auth/v1/settings`, {
-        headers: {
-          apikey: resolvedKey,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      setConnectionStatus("ok");
-      setConnectionMessage("Supabase connected.");
-    } catch (err) {
-      try {
-        await fetch(`${resolvedUrl}/auth/v1/settings`, {
-          mode: "no-cors",
-        });
-        setConnectionStatus("failed");
-        setConnectionMessage(
-          "Supabase domain reachable, কিন্তু authenticated browser fetch blocked হচ্ছে. সম্ভবত extension, privacy shield, antivirus web shield, বা browser policy issue.",
-        );
-      } catch (fallbackErr) {
-        const rawMessage =
-          fallbackErr instanceof Error
-            ? fallbackErr.message
-            : err instanceof Error
-              ? err.message
-              : String(err || "Unknown error");
-        setConnectionStatus("failed");
-        setConnectionMessage(`Connection failed: ${rawMessage}`);
-      }
-    } finally {
-      setIsTestingConnection(false);
-    }
-  };
-
-  const openSupabaseTestLink = () => {
-    const runtimeUrl = supabaseUrl.trim();
-    const resolvedUrl = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
-      ? SUPABASE_SITE_URL
-      : runtimeUrl;
-
-    if (!resolvedUrl) {
-      setShowConfig(true);
-      setConnectionStatus("failed");
-      setConnectionMessage("Supabase URL পাওয়া যায়নি.");
-      return;
-    }
-
-    window.open(`${resolvedUrl}/auth/v1/settings`, "_blank", "noopener,noreferrer");
-  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     try {
       const runtimeUrl = supabaseUrl.trim();
       const runtimeKey = supabaseKey.trim();
@@ -223,13 +69,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
       const hasRuntimeConfig = isValidSupabaseConfig(runtimeUrl, runtimeKey);
 
       if (!hasBuildTimeConfig && !hasRuntimeConfig) {
-        setShowConfig(true);
-        throw new Error(
-          "Supabase configuration is missing. Click the settings icon and enter your Supabase Project URL and anon key.",
-        );
+        throw new Error("Supabase configuration is missing.");
       }
 
-      // Prefer the build-time client if available
       const supabase = hasBuildTimeConfig
         ? supabaseDefault
         : createClient(runtimeUrl, runtimeKey);
@@ -239,46 +81,41 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
         throw new Error("Please enter a valid email address");
       }
 
-      let result;
-      if (isLogin) {
-        result = await supabase.auth.signInWithPassword({
-          email: normalizedEmail,
-          password,
-        });
-      } else {
-        result = await supabase.auth.signUp({
-          email: normalizedEmail,
-          password,
-          options: {
-            data: {
-              full_name: normalizedEmail.split("@")[0], // Default name from email
+      const result = isLogin
+        ? await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          })
+        : await supabase.auth.signUp({
+            email: normalizedEmail,
+            password,
+            options: {
+              data: {
+                full_name: normalizedEmail.split("@")[0],
+              },
             },
-          },
-        });
-      }
+          });
 
       if (result.error) {
         throw result.error;
       }
 
       if (result.data.session) {
-        // Save config to local storage for persistence (if not using build-time env)
-        if (!(SUPABASE_SITE_URL && SUPABASE_SITE_KEY)) {
+        if (!hasBuildTimeConfig) {
           localStorage.setItem("supabase_url", runtimeUrl);
           localStorage.setItem("supabase_key", runtimeKey);
         }
+
         onLogin(
           result.data.session,
           runtimeUrl || SUPABASE_SITE_URL || "",
           runtimeKey || SUPABASE_SITE_KEY || "",
         );
       } else if (!isLogin && result.data.user) {
-        setError(
-          "Registration successful! Please check your email to verify account.",
-        );
+        setError("Registration successful! Please sign in.");
         setIsLogin(true);
       }
-    } catch (err: any) {
+    } catch (err) {
       setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
@@ -288,7 +125,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0f172a] p-4 transition-colors duration-500">
       <div className="w-full max-w-md">
-        {/* Logo / Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 mx-auto mb-4">
             <i className="fas fa-cube text-white text-3xl"></i>
@@ -301,40 +137,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
           </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl p-8 border border-slate-100 dark:border-slate-700 relative overflow-hidden">
-          {/* Config Toggle */}
-          <button
-            onClick={() => setShowConfig(!showConfig)}
-            className="absolute top-6 right-6 text-slate-300 hover:text-blue-500 transition-colors"
-          >
-            <i className="fas fa-cog"></i>
-          </button>
-
-          {showConfig && (
-            <div className="mb-6 pb-6 border-b border-dashed border-slate-200 dark:border-slate-700 animate-in slide-in-from-top-2">
-              <h3 className="text-xs font-black uppercase text-blue-500 mb-4 flex items-center gap-2">
-                <i className="fas fa-database"></i> Database Configuration
-              </h3>
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Supabase Project URL"
-                  value={supabaseUrl}
-                  onChange={(e) => setSupabaseUrl(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none focus:border-blue-500 dark:text-white"
-                />
-                <input
-                  type="password"
-                  placeholder="Supabase Anon Key"
-                  value={supabaseKey}
-                  onChange={(e) => setSupabaseKey(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none focus:border-blue-500 dark:text-white"
-                />
-              </div>
-            </div>
-          )}
-
+        <div className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl p-8 border border-slate-100 dark:border-slate-700 overflow-hidden">
           <h2 className="text-xl font-black text-slate-800 dark:text-white mb-6">
             {isLogin ? "Sign In" : "Create Account"}
           </h2>
@@ -347,40 +150,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
               </p>
             </div>
           )}
-
-          {connectionStatus !== "idle" && (
-            <div
-              className={`mb-4 p-3 rounded-xl border text-xs font-bold ${
-                connectionStatus === "ok"
-                  ? "bg-green-50 border-green-200 text-green-700"
-                  : connectionStatus === "failed"
-                    ? "bg-amber-50 border-amber-200 text-amber-700"
-                    : "bg-slate-50 border-slate-200 text-slate-600"
-              }`}
-            >
-              {connectionMessage}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-            <button
-              type="button"
-              onClick={runConnectionTest}
-              disabled={isTestingConnection}
-              className="w-full py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isTestingConnection
-                ? "Testing Connection..."
-                : "Test Supabase Connection"}
-            </button>
-            <button
-              type="button"
-              onClick={openSupabaseTestLink}
-              className="w-full py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-widest hover:border-emerald-400 hover:text-emerald-600 transition-all"
-            >
-              Open Supabase Test Link
-            </button>
-          </div>
 
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-1">
@@ -412,7 +181,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-3.5 rounded-xl border-2 border-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white font-bold text-sm outline-none focus:border-blue-500 transition-all"
-                  placeholder="••••••••"
+                  placeholder="Password"
                 />
               </div>
             </div>
@@ -430,7 +199,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
           <div className="mt-8 text-center">
             <button
               onClick={() => {
-                setIsLogin(!isLogin);
+                setIsLogin((prev) => !prev);
                 setError(null);
               }}
               className="text-xs font-bold text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
@@ -451,4 +220,3 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
 };
 
 export default Auth;
-
