@@ -20,6 +20,18 @@ const getAuthErrorMessage = (error: unknown): string => {
   return rawMessage || "Authentication failed.";
 };
 
+const getAuthDebugMessage = (error: any): string => {
+  const parts = [
+    error?.name,
+    error?.message,
+    error?.status ? `status=${error.status}` : "",
+    error?.code ? `code=${error.code}` : "",
+    error?.error_description,
+  ].filter(Boolean);
+
+  return parts.join(" | ");
+};
+
 interface AuthProps {
   onLogin: (session: any, url: string, key: string) => void;
   initialConfig: { url: string; key: string };
@@ -33,6 +45,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
   const [supabaseUrl, setSupabaseUrl] = useState("");
   const [supabaseKey, setSupabaseKey] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [debugError, setDebugError] = useState<string | null>(null);
 
   useEffect(() => {
     const savedUrl = localStorage.getItem("supabase_url") || "";
@@ -57,6 +70,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setDebugError(null);
     setLoading(true);
 
     try {
@@ -115,8 +129,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
         setError("Registration successful! Please sign in.");
         setIsLogin(true);
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(getAuthErrorMessage(err));
+      setDebugError(getAuthDebugMessage(err));
     } finally {
       setLoading(false);
     }
@@ -147,6 +162,17 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
               <i className="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
               <p className="text-xs font-bold text-red-600 dark:text-red-400">
                 {error}
+              </p>
+            </div>
+          )}
+
+          {debugError && (
+            <div className="mb-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                Debug Details
+              </p>
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-300 break-words">
+                {debugError}
               </p>
             </div>
           )}
