@@ -50,6 +50,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
   const [supabaseUrl, setSupabaseUrl] = useState("");
   const [supabaseKey, setSupabaseKey] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "idle" | "checking" | "ok" | "failed"
+  >("idle");
+  const [connectionMessage, setConnectionMessage] = useState("");
 
   // Do not show config inputs on login page. Prefer build-time env or saved values.
   useEffect(() => {
@@ -81,6 +85,52 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
       setShowConfig(false);
     }
   }, [initialConfig]);
+
+  useEffect(() => {
+    const runtimeUrl = supabaseUrl.trim();
+    const runtimeKey = supabaseKey.trim();
+    const resolvedUrl = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
+      ? SUPABASE_SITE_URL
+      : runtimeUrl;
+    const resolvedKey = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
+      ? SUPABASE_SITE_KEY
+      : runtimeKey;
+
+    if (!isValidSupabaseConfig(resolvedUrl, resolvedKey)) {
+      setConnectionStatus("idle");
+      setConnectionMessage("");
+      return;
+    }
+
+    let cancelled = false;
+    setConnectionStatus("checking");
+    setConnectionMessage("Supabase connection checking...");
+
+    fetch(`${resolvedUrl}/auth/v1/settings`, {
+      headers: {
+        apikey: resolvedKey,
+      },
+    })
+      .then(async (response) => {
+        if (cancelled) return;
+        if (!response.ok) {
+          throw new Error(`Connection test failed (${response.status})`);
+        }
+        setConnectionStatus("ok");
+        setConnectionMessage("Supabase connected.");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setConnectionStatus("failed");
+        setConnectionMessage(
+          "Browser থেকে Supabase reach করা যাচ্ছে না. Network, browser cache, extension, বা project setting check করুন.",
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabaseUrl, supabaseKey]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +268,20 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
               <p className="text-xs font-bold text-red-600 dark:text-red-400">
                 {error}
               </p>
+            </div>
+          )}
+
+          {connectionStatus !== "idle" && (
+            <div
+              className={`mb-4 p-3 rounded-xl border text-xs font-bold ${
+                connectionStatus === "ok"
+                  ? "bg-green-50 border-green-200 text-green-700"
+                  : connectionStatus === "failed"
+                    ? "bg-amber-50 border-amber-200 text-amber-700"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
+              }`}
+            >
+              {connectionMessage}
             </div>
           )}
 
