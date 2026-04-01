@@ -2,6 +2,12 @@
 import { Client, SystemConfig } from "../types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
+import {
+  getClientPhones,
+  getPrimaryClientPhone,
+  parseClientPhones,
+  serializeClientPhones,
+} from "../utils/clientPhones";
 
 interface AinDatabaseProps {
   clients: Client[];
@@ -23,7 +29,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [formAin, setFormAin] = useState("");
   const [formName, setFormName] = useState("");
-  const [formPhone, setFormPhone] = useState("");
+  const [formPhonesText, setFormPhonesText] = useState("");
   const [selectedAins, setSelectedAins] = useState<string[]>([]);
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const [pendingDeletedAins, setPendingDeletedAins] = useState<string[]>([]);
@@ -85,8 +91,8 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
         left = (a.name || "").toLowerCase();
         right = (b.name || "").toLowerCase();
       } else {
-        left = (a.phone || "").toLowerCase();
-        right = (b.phone || "").toLowerCase();
+        left = getPrimaryClientPhone(a).toLowerCase();
+        right = getPrimaryClientPhone(b).toLowerCase();
       }
 
       if (left < right) return sortDir === "asc" ? -1 : 1;
@@ -121,12 +127,12 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       setEditingClient(client);
       setFormAin(client.ain);
       setFormName(client.name);
-      setFormPhone(client.phone || "");
+      setFormPhonesText(getClientPhones(client).join("\n"));
     } else {
       setEditingClient(null);
       setFormAin("");
       setFormName("");
-      setFormPhone("");
+      setFormPhonesText("");
     }
     setShowModal(true);
   };
@@ -137,10 +143,12 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       return;
     }
 
+    const phones = parseClientPhones(formPhonesText);
     const clientData = {
       ain: formAin.trim(),
       name: formName.trim(),
-      phone: formPhone.trim(),
+      phone: serializeClientPhones(phones),
+      phones,
       active: true,
     };
     if (editingClient) {
@@ -222,7 +230,9 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
   const handleExport = () => {
     const headers = "AIN,Name,Phone\n";
-    const rows = allClients.map((c) => `${c.ain},${c.name},${c.phone}`).join("\n");
+    const rows = allClients
+      .map((c) => `${c.ain},${c.name},${serializeClientPhones(getClientPhones(c))}`)
+      .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -253,7 +263,8 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
             newClients.push({
               ain: ain.trim(),
               name: name.trim(),
-              phone: (phone || "").trim(),
+              phone: serializeClientPhones(parseClientPhones(phone || "")),
+              phones: parseClientPhones(phone || ""),
               active: true,
             });
           }
@@ -482,18 +493,23 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                       </div>
                     </td>
                     <td className="px-6 py-3">
-                      {client.phone ? (
-                        <div className="flex items-center gap-3">
+                      {getClientPhones(client).length > 0 ? (
+                        <div className="flex items-start gap-3">
                           <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center border ${isDark ? "bg-green-900/20 text-green-500 border-green-800" : "bg-green-50 text-green-500 border-green-100"}`}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center border shrink-0 ${isDark ? "bg-green-900/20 text-green-500 border-green-800" : "bg-green-50 text-green-500 border-green-100"}`}
                           >
                             <i className="fab fa-whatsapp text-sm"></i>
                           </div>
-                          <span
-                            className={`text-sm font-black ${isDark ? "text-slate-300" : "text-slate-600"}`}
-                          >
-                            {client.phone}
-                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {getClientPhones(client).map((phoneNumber) => (
+                              <span
+                                key={`${client.ain}-${phoneNumber}`}
+                                className={`text-xs font-black px-3 py-1.5 rounded-xl border ${isDark ? "bg-slate-900 border-slate-700 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-600"}`}
+                              >
+                                {phoneNumber}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-slate-300 dark:text-slate-500 text-[11px] italic font-bold">
@@ -593,15 +609,18 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    WhatsApp Number
+                    WhatsApp Numbers
                   </label>
-                  <input
-                    type="text"
-                    className={`w-full px-6 py-3 rounded-2xl border-2 outline-none font-black text-slate-800 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-slate-200 focus:border-green-500" : "bg-slate-50 border-slate-50 focus:bg-white focus:border-green-500 focus:ring-8 focus:ring-green-500/5"}`}
-                    placeholder="017XXXXXXXX"
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
+                  <textarea
+                    rows={4}
+                    className={`w-full px-6 py-3 rounded-2xl border-2 outline-none font-black text-slate-800 transition-all resize-none ${isDark ? "bg-slate-900 border-slate-700 text-slate-200 focus:border-green-500" : "bg-slate-50 border-slate-50 focus:bg-white focus:border-green-500 focus:ring-8 focus:ring-green-500/5"}`}
+                    placeholder={"017XXXXXXXX\n018XXXXXXXX"}
+                    value={formPhonesText}
+                    onChange={(e) => setFormPhonesText(e.target.value)}
                   />
+                  <p className="text-[10px] font-bold text-slate-400 ml-1">
+                    এক লাইনে একটি নাম্বার লিখুন। কমা, সেমিকোলন, বা পাইপ দিয়েও আলাদা করা যাবে।
+                  </p>
                 </div>
               </div>
 

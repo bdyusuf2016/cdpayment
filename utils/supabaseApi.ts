@@ -8,6 +8,7 @@ import {
   LogEntry,
 } from "../types";
 import { formatAuditLogDate } from "./auditLogDate";
+import { getClientPhones, serializeClientPhones } from "./clientPhones";
 
 const toDutyDb = (record: Partial<PaymentRecord>) => ({
   date: record.date,
@@ -94,14 +95,14 @@ export async function insertClient(
 ): Promise<Client | null> {
   const { data, error } = await supabase
     .from("clients")
-    .insert(client)
+    .insert(toClientDb(client))
     .select()
     .single();
   if (error) {
     console.error("insertClient error", error);
     return null;
   }
-  return data;
+  return fromClientDb(data);
 }
 
 export async function updateClient(
@@ -109,9 +110,13 @@ export async function updateClient(
   ain: string,
   client: Partial<Client>,
 ): Promise<Client | null> {
+  const dbPatch = toClientDb(client) as Record<string, unknown>;
+  Object.keys(dbPatch).forEach((key) => {
+    if (dbPatch[key] === undefined) delete dbPatch[key];
+  });
   const { data, error } = await supabase
     .from("clients")
-    .update(client)
+    .update(dbPatch)
     .eq("ain", ain)
     .select()
     .single();
@@ -119,7 +124,7 @@ export async function updateClient(
     console.error("updateClient error", error);
     return null;
   }
-  return data;
+  return fromClientDb(data);
 }
 
 export async function deleteClient(
@@ -474,3 +479,21 @@ export async function insertAuditLog(
     return null;
   }
 }
+const toClientDb = (client: Partial<Client>) => ({
+  ain: client.ain,
+  name: client.name,
+  phone: serializeClientPhones(getClientPhones(client)),
+  active: client.active,
+});
+
+const fromClientDb = (row: any): Client => {
+  const phone = row.phone ?? "";
+  const phones = getClientPhones({ phone });
+  return {
+    ain: row.ain ?? "",
+    name: row.name ?? "",
+    phone: phones[0] ?? "",
+    phones,
+    active: Boolean(row.active),
+  };
+};

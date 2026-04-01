@@ -20,6 +20,7 @@ import {
   downloadBackupFile,
 } from "./utils/backup";
 import { formatAuditLogDate, parseAuditLogDate } from "./utils/auditLogDate";
+import { getClientPhones } from "./utils/clientPhones";
 import {
   TabType,
   Client,
@@ -97,6 +98,17 @@ const normalizeAuditLog = (row: any): LogEntry => ({
   details: row.details || "",
   type: row.type || "info",
 });
+
+const normalizeClient = (row: any): Client => {
+  const phones = getClientPhones({ phone: row.phone ?? "" });
+  return {
+    ain: row.ain ?? "",
+    name: row.name ?? "",
+    phone: phones[0] ?? "",
+    phones,
+    active: Boolean(row.active),
+  };
+};
 
 const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
   agencyName: row.agencyName ?? row.agency_name,
@@ -333,7 +345,7 @@ const App: React.FC = () => {
     };
 
     const channels: any[] = [];
-    fetchAndSubscribe("clients", setClients).then((channel) =>
+    fetchAndSubscribe("clients", setClients, normalizeClient).then((channel) =>
       channels.push(channel),
     );
     fetchAndSubscribe("duty_payments", setDutyHistory, normalizeDutyRecord).then(

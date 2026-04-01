@@ -3,6 +3,7 @@ import { DutyItem, PaymentRecord, Client, SystemConfig } from "../types";
 import { insertDuty, updateDuty, deleteDuty } from "../utils/supabaseApi";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createSimplePdfBlob } from "../utils/simplePdf";
+import { getClientPhones, getPrimaryClientPhone } from "../utils/clientPhones";
 
 interface DutyPaymentProps {
   clients: Client[];
@@ -249,6 +250,19 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     onVisibleRowsChange(sortedHistory);
   }, [sortedHistory, onVisibleRowsChange]);
 
+  const selectedClient = useMemo(
+    () => clients.find((c) => c.ain === ain) || null,
+    [ain, clients],
+  );
+
+  const availablePhones = useMemo(() => {
+    const phones = getClientPhones(selectedClient);
+    if (phone && !phones.includes(phone)) {
+      return [phone, ...phones];
+    }
+    return phones;
+  }, [phone, selectedClient]);
+
   const handleAinChange = (val: string) => {
     const normalizedAin = String(val || "")
       .split("|")[0]
@@ -257,7 +271,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const client = clients.find((c) => c.ain === normalizedAin);
     if (client) {
       setClientName(client.name);
-      setPhone(client.phone || "");
+      setPhone(getPrimaryClientPhone(client));
     } else {
       setClientName("");
       setPhone("");
@@ -1037,16 +1051,33 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 WhatsApp Number
               </label>
-              <div className="relative">
-                <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input
-                  type="text"
-                  placeholder="Mobile No"
-                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </div>
+              {selectedClient && availablePhones.length > 0 ? (
+                <div className="relative">
+                  <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                  <select
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all appearance-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  >
+                    {availablePhones.map((phoneNumber) => (
+                      <option key={phoneNumber} value={phoneNumber}>
+                        {phoneNumber}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="relative">
+                  <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                  <input
+                    type="text"
+                    placeholder="Mobile No"
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
             <div className="md:col-span-2 space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">

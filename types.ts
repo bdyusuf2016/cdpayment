@@ -3,6 +3,7 @@ export interface Client {
   ain: string;
   name: string;
   phone: string;
+  phones?: string[];
   active: boolean;
 }
 
