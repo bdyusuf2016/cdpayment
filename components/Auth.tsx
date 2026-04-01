@@ -170,10 +170,24 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
       setConnectionStatus("ok");
       setConnectionMessage("Supabase connected.");
     } catch (err) {
-      const rawMessage =
-        err instanceof Error ? err.message : String(err || "Unknown error");
-      setConnectionStatus("failed");
-      setConnectionMessage(`Connection failed: ${rawMessage}`);
+      try {
+        await fetch(`${resolvedUrl}/auth/v1/settings`, {
+          mode: "no-cors",
+        });
+        setConnectionStatus("failed");
+        setConnectionMessage(
+          "Supabase domain reachable, কিন্তু authenticated browser fetch blocked হচ্ছে. সম্ভবত extension, privacy shield, antivirus web shield, বা browser policy issue.",
+        );
+      } catch (fallbackErr) {
+        const rawMessage =
+          fallbackErr instanceof Error
+            ? fallbackErr.message
+            : err instanceof Error
+              ? err.message
+              : String(err || "Unknown error");
+        setConnectionStatus("failed");
+        setConnectionMessage(`Connection failed: ${rawMessage}`);
+      }
     } finally {
       setIsTestingConnection(false);
     }
