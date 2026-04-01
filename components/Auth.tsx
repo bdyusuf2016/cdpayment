@@ -54,6 +54,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
     "idle" | "checking" | "ok" | "failed"
   >("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
 
   // Do not show config inputs on login page. Prefer build-time env or saved values.
   useEffect(() => {
@@ -131,6 +132,52 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
       cancelled = true;
     };
   }, [supabaseUrl, supabaseKey]);
+
+  const runConnectionTest = async () => {
+    const runtimeUrl = supabaseUrl.trim();
+    const runtimeKey = supabaseKey.trim();
+    const resolvedUrl = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
+      ? SUPABASE_SITE_URL
+      : runtimeUrl;
+    const resolvedKey = isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)
+      ? SUPABASE_SITE_KEY
+      : runtimeKey;
+
+    if (!isValidSupabaseConfig(resolvedUrl, resolvedKey)) {
+      setShowConfig(true);
+      setConnectionStatus("failed");
+      setConnectionMessage(
+        "Supabase URL বা anon key missing/invalid। আগে valid config দিন.",
+      );
+      return;
+    }
+
+    setIsTestingConnection(true);
+    setConnectionStatus("checking");
+    setConnectionMessage("Testing Supabase connection...");
+
+    try {
+      const response = await fetch(`${resolvedUrl}/auth/v1/settings`, {
+        headers: {
+          apikey: resolvedKey,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      setConnectionStatus("ok");
+      setConnectionMessage("Supabase connected.");
+    } catch (err) {
+      const rawMessage =
+        err instanceof Error ? err.message : String(err || "Unknown error");
+      setConnectionStatus("failed");
+      setConnectionMessage(`Connection failed: ${rawMessage}`);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,6 +331,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
               {connectionMessage}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={runConnectionTest}
+            disabled={isTestingConnection}
+            className="w-full mb-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isTestingConnection ? "Testing Connection..." : "Test Supabase Connection"}
+          </button>
 
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-1">
