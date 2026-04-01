@@ -5,6 +5,12 @@ import supabaseDefault, {
   SUPABASE_SITE_KEY,
 } from "../utils/supabaseClient";
 
+const isValidSupabaseConfig = (url: string, key: string): boolean => {
+  const normalizedUrl = url.trim();
+  const normalizedKey = key.trim();
+  return /^https?:\/\/.+/i.test(normalizedUrl) && normalizedKey.length > 20;
+};
+
 interface AuthProps {
   onLogin: (session: any, url: string, key: string) => void;
   initialConfig: { url: string; key: string };
@@ -26,18 +32,31 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
   useEffect(() => {
     const savedUrl = localStorage.getItem("supabase_url") || "";
     const savedKey = localStorage.getItem("supabase_key") || "";
+    let nextUrl = "";
+    let nextKey = "";
+
     // If Vite env keys are present, we prefer them (supabaseDefault will be used)
-    if (SUPABASE_SITE_URL && SUPABASE_SITE_KEY) {
-      setSupabaseUrl(SUPABASE_SITE_URL);
-      setSupabaseKey(SUPABASE_SITE_KEY);
-    } else if (savedUrl && savedKey) {
-      setSupabaseUrl(savedUrl);
-      setSupabaseKey(savedKey);
-    } else if (initialConfig.url && initialConfig.key) {
-      setSupabaseUrl(initialConfig.url);
-      setSupabaseKey(initialConfig.key);
+    if (isValidSupabaseConfig(SUPABASE_SITE_URL, SUPABASE_SITE_KEY)) {
+      nextUrl = SUPABASE_SITE_URL;
+      nextKey = SUPABASE_SITE_KEY;
+    } else if (isValidSupabaseConfig(savedUrl, savedKey)) {
+      nextUrl = savedUrl;
+      nextKey = savedKey;
+    } else if (isValidSupabaseConfig(initialConfig.url, initialConfig.key)) {
+      nextUrl = initialConfig.url;
+      nextKey = initialConfig.key;
+    } else {
+      nextUrl = savedUrl || initialConfig.url || "";
+      nextKey = savedKey || initialConfig.key || "";
+      setShowConfig(true);
     }
-    // Keep showConfig false so UI doesn't prompt for API keys
+
+    setSupabaseUrl(nextUrl);
+    setSupabaseKey(nextKey);
+
+    if (nextUrl && nextKey && isValidSupabaseConfig(nextUrl, nextKey)) {
+      setShowConfig(false);
+    }
   }, [initialConfig]);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -45,11 +64,25 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
     setError(null);
     setLoading(true);
     try {
+      const runtimeUrl = supabaseUrl.trim();
+      const runtimeKey = supabaseKey.trim();
+      const hasBuildTimeConfig = isValidSupabaseConfig(
+        SUPABASE_SITE_URL,
+        SUPABASE_SITE_KEY,
+      );
+      const hasRuntimeConfig = isValidSupabaseConfig(runtimeUrl, runtimeKey);
+
+      if (!hasBuildTimeConfig && !hasRuntimeConfig) {
+        setShowConfig(true);
+        throw new Error(
+          "Supabase configuration is missing. Click the settings icon and enter your Supabase Project URL and anon key.",
+        );
+      }
+
       // Prefer the build-time client if available
-      const supabase =
-        SUPABASE_SITE_URL && SUPABASE_SITE_KEY
-          ? supabaseDefault
-          : createClient(supabaseUrl, supabaseKey);
+      const supabase = hasBuildTimeConfig
+        ? supabaseDefault
+        : createClient(runtimeUrl, runtimeKey);
 
       const normalizedEmail = email.trim();
       if (!normalizedEmail) {
@@ -81,13 +114,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
       if (result.data.session) {
         // Save config to local storage for persistence (if not using build-time env)
         if (!(SUPABASE_SITE_URL && SUPABASE_SITE_KEY)) {
-          localStorage.setItem("supabase_url", supabaseUrl);
-          localStorage.setItem("supabase_key", supabaseKey);
+          localStorage.setItem("supabase_url", runtimeUrl);
+          localStorage.setItem("supabase_key", runtimeKey);
         }
         onLogin(
           result.data.session,
-          supabaseUrl || SUPABASE_SITE_URL || "",
-          supabaseKey || SUPABASE_SITE_KEY || "",
+          runtimeUrl || SUPABASE_SITE_URL || "",
+          runtimeKey || SUPABASE_SITE_KEY || "",
         );
       } else if (!isLogin && result.data.user) {
         setError(
@@ -96,7 +129,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
         setIsLogin(true);
       }
     } catch (err: any) {
-      setError(err.message || "Authentication failed");
+      setError(
+        err?.message ||
+          "Authentication failed. Please verify the Supabase URL/key and your network connection.",
+      );
     } finally {
       setLoading(false);
     }
