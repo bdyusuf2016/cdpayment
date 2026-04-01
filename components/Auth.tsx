@@ -11,6 +11,29 @@ const isValidSupabaseConfig = (url: string, key: string): boolean => {
   return /^https?:\/\/.+/i.test(normalizedUrl) && normalizedKey.length > 20;
 };
 
+const getAuthErrorMessage = (error: unknown): string => {
+  const rawMessage =
+    error instanceof Error ? error.message : String(error || "").trim();
+  const normalized = rawMessage.toLowerCase();
+
+  if (normalized.includes("failed to fetch")) {
+    return "Supabase server-এ connect করা যাচ্ছে না। সাধারণত এটা wrong Supabase URL/key, browser cache, বা network block-এর জন্য হয়। Settings icon থেকে Project URL এবং anon key verify করুন, তারপর hard refresh দিয়ে আবার login দিন.";
+  }
+
+  if (normalized.includes("invalid api key") || normalized.includes("apikey")) {
+    return "Supabase anon key ঠিক নেই। Settings icon থেকে সঠিক anon key দিন।";
+  }
+
+  if (normalized.includes("invalid url") || normalized.includes("url")) {
+    return "Supabase Project URL ঠিক নেই। Settings icon থেকে সঠিক project URL দিন।";
+  }
+
+  return (
+    rawMessage ||
+    "Authentication failed. Please verify the Supabase URL/key and your network connection."
+  );
+};
+
 interface AuthProps {
   onLogin: (session: any, url: string, key: string) => void;
   initialConfig: { url: string; key: string };
@@ -129,10 +152,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, initialConfig }) => {
         setIsLogin(true);
       }
     } catch (err: any) {
-      setError(
-        err?.message ||
-          "Authentication failed. Please verify the Supabase URL/key and your network connection.",
-      );
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
