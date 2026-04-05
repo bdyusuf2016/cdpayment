@@ -4,6 +4,7 @@ import { insertDuty, updateDuty, deleteDuty } from "../utils/supabaseApi";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createSimplePdfBlob } from "../utils/simplePdf";
 import { getClientPhones, getPrimaryClientPhone } from "../utils/clientPhones";
+import * as XLSX from "xlsx";
 
 interface DutyPaymentProps {
   clients: Client[];
@@ -27,6 +28,26 @@ const formatDateInputForRecord = (value: string): string => {
   const [year, month, day] = value.split("-");
   if (!year || !month || !day) return value;
   return `${day}/${month}/${year}`;
+};
+
+const normalizeImportedBeNumber = (value: unknown): string => {
+  const raw = String(value ?? "").trim().toUpperCase();
+  if (!raw) return "";
+  return raw.startsWith("C-") ? raw : `C-${raw}`;
+};
+
+const parseImportedDutyAmount = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  const cleaned = String(value ?? "")
+    .replace(/,/g, "")
+    .trim();
+  if (!cleaned) return null;
+
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const DutyPayment: React.FC<DutyPaymentProps> = ({
@@ -72,6 +93,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDate, setPaymentDate] = useState(getTodayDateInputValue);
+  const [showImportMappingModal, setShowImportMappingModal] = useState(false);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [importRows, setImportRows] = useState<(string | number | null)[][]>([]);
+  const [selectedBeColumn, setSelectedBeColumn] = useState("");
+  const [selectedYearColumn, setSelectedYearColumn] = useState("");
+  const [selectedDutyColumn, setSelectedDutyColumn] = useState("");
 
   // Delete Confirmation State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -80,6 +107,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   }>({ show: false, ids: [] });
 
   const beInputRef = useRef<HTMLInputElement>(null);
+  const dutyImportInputRef = useRef<HTMLInputElement>(null);
 
   // Focus B/E Number on mount
   useEffect(() => {
@@ -280,6 +308,133 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     }
   };
 
+  const handleDutyImportClick = () => {
+    if (!ain) {
+      alert("Excel import করার আগে Client AIN select করুন.");
+      return;
+    }
+    if (editingId) {
+      alert("Edit mode-এ Excel import করা যাবে না.");
+      return;
+    }
+    dutyImportInputRef.current?.click();
+  };
+
+  const handleDutyImportFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ain) {
+      alert("Excel import করার আগে Client AIN select করুন.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+      if (!firstSheetName) {
+        alert("Excel file-এ কোনো sheet পাওয়া যায়নি.");
+        return;
+      }
+
+      const sheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json<(string | number | null)[]>(sheet, {
+        header: 1,
+        defval: "",
+        raw: true,
+      });
+
+      if (rows.length === 0) {
+        alert("Excel sheet খালি.");
+        return;
+      }
+
+      const widestColumnCount = rows.reduce(
+        (max, row) => Math.max(max, row.length),
+        0,
+      );
+      const headers = Array.from(
+        { length: widestColumnCount },
+        (_, index) => `Column ${index + 1}`,
+      );
+
+      setImportHeaders(headers);
+      setImportRows(rows);
+      setSelectedBeColumn(headers[0] || "");
+      setSelectedYearColumn(headers[1] || "");
+      setSelectedDutyColumn(headers[2] || "");
+      setShowImportMappingModal(true);
+    } catch (error) {
+      console.error("Duty import failed:", error);
+      alert("Excel import করা যায়নি. ফাইলটি আবার check করুন.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  const closeImportMappingModal = () => {
+    setShowImportMappingModal(false);
+    setImportHeaders([]);
+    setImportRows([]);
+    setSelectedBeColumn("");
+    setSelectedYearColumn("");
+    setSelectedDutyColumn("");
+  };
+
+  const confirmDutyImport = () => {
+    if (!selectedBeColumn || !selectedYearColumn || !selectedDutyColumn) {
+      alert("তিনটি কলামই select করতে হবে.");
+      return;
+    }
+
+    const beNumberIndex = importHeaders.findIndex(
+      (header) => header === selectedBeColumn,
+    );
+    const beYearIndex = importHeaders.findIndex(
+      (header) => header === selectedYearColumn,
+    );
+    const dutyAmountIndex = importHeaders.findIndex(
+      (header) => header === selectedDutyColumn,
+    );
+
+    if (beNumberIndex < 0 || beYearIndex < 0 || dutyAmountIndex < 0) {
+      alert("Selected column match করা যায়নি.");
+      return;
+    }
+
+    const importedItems: DutyItem[] = [];
+
+    for (const row of importRows) {
+      const be = normalizeImportedBeNumber(row[beNumberIndex]);
+      const year = String(row[beYearIndex] ?? "").trim();
+      const duty = parseImportedDutyAmount(row[dutyAmountIndex]);
+      if (!be || !year || duty === null) continue;
+
+      importedItems.push({
+        id: Math.random().toString(36).substr(2, 9),
+        beNumber: be,
+        year,
+        duty,
+      });
+    }
+
+    if (importedItems.length === 0) {
+      alert("Import করার মতো valid data পাওয়া যায়নি.");
+      return;
+    }
+
+    setQueue((prev) => [...prev, ...importedItems]);
+    setBeNumber("");
+    setDutyAmount("");
+    closeImportMappingModal();
+    setTimeout(() => beInputRef.current?.focus(), 50);
+    alert(`${importedItems.length} টি duty entry batch-এ import হয়েছে.`);
+  };
+
   const handleAddOrUpdate = async () => {
     if (!beNumber || !dutyAmount || !beYear || !supabase) return;
 
@@ -299,8 +454,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       await updateDuty(supabase, editingId, updatedRec);
       setEditingId(null);
     } else {
-      setQueue([
-        ...queue,
+      setQueue((prev) => [
+        ...prev,
         {
           id: Math.random().toString(36).substr(2, 9),
           beNumber: formattedBe,
@@ -1048,6 +1203,27 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   ))}
                 </datalist>
               </div>
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <p className="text-[10px] font-bold text-slate-400">
+                  AIN select করার পর Excel থেকে শুধু B/E Number ও Duty Amount import হবে।
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDutyImportClick}
+                  disabled={!ain || !!editingId}
+                  className={`shrink-0 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${!ain || editingId ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400" : isDark ? "border-emerald-700 bg-emerald-900/40 text-emerald-300 hover:bg-emerald-900/60" : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"}`}
+                >
+                  <i className="fas fa-file-excel mr-1.5"></i>
+                  Import Excel
+                </button>
+                <input
+                  ref={dutyImportInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".xlsx,.xls"
+                  onChange={handleDutyImportFileChange}
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -1681,6 +1857,148 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         </div>
       </div>
 
+
+      {showImportMappingModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div
+            className={`w-full max-w-4xl rounded-[2rem] shadow-2xl border overflow-hidden ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h3
+                  className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-900"}`}
+                >
+                  Excel Column Mapping
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Excel-এ header না থাকলেও সমস্যা নেই। `Column 1`, `Column 2`, `Column 3` দেখে `B/E Number`, `B/E Year`, `Duty Amount` mapping select করুন।
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeImportMappingModal}
+                className="w-9 h-9 rounded-full bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    B/E Year Column
+                  </label>
+                  <select
+                    value={selectedYearColumn}
+                    onChange={(e) => setSelectedYearColumn(e.target.value)}
+                    className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  >
+                    <option value="">Select column</option>
+                    {importHeaders.map((header, index) => (
+                      <option key={`${header}-${index}`} value={header}>
+                        {header}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    B/E Number Column
+                  </label>
+                  <select
+                    value={selectedBeColumn}
+                    onChange={(e) => setSelectedBeColumn(e.target.value)}
+                    className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  >
+                    <option value="">Select column</option>
+                    {importHeaders.map((header, index) => (
+                      <option key={`${header}-${index}`} value={header}>
+                        {header}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Duty Amount (BDT) Column
+                  </label>
+                  <select
+                    value={selectedDutyColumn}
+                    onChange={(e) => setSelectedDutyColumn(e.target.value)}
+                    className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  >
+                    <option value="">Select column</option>
+                    {importHeaders.map((header, index) => (
+                      <option key={`${header}-${index}`} value={header}>
+                        {header}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div
+                className={`rounded-2xl border overflow-hidden ${isDark ? "border-slate-700" : "border-slate-200"}`}
+              >
+                <div className={`px-4 py-3 text-xs font-bold uppercase tracking-widest ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
+                  Excel Preview
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-200"}`}>
+                        {importHeaders.map((header, index) => (
+                          <th
+                            key={`${header}-${index}`}
+                            className="px-4 py-3 text-[11px] font-bold text-slate-500 whitespace-nowrap"
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importRows.slice(0, 5).map((row, rowIndex) => (
+                        <tr
+                          key={`preview-${rowIndex}`}
+                          className={`border-b ${isDark ? "border-slate-700" : "border-slate-100"}`}
+                        >
+                          {importHeaders.map((_, cellIndex) => (
+                            <td
+                              key={`cell-${rowIndex}-${cellIndex}`}
+                              className={`px-4 py-3 text-sm ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                            >
+                              {String(row[cellIndex] ?? "")}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeImportMappingModal}
+                  className={`px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDutyImport}
+                  className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-widest transition-all"
+                >
+                  Import to Batch
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Settlement Modal */}
       {showPaymentModal && (
