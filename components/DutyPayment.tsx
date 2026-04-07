@@ -653,6 +653,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   ];
   const importPatternText =
     "Pattern: AIN = Column 5, B/E Year = Column 1, B/E Number = Column 8, Duty Amount = Column 17";
+  const previewBeCount = importRows.length;
 
   useEffect(() => {
     if (!showDutyImportOption) {
@@ -2419,8 +2420,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <div
                 className={`rounded-2xl border overflow-hidden ${isDark ? "border-slate-700" : "border-slate-200"}`}
               >
-                <div className={`px-4 py-3 text-xs font-bold uppercase tracking-widest ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
-                  Excel Preview
+                <div className={`px-4 py-3 flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-widest ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
+                  <span>Excel Preview</span>
+                  <span>{previewBeCount} Total Count /BE</span>
                 </div>
                 <div className="overflow-x-auto">
                   {importHeaders.length === 0 ? (
