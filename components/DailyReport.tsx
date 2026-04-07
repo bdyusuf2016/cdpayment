@@ -663,14 +663,28 @@ const DailyReport: React.FC<DailyReportProps> = ({
     const openingBalance =
       dutyHistory.reduce((sum, rec) => {
         const parsed = parseDate(rec.date);
-        if (parsed < startBoundary) {
+        const ainMatches =
+          !normalizedAinFilter ||
+          String(rec.ain || "").toLowerCase().includes(normalizedAinFilter);
+        const statusMatches =
+          groupByStatus === "all" ||
+          (groupByStatus === "paid" && isPaidStatus(rec.status)) ||
+          (groupByStatus === "due" && !isPaidStatus(rec.status));
+        if (parsed < startBoundary && ainMatches && statusMatches) {
           return sum + (rec.received || 0) - (rec.duty || 0);
         }
         return sum;
       }, 0) +
       assessmentHistory.reduce((sum, rec) => {
         const parsed = parseDate(rec.date);
-        if (parsed < startBoundary) {
+        const ainMatches =
+          !normalizedAinFilter ||
+          String(rec.ain || "").toLowerCase().includes(normalizedAinFilter);
+        const statusMatches =
+          groupByStatus === "all" ||
+          (groupByStatus === "paid" && isPaidStatus(rec.status)) ||
+          (groupByStatus === "due" && !isPaidStatus(rec.status));
+        if (parsed < startBoundary && ainMatches && statusMatches) {
           const amount = rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
           return sum + (rec.received || 0) - amount;
         }
