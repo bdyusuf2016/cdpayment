@@ -12,6 +12,9 @@ export interface DutyItem {
   beNumber: string;
   year: string;
   duty: number;
+  ain?: string;
+  clientName?: string;
+  phone?: string;
 }
 
 export interface PaymentRecord {

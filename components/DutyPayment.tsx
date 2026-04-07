@@ -50,6 +50,180 @@ const parseImportedDutyAmount = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const normalizeImportedAin = (value: unknown): string => {
+  return String(value ?? "").trim();
+};
+
+const normalizePastedCell = (value: string): string =>
+  value.replace(/\s+/g, " ").trim();
+
+const parseDelimitedLine = (line: string): (string | number | null)[] => {
+  if (line.includes("\t")) {
+    return line.split("\t").map((cell) => normalizePastedCell(cell));
+  }
+  if (line.includes(",")) {
+    return line.split(",").map((cell) => normalizePastedCell(cell));
+  }
+  return line.split(/\s{2,}/).map((cell) => normalizePastedCell(cell));
+};
+
+const isLikelyCustomsRecordStart = (line: string): boolean =>
+  /^\d{4}\t\d+/.test(line.trim());
+
+const parseMultilineTabbedRows = (
+  rawText: string,
+): (string | number | null)[][] => {
+  const lines = rawText
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\u00a0/g, " ").trim())
+    .filter((line) => line.length > 0);
+
+  const startCount = lines.filter(isLikelyCustomsRecordStart).length;
+  if (startCount === 0) return [];
+
+  const rows: (string | number | null)[][] = [];
+  let currentBlock: string[] = [];
+
+  lines.forEach((line) => {
+    if (isLikelyCustomsRecordStart(line)) {
+      if (currentBlock.length > 0) {
+        rows.push(parseDelimitedLine(currentBlock.join(" ")));
+      }
+      currentBlock = [line];
+      return;
+    }
+
+    if (currentBlock.length > 0) {
+      currentBlock.push(line);
+    }
+  });
+
+  if (currentBlock.length > 0) {
+    rows.push(parseDelimitedLine(currentBlock.join(" ")));
+  }
+
+  return rows.filter((row) =>
+    row.some((cell) => String(cell ?? "").trim() !== ""),
+  );
+};
+
+const inferImportColumns = (
+  headers: string[],
+  rows: (string | number | null)[][],
+) => {
+  const preferredColumns = {
+    ainColumn: headers[4] || "",
+    yearColumn: headers[0] || "",
+    beColumn: headers[7] || "",
+    dutyColumn: headers[16] || "",
+  };
+
+  if (
+    preferredColumns.ainColumn &&
+    preferredColumns.yearColumn &&
+    preferredColumns.beColumn &&
+    preferredColumns.dutyColumn
+  ) {
+    return preferredColumns;
+  }
+
+  const isYearValue = (value: unknown) => {
+    const text = String(value ?? "").trim();
+    if (!/^\d{4}$/.test(text)) return false;
+    const year = Number(text);
+    return year >= 2000 && year <= 2100;
+  };
+
+  const isDateValue = (value: unknown) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(String(value ?? "").trim()) ||
+    /^\d{2}\/\d{2}\/\d{4}$/.test(String(value ?? "").trim());
+
+  const isBeNumberValue = (value: unknown) =>
+    /^\d{4,7}$/.test(String(value ?? "").trim());
+
+  const isNumericAmountValue = (value: unknown) => {
+    const text = String(value ?? "").trim();
+    if (!text) return false;
+    return parseImportedDutyAmount(text) !== null;
+  };
+
+  const scoreColumn = (predicate: (value: unknown) => boolean) =>
+    headers.map((_, index) =>
+      rows.reduce(
+        (count, row) => (predicate(row[index]) ? count + 1 : count),
+        0,
+      ),
+    );
+
+  const pickBestIndex = (
+    scores: number[],
+    options?: { preferLast?: boolean; exclude?: number[] },
+  ) => {
+    const exclude = new Set(options?.exclude ?? []);
+    let bestIndex = -1;
+    let bestScore = 0;
+
+    scores.forEach((score, index) => {
+      if (exclude.has(index) || score <= 0) return;
+      if (
+        score > bestScore ||
+        (score === bestScore && options?.preferLast && index > bestIndex)
+      ) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    });
+
+    return bestIndex;
+  };
+
+  const yearScores = scoreColumn(isYearValue);
+  const dateScores = scoreColumn(isDateValue);
+  const beScores = scoreColumn(isBeNumberValue);
+  const amountScores = scoreColumn(isNumericAmountValue);
+
+  const inferredYearIndex = pickBestIndex(yearScores);
+  const inferredDateIndex = pickBestIndex(dateScores);
+  const inferredDutyIndex = pickBestIndex(amountScores, { preferLast: true });
+
+  let inferredBeIndex = -1;
+  if (
+    inferredDateIndex > 0 &&
+    ![inferredYearIndex, inferredDutyIndex].includes(inferredDateIndex - 1)
+  ) {
+    inferredBeIndex = inferredDateIndex - 1;
+  } else {
+    inferredBeIndex = pickBestIndex(beScores, {
+      exclude: [inferredYearIndex, inferredDutyIndex],
+    });
+  }
+
+  return {
+    ainColumn: preferredColumns.ainColumn,
+    beColumn: inferredBeIndex >= 0 ? headers[inferredBeIndex] : headers[0] || "",
+    yearColumn:
+      inferredYearIndex >= 0 ? headers[inferredYearIndex] : headers[1] || "",
+    dutyColumn:
+      inferredDutyIndex >= 0 ? headers[inferredDutyIndex] : headers[2] || "",
+  };
+};
+
+const parsePastedImportRows = (
+  rawText: string,
+): (string | number | null)[][] => {
+  const multilineRows = parseMultilineTabbedRows(rawText);
+  if (multilineRows.length > 0) {
+    return multilineRows;
+  }
+
+  return rawText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => parseDelimitedLine(line))
+    .filter((row) => row.some((cell) => String(cell ?? "").trim() !== ""));
+};
+
 const DutyPayment: React.FC<DutyPaymentProps> = ({
   clients,
   history,
@@ -99,6 +273,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [selectedBeColumn, setSelectedBeColumn] = useState("");
   const [selectedYearColumn, setSelectedYearColumn] = useState("");
   const [selectedDutyColumn, setSelectedDutyColumn] = useState("");
+  const [selectedAinColumn, setSelectedAinColumn] = useState("");
+  const [showDutyImportOption, setShowDutyImportOption] = useState(false);
+  const [pastedImportText, setPastedImportText] = useState("");
+  const [selectedPreviewRows, setSelectedPreviewRows] = useState<number[]>([]);
 
   // Delete Confirmation State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -320,6 +498,88 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     dutyImportInputRef.current?.click();
   };
 
+  const handleDutyImportOptionToggle = (checked: boolean) => {
+    setShowDutyImportOption(checked);
+    if (checked) {
+      setShowImportMappingModal(true);
+      return;
+    }
+    closeImportMappingModal();
+  };
+
+  const applyImportedRows = (rows: (string | number | null)[][]) => {
+    if (rows.length === 0) {
+      alert("Import করার মতো কোনো data পাওয়া যায়নি.");
+      return;
+    }
+
+    const widestColumnCount = rows.reduce(
+      (max, row) => Math.max(max, row.length),
+      0,
+    );
+
+    if (widestColumnCount === 0) {
+      alert("Import করার মতো কোনো column পাওয়া যায়নি.");
+      return;
+    }
+
+    const headers = Array.from(
+      { length: widestColumnCount },
+      (_, index) => `Column ${index + 1}`,
+    );
+    const inferredColumns = inferImportColumns(headers, rows);
+
+    setImportHeaders(headers);
+    setImportRows(rows);
+    setSelectedBeColumn(inferredColumns.beColumn);
+    setSelectedYearColumn(inferredColumns.yearColumn);
+    setSelectedDutyColumn(inferredColumns.dutyColumn);
+    setSelectedAinColumn(inferredColumns.ainColumn);
+    setSelectedPreviewRows(rows.map((_, index) => index));
+    setShowImportMappingModal(true);
+  };
+
+  const handlePasteImportClick = () => {
+    if (!ain) {
+      alert("Data paste করার আগে Client AIN select করুন.");
+      return;
+    }
+    if (editingId) {
+      alert("Edit mode-এ paste import করা যাবে না.");
+      return;
+    }
+    setPastedImportText("");
+    setImportHeaders([]);
+    setImportRows([]);
+    setSelectedBeColumn("");
+    setSelectedYearColumn("");
+    setSelectedDutyColumn("");
+    setSelectedAinColumn("");
+    setSelectedPreviewRows([]);
+    setShowImportMappingModal(true);
+  };
+
+  const handlePastedImportTextChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    const nextValue = e.target.value;
+    setPastedImportText(nextValue);
+
+    const parsedRows = parsePastedImportRows(nextValue);
+    if (parsedRows.length === 0) {
+      setImportHeaders([]);
+      setImportRows([]);
+      setSelectedBeColumn("");
+      setSelectedYearColumn("");
+      setSelectedDutyColumn("");
+      setSelectedAinColumn("");
+      setSelectedPreviewRows([]);
+      return;
+    }
+
+    applyImportedRows(parsedRows);
+  };
+
   const handleDutyImportFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -353,21 +613,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         return;
       }
 
-      const widestColumnCount = rows.reduce(
-        (max, row) => Math.max(max, row.length),
-        0,
-      );
-      const headers = Array.from(
-        { length: widestColumnCount },
-        (_, index) => `Column ${index + 1}`,
-      );
-
-      setImportHeaders(headers);
-      setImportRows(rows);
-      setSelectedBeColumn(headers[0] || "");
-      setSelectedYearColumn(headers[1] || "");
-      setSelectedDutyColumn(headers[2] || "");
-      setShowImportMappingModal(true);
+      applyImportedRows(rows);
     } catch (error) {
       console.error("Duty import failed:", error);
       alert("Excel import করা যায়নি. ফাইলটি আবার check করুন.");
@@ -383,9 +629,55 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     setSelectedBeColumn("");
     setSelectedYearColumn("");
     setSelectedDutyColumn("");
+    setSelectedAinColumn("");
+    setPastedImportText("");
+    setSelectedPreviewRows([]);
   };
 
+  const closeDutyImportModal = () => {
+    setShowDutyImportOption(false);
+    closeImportMappingModal();
+  };
+
+  const selectedAinColumnIndex = selectedAinColumn
+    ? importHeaders.findIndex((header) => header === selectedAinColumn)
+    : -1;
+  const previewAinNameColumn =
+    selectedAinColumnIndex > 0 ? importHeaders[selectedAinColumnIndex - 1] : "";
+  const previewColumns = [
+    { label: "AIN Column", value: selectedAinColumn || "Column 5" },
+    { label: "AIN Name", value: previewAinNameColumn },
+    { label: "B/E Year Column", value: selectedYearColumn || "Column 1" },
+    { label: "B/E Number Column", value: selectedBeColumn || "Column 8" },
+    { label: "Duty Amount (BDT) Column", value: selectedDutyColumn || "Column 17" },
+  ];
+  const importPatternText =
+    "Pattern: AIN = Column 5, B/E Year = Column 1, B/E Number = Column 8, Duty Amount = Column 17";
+
+  useEffect(() => {
+    if (!showDutyImportOption) {
+      closeImportMappingModal();
+    }
+  }, [showDutyImportOption]);
+
+  useEffect(() => {
+    if (!showImportMappingModal) return;
+
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeDutyImportModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscapeKey);
+    return () => window.removeEventListener("keydown", handleEscapeKey);
+  }, [showImportMappingModal]);
+
   const confirmDutyImport = () => {
+    if (importRows.length === 0 || importHeaders.length === 0) {
+      alert("আগে Excel import করুন অথবা raw data paste করুন.");
+      return;
+    }
     if (!selectedBeColumn || !selectedYearColumn || !selectedDutyColumn) {
       alert("তিনটি কলামই select করতে হবে.");
       return;
@@ -400,25 +692,47 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const dutyAmountIndex = importHeaders.findIndex(
       (header) => header === selectedDutyColumn,
     );
+    const ainColumnIndex = selectedAinColumn
+      ? importHeaders.findIndex((header) => header === selectedAinColumn)
+      : -1;
 
-    if (beNumberIndex < 0 || beYearIndex < 0 || dutyAmountIndex < 0) {
+    if (
+      beNumberIndex < 0 ||
+      beYearIndex < 0 ||
+      dutyAmountIndex < 0 ||
+      (selectedAinColumn && ainColumnIndex < 0)
+    ) {
       alert("Selected column match করা যায়নি.");
+      return;
+    }
+
+    if (selectedPreviewRows.length === 0) {
+      alert("Import করার আগে অন্তত একটি preview row select করুন.");
       return;
     }
 
     const importedItems: DutyItem[] = [];
 
-    for (const row of importRows) {
+    for (const [rowIndex, row] of importRows.entries()) {
+      if (!selectedPreviewRows.includes(rowIndex)) continue;
       const be = normalizeImportedBeNumber(row[beNumberIndex]);
       const year = String(row[beYearIndex] ?? "").trim();
       const duty = parseImportedDutyAmount(row[dutyAmountIndex]);
+      const importedAin =
+        ainColumnIndex >= 0 ? normalizeImportedAin(row[ainColumnIndex]) : ain;
+      const matchedClient = clients.find((client) => client.ain === importedAin);
       if (!be || !year || duty === null) continue;
+      if (!importedAin) continue;
+      if (ainColumnIndex >= 0 && !matchedClient) continue;
 
       importedItems.push({
         id: Math.random().toString(36).substr(2, 9),
         beNumber: be,
         year,
         duty,
+        ain: importedAin,
+        clientName: matchedClient?.name || clientName,
+        phone: matchedClient ? getPrimaryClientPhone(matchedClient) : phone,
       });
     }
 
@@ -436,7 +750,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const handleAddOrUpdate = async () => {
-    if (!beNumber || !dutyAmount || !beYear || !supabase) return;
+    if (!beNumber || !dutyAmount || !beYear) return;
 
     let formattedBe = beNumber.trim().toUpperCase();
     if (!formattedBe.startsWith("C-")) {
@@ -444,6 +758,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     }
 
     if (editingId) {
+      if (!supabase) {
+        alert("Update করার জন্য Supabase connection দরকার.");
+        return;
+      }
       const updatedRec: Partial<PaymentRecord> = {
         ain,
         clientName,
@@ -461,6 +779,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           beNumber: formattedBe,
           year: beYear,
           duty: parseFloat(dutyAmount),
+          ain,
+          clientName,
+          phone,
         },
       ]);
     }
@@ -475,9 +796,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const newRecords: PaymentRecord[] = queue.map((item) => ({
       id: Math.random().toString(36).substr(2, 9),
       date: new Date().toLocaleDateString("en-GB"),
-      ain,
-      clientName,
-      phone,
+      ain: item.ain || ain,
+      clientName: item.clientName || clientName,
+      phone: item.phone || phone,
       beYear: `${item.beNumber}(${item.year})`,
       duty: item.duty,
       received: 0,
@@ -1106,6 +1427,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const handleEdit = (id: string) => {
     const rec = allHistory.find((r) => r.id === id);
     if (rec) {
+      setShowDutyImportOption(false);
       setEditingId(rec.id);
       setAin(rec.ain);
       setClientName(rec.clientName);
@@ -1183,17 +1505,41 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
           {/* Client Info Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 md:col-span-1">
+              <label className="flex items-center gap-2 pt-2 text-[11px] font-bold text-slate-500">
+                <input
+                  type="checkbox"
+                  checked={showDutyImportOption}
+                  disabled={!!editingId}
+                  onChange={(e) => handleDutyImportOptionToggle(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                Excel Import Option
+              </label>
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Client AIN
               </label>
               <div className="relative">
-                <i className="fas fa-id-badge absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="6.5" />
+                    <path d="M16 16l4 4" />
+                  </svg>
+                </span>
                 <input
                   type="text"
                   placeholder="Search AIN..."
                   list="client-ain-options-duty"
-                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  className={`w-full pl-11 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                   value={ain}
                   onChange={(e) => handleAinChange(e.target.value)}
                 />
@@ -1203,29 +1549,42 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   ))}
                 </datalist>
               </div>
-              <div className="flex items-center justify-between gap-3 pt-1">
-                <p className="text-[10px] font-bold text-slate-400">
+              {false && (
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <p className="text-[10px] font-bold text-slate-400">
                   AIN select করার পর Excel থেকে শুধু B/E Number ও Duty Amount import হবে।
-                </p>
-                <button
+                  </p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handlePasteImportClick}
+                      disabled={!ain || !!editingId}
+                      className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${!ain || editingId ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400" : isDark ? "border-amber-700 bg-amber-900/40 text-amber-300 hover:bg-amber-900/60" : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"}`}
+                    >
+                      <i className="fas fa-paste mr-1.5"></i>
+                      Paste Data
+                    </button>
+                    <button
                   type="button"
                   onClick={handleDutyImportClick}
                   disabled={!ain || !!editingId}
                   className={`shrink-0 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${!ain || editingId ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400" : isDark ? "border-emerald-700 bg-emerald-900/40 text-emerald-300 hover:bg-emerald-900/60" : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"}`}
-                >
-                  <i className="fas fa-file-excel mr-1.5"></i>
-                  Import Excel
-                </button>
-                <input
-                  ref={dutyImportInputRef}
-                  type="file"
-                  className="hidden"
-                  accept=".xlsx,.xls"
-                  onChange={handleDutyImportFileChange}
-                />
-              </div>
+                  >
+                    <i className="fas fa-file-excel mr-1.5"></i>
+                    Import Excel
+                    </button>
+                  </div>
+                  <input
+                    ref={dutyImportInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".xlsx,.xls"
+                    onChange={handleDutyImportFileChange}
+                  />
+                </div>
+              )}
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 md:pt-[2.1rem]">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 WhatsApp Number
               </label>
@@ -1375,6 +1734,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                       <p className="text-[10px] font-bold text-slate-500">
                         Year: {item.year}
                       </p>
+                      {item.ain && (
+                        <p className="text-[10px] font-bold text-slate-500">
+                          AIN: {item.ain}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -1408,13 +1772,29 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 ৳{queue.reduce((a, b) => a + b.duty, 0).toLocaleString()}
               </span>
             </div>
-            <button
-              onClick={submitQueue}
-              disabled={queue.length === 0}
-              className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-4 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
-            >
-              Confirm & Post
-            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setQueue([])}
+                disabled={queue.length === 0}
+                className={`w-full font-bold py-4 rounded-xl uppercase tracking-widest text-xs transition-all active:scale-95 ${
+                  queue.length === 0
+                    ? "cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                    : isDark
+                      ? "bg-slate-700 text-slate-200 hover:bg-slate-600"
+                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitQueue}
+                disabled={queue.length === 0}
+                className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-4 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
+              >
+                Confirm & Post
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1859,83 +2239,181 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
 
       {showImportMappingModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[95] bg-slate-900/60 backdrop-blur-sm p-3 md:p-4">
           <div
-            className={`w-full max-w-4xl rounded-[2rem] shadow-2xl border overflow-hidden ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
+            className={`h-full w-full rounded-[2rem] shadow-2xl border overflow-hidden ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
           >
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200 dark:border-slate-700">
               <div>
                 <h3
                   className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-900"}`}
                 >
-                  Excel Column Mapping
+                  Duty Import Interface
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   Excel-এ header না থাকলেও সমস্যা নেই। `Column 1`, `Column 2`, `Column 3` দেখে `B/E Number`, `B/E Year`, `Duty Amount` mapping select করুন।
                 </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  AIN column থাকলে সেটা select করুন, না হলে selected AIN auto use হবে।
+                </p>
               </div>
               <button
                 type="button"
-                onClick={closeImportMappingModal}
+                onClick={closeDutyImportModal}
                 className="w-9 h-9 rounded-full bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center"
               >
                 <i className="fas fa-times"></i>
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    B/E Year Column
-                  </label>
-                  <select
-                    value={selectedYearColumn}
-                    onChange={(e) => setSelectedYearColumn(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+            <div className="h-[calc(100%-81px)] overflow-y-auto p-6 space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[11px] font-bold text-slate-500">
+                  Excel file upload অথবা raw data paste, দুটোই এখান থেকে করা যাবে।
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDutyImportClick}
+                    disabled={!ain || !!editingId}
+                    className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${!ain || editingId ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400" : isDark ? "border-emerald-700 bg-emerald-900/40 text-emerald-300 hover:bg-emerald-900/60" : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"}`}
                   >
-                    <option value="">Select column</option>
-                    {importHeaders.map((header, index) => (
-                      <option key={`${header}-${index}`} value={header}>
-                        {header}
-                      </option>
-                    ))}
-                  </select>
+                    <i className="fas fa-file-excel mr-1.5"></i>
+                    Import Excel
+                  </button>
+                  <input
+                    ref={dutyImportInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".xlsx,.xls"
+                    onChange={handleDutyImportFileChange}
+                  />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    B/E Number Column
-                  </label>
-                  <select
-                    value={selectedBeColumn}
-                    onChange={(e) => setSelectedBeColumn(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
-                  >
-                    <option value="">Select column</option>
-                    {importHeaders.map((header, index) => (
-                      <option key={`${header}-${index}`} value={header}>
-                        {header}
-                      </option>
-                    ))}
-                  </select>
+              </div>
+
+              <div
+                className={`rounded-2xl border p-4 space-y-3 ${isDark ? "border-slate-700 bg-slate-900/40" : "border-slate-200 bg-slate-50/70"}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                      Paste Raw Data
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      অন্য source থেকে copied table data paste করুন। Tab, comma, বা multiple space দিয়ে column আলাদা হলে auto capture হবে।
+                    </p>
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    Auto Parse
+                  </span>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Duty Amount (BDT) Column
-                  </label>
-                  <select
-                    value={selectedDutyColumn}
-                    onChange={(e) => setSelectedDutyColumn(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
-                  >
-                    <option value="">Select column</option>
-                    {importHeaders.map((header, index) => (
-                      <option key={`${header}-${index}`} value={header}>
-                        {header}
-                      </option>
-                    ))}
-                  </select>
+                <textarea
+                  value={pastedImportText}
+                  onChange={handlePastedImportTextChange}
+                  placeholder={"B/E No\tYear\tDuty Amount\n12345\t2026\t15000"}
+                  rows={5}
+                  className={`w-full px-4 py-3 rounded-xl border font-medium text-sm outline-none resize-y focus:border-blue-500 transition-all ${isDark ? "bg-slate-950 border-slate-700 text-white placeholder:text-slate-500" : "bg-white border-slate-200 text-slate-800 placeholder:text-slate-400"}`}
+                />
+              </div>
+
+              <div
+                className={`rounded-2xl border p-4 ${isDark ? "border-slate-700 bg-slate-900/40" : "border-slate-200 bg-slate-50/70"}`}
+              >
+                <p className="text-xs font-bold text-slate-500">
+                  {importPatternText}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div
+                  className={`rounded-2xl border p-4 space-y-3 ${isDark ? "border-slate-700 bg-slate-900/40" : "border-slate-200 bg-slate-50/70"}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h4 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                        Import Mapping
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1">
+                        প্রয়োজনীয় ৪টি column-ই এখানে রাখা হয়েছে।
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          AIN Column
+                        </label>
+                        <select
+                          value={selectedAinColumn}
+                          onChange={(e) => setSelectedAinColumn(e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                        >
+                          <option value="">Use selected AIN</option>
+                          {importHeaders.map((header, index) => (
+                            <option key={`${header}-${index}`} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          B/E Year Column
+                        </label>
+                        <select
+                          value={selectedYearColumn}
+                          onChange={(e) => setSelectedYearColumn(e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                        >
+                          <option value="">Select column</option>
+                          {importHeaders.map((header, index) => (
+                            <option key={`${header}-${index}`} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          B/E Number Column
+                        </label>
+                        <select
+                          value={selectedBeColumn}
+                          onChange={(e) => setSelectedBeColumn(e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                        >
+                          <option value="">Select column</option>
+                          {importHeaders.map((header, index) => (
+                            <option key={`${header}-${index}`} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Duty Amount (BDT) Column
+                        </label>
+                        <select
+                          value={selectedDutyColumn}
+                          onChange={(e) => setSelectedDutyColumn(e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                        >
+                          <option value="">Select column</option>
+                          {importHeaders.map((header, index) => (
+                            <option key={`${header}-${index}`} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                    </div>
+                  </div>
                 </div>
+
               </div>
 
               <div
@@ -1945,44 +2423,86 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   Excel Preview
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-200"}`}>
-                        {importHeaders.map((header, index) => (
-                          <th
-                            key={`${header}-${index}`}
-                            className="px-4 py-3 text-[11px] font-bold text-slate-500 whitespace-nowrap"
-                          >
-                            {header}
+                  {importHeaders.length === 0 ? (
+                    <div className={`px-4 py-10 text-sm text-center ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                      Excel import করুন অথবা উপরের box-এ raw data paste করুন।
+                    </div>
+                  ) : (
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-200"}`}>
+                          <th className="px-4 py-3 text-[11px] font-bold text-slate-500 whitespace-nowrap w-12">
+                            <input
+                              type="checkbox"
+                              checked={
+                                importRows.length > 0 &&
+                                selectedPreviewRows.length === importRows.length
+                              }
+                              onChange={(e) =>
+                                setSelectedPreviewRows(
+                                  e.target.checked
+                                    ? importRows.map((_, index) => index)
+                                    : [],
+                                )
+                              }
+                              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
                           </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {importRows.slice(0, 5).map((row, rowIndex) => (
-                        <tr
-                          key={`preview-${rowIndex}`}
-                          className={`border-b ${isDark ? "border-slate-700" : "border-slate-100"}`}
-                        >
-                          {importHeaders.map((_, cellIndex) => (
-                            <td
-                              key={`cell-${rowIndex}-${cellIndex}`}
-                              className={`px-4 py-3 text-sm ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                          {previewColumns.map((column) => (
+                            <th
+                              key={column.label}
+                              className="px-4 py-3 text-[11px] font-bold text-slate-500 whitespace-nowrap"
                             >
-                              {String(row[cellIndex] ?? "")}
-                            </td>
+                              {column.label}
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {importRows.map((row, rowIndex) => (
+                          <tr
+                            key={`preview-${rowIndex}`}
+                            className={`border-b ${isDark ? "border-slate-700" : "border-slate-100"}`}
+                          >
+                            <td className="px-4 py-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedPreviewRows.includes(rowIndex)}
+                                onChange={(e) =>
+                                  setSelectedPreviewRows((prev) =>
+                                    e.target.checked
+                                      ? [...prev, rowIndex].sort((a, b) => a - b)
+                                      : prev.filter((index) => index !== rowIndex),
+                                  )
+                                }
+                                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                            </td>
+                            {previewColumns.map((column) => {
+                              const cellIndex = importHeaders.findIndex(
+                                (header) => header === column.value,
+                              );
+                              return (
+                              <td
+                                key={`cell-${rowIndex}-${column.label}`}
+                                className={`px-4 py-3 text-sm ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                              >
+                                {cellIndex >= 0 ? String(row[cellIndex] ?? "") : "-"}
+                              </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
 
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={closeImportMappingModal}
+                  onClick={closeDutyImportModal}
                   className={`px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 >
                   Cancel
@@ -1990,7 +2510,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 <button
                   type="button"
                   onClick={confirmDutyImport}
-                  className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-widest transition-all"
+                  disabled={importRows.length === 0 || importHeaders.length === 0}
+                  className={`px-5 py-3 rounded-xl text-white text-xs font-bold uppercase tracking-widest transition-all ${importRows.length === 0 || importHeaders.length === 0 ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}
                 >
                   Import to Batch
                 </button>
