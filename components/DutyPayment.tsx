@@ -2420,9 +2420,22 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               <div
                 className={`rounded-2xl border overflow-hidden ${isDark ? "border-slate-700" : "border-slate-200"}`}
               >
-                <div className={`px-4 py-3 flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-widest ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
-                  <span>Excel Preview</span>
-                  <span>{previewBeCount} Total Count /BE</span>
+                <div className={`px-4 py-3 flex items-center justify-between gap-3 ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
+                  <span className="text-xs font-bold uppercase tracking-widest">
+                    Excel Preview
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-3 py-1 text-[11px] font-bold tracking-normal ${isDark ? "bg-slate-800 text-slate-100" : "bg-white text-slate-700 border border-slate-200"}`}
+                    >
+                      Total Count /BE: {previewBeCount}
+                    </span>
+                    <span
+                      className={`rounded-full px-3 py-1 text-[11px] font-bold tracking-normal ${isDark ? "bg-blue-900/40 text-blue-200" : "bg-blue-50 text-blue-700 border border-blue-100"}`}
+                    >
+                      Selected: {selectedPreviewRows.length}
+                    </span>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   {importHeaders.length === 0 ? (
