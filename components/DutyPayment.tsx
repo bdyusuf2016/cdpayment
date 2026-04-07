@@ -2428,12 +2428,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     <span
                       className={`rounded-full px-3 py-1 text-[11px] font-bold tracking-normal ${isDark ? "bg-slate-800 text-slate-100" : "bg-white text-slate-700 border border-slate-200"}`}
                     >
-                      Total Count /BE: {previewBeCount}
+                      Total B/E: {previewBeCount}
                     </span>
                     <span
                       className={`rounded-full px-3 py-1 text-[11px] font-bold tracking-normal ${isDark ? "bg-blue-900/40 text-blue-200" : "bg-blue-50 text-blue-700 border border-blue-100"}`}
                     >
-                      Selected: {selectedPreviewRows.length}
+                      Selected B/E: {selectedPreviewRows.length}
                     </span>
                   </div>
                 </div>
