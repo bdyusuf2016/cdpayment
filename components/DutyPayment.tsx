@@ -54,6 +54,20 @@ const normalizeImportedAin = (value: unknown): string => {
   return String(value ?? "").trim();
 };
 
+const getImportedPreviewAin = (
+  row: (string | number | null)[],
+  importHeaders: string[],
+  selectedAinColumn: string,
+  fallbackAin: string,
+): string => {
+  if (!selectedAinColumn) return fallbackAin;
+  const ainColumnIndex = importHeaders.findIndex(
+    (header) => header === selectedAinColumn,
+  );
+  if (ainColumnIndex < 0) return fallbackAin;
+  return normalizeImportedAin(row[ainColumnIndex]) || fallbackAin;
+};
+
 const normalizePastedCell = (value: string): string =>
   value.replace(/\s+/g, " ").trim();
 
@@ -110,7 +124,11 @@ const parseMultilineTabbedRows = (
 const inferImportColumns = (
   headers: string[],
   rows: (string | number | null)[][],
+  knownAins: string[],
 ) => {
+  const normalizedKnownAins = new Set(
+    knownAins.map((ain) => normalizeImportedAin(ain)).filter(Boolean),
+  );
   const preferredColumns = {
     ainColumn: headers[4] || "",
     yearColumn: headers[0] || "",
@@ -147,6 +165,15 @@ const inferImportColumns = (
     return parseImportedDutyAmount(text) !== null;
   };
 
+  const isAinValue = (value: unknown) => {
+    const text = normalizeImportedAin(value);
+    if (!text) return false;
+    if (normalizedKnownAins.has(text)) return true;
+    if (/^\d{4}$/.test(text)) return false;
+    if (/^\d{4,7}$/.test(text)) return false;
+    return /^[A-Za-z0-9/-]{4,20}$/.test(text) && /[A-Za-z/-]/.test(text);
+  };
+
   const scoreColumn = (predicate: (value: unknown) => boolean) =>
     headers.map((_, index) =>
       rows.reduce(
@@ -181,6 +208,7 @@ const inferImportColumns = (
   const dateScores = scoreColumn(isDateValue);
   const beScores = scoreColumn(isBeNumberValue);
   const amountScores = scoreColumn(isNumericAmountValue);
+  const ainScores = scoreColumn(isAinValue);
 
   const inferredYearIndex = pickBestIndex(yearScores);
   const inferredDateIndex = pickBestIndex(dateScores);
@@ -198,8 +226,15 @@ const inferImportColumns = (
     });
   }
 
+  const inferredAinIndex = pickBestIndex(ainScores, {
+    exclude: [inferredYearIndex, inferredBeIndex, inferredDutyIndex],
+  });
+
   return {
-    ainColumn: preferredColumns.ainColumn,
+    ainColumn:
+      inferredAinIndex >= 0
+        ? headers[inferredAinIndex]
+        : preferredColumns.ainColumn,
     beColumn: inferredBeIndex >= 0 ? headers[inferredBeIndex] : headers[0] || "",
     yearColumn:
       inferredYearIndex >= 0 ? headers[inferredYearIndex] : headers[1] || "",
@@ -277,6 +312,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [showDutyImportOption, setShowDutyImportOption] = useState(false);
   const [pastedImportText, setPastedImportText] = useState("");
   const [selectedPreviewRows, setSelectedPreviewRows] = useState<number[]>([]);
+  const [queuePhoneOverrides, setQueuePhoneOverrides] = useState<
+    Record<string, string>
+  >({});
 
   // Delete Confirmation State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -471,6 +509,50 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const hasMultiplePhones = availablePhones.length > 1;
 
+  const getPhoneOptionsForAin = (
+    ainValue: string,
+    fallbackPhone?: string,
+  ): string[] => {
+    const client = clients.find((item) => item.ain === ainValue);
+    const phones = getClientPhones(client);
+    if (fallbackPhone && !phones.includes(fallbackPhone)) {
+      return [fallbackPhone, ...phones];
+    }
+    return phones;
+  };
+
+  const queuedAinPreviewRows = useMemo(() => {
+    const previewMap = new Map<
+      string,
+      { ain: string; clientName: string; phones: string[] }
+    >();
+
+    queue.forEach((item) => {
+      const itemAin = String(item.ain || "").trim();
+      if (!itemAin || previewMap.has(itemAin)) return;
+      const matchedClient = clients.find((client) => client.ain === itemAin);
+      previewMap.set(itemAin, {
+        ain: itemAin,
+        clientName: matchedClient?.name || item.clientName || "-",
+        phones: getPhoneOptionsForAin(itemAin, item.phone),
+      });
+    });
+
+    return Array.from(previewMap.values());
+  }, [queue, clients]);
+
+  useEffect(() => {
+    setQueuePhoneOverrides((prev) => {
+      const next: Record<string, string> = {};
+
+      queuedAinPreviewRows.forEach((row) => {
+        next[row.ain] = prev[row.ain] || row.phones[0] || "";
+      });
+
+      return next;
+    });
+  }, [queuedAinPreviewRows]);
+
   const handleAinChange = (val: string) => {
     const normalizedAin = String(val || "")
       .split("|")[0]
@@ -487,10 +569,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const handleDutyImportClick = () => {
-    if (!ain) {
-      alert("Excel import করার আগে Client AIN select করুন.");
-      return;
-    }
     if (editingId) {
       alert("Edit mode-এ Excel import করা যাবে না.");
       return;
@@ -527,7 +605,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       { length: widestColumnCount },
       (_, index) => `Column ${index + 1}`,
     );
-    const inferredColumns = inferImportColumns(headers, rows);
+    const inferredColumns = inferImportColumns(
+      headers,
+      rows,
+      clients.map((client) => client.ain),
+    );
 
     setImportHeaders(headers);
     setImportRows(rows);
@@ -540,10 +622,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const handlePasteImportClick = () => {
-    if (!ain) {
-      alert("Data paste করার আগে Client AIN select করুন.");
-      return;
-    }
     if (editingId) {
       alert("Edit mode-এ paste import করা যাবে না.");
       return;
@@ -585,12 +663,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!ain) {
-      alert("Excel import করার আগে Client AIN select করুন.");
-      e.target.value = "";
-      return;
-    }
 
     try {
       const buffer = await file.arrayBuffer();
@@ -639,20 +711,14 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     closeImportMappingModal();
   };
 
-  const selectedAinColumnIndex = selectedAinColumn
-    ? importHeaders.findIndex((header) => header === selectedAinColumn)
-    : -1;
-  const previewAinNameColumn =
-    selectedAinColumnIndex > 0 ? importHeaders[selectedAinColumnIndex - 1] : "";
   const previewColumns = [
-    { label: "AIN Column", value: selectedAinColumn || "Column 5" },
-    { label: "AIN Name", value: previewAinNameColumn },
+    { label: "AIN Column", value: selectedAinColumn || "Use selected AIN" },
     { label: "B/E Year Column", value: selectedYearColumn || "Column 1" },
     { label: "B/E Number Column", value: selectedBeColumn || "Column 8" },
     { label: "Duty Amount (BDT) Column", value: selectedDutyColumn || "Column 17" },
   ];
   const importPatternText =
-    "Pattern: AIN = Column 5, B/E Year = Column 1, B/E Number = Column 8, Duty Amount = Column 17";
+    "Pattern: selected AIN/WhatsApp auto-fill হবে, আর চাইলে AIN column manually select করা যাবে.";
   const previewBeCount = importRows.length;
 
   useEffect(() => {
@@ -681,6 +747,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     }
     if (!selectedBeColumn || !selectedYearColumn || !selectedDutyColumn) {
       alert("তিনটি কলামই select করতে হবে.");
+      return;
+    }
+    if (!selectedAinColumn && !ain) {
+      alert("AIN Column select করুন অথবা আগে Client AIN select করুন.");
       return;
     }
 
@@ -719,8 +789,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       const be = normalizeImportedBeNumber(row[beNumberIndex]);
       const year = String(row[beYearIndex] ?? "").trim();
       const duty = parseImportedDutyAmount(row[dutyAmountIndex]);
-      const importedAin =
-        ainColumnIndex >= 0 ? normalizeImportedAin(row[ainColumnIndex]) : ain;
+      const importedAin = getImportedPreviewAin(
+        row,
+        importHeaders,
+        selectedAinColumn,
+        ain,
+      );
       const matchedClient = clients.find((client) => client.ain === importedAin);
       if (!be || !year || duty === null) continue;
       if (!importedAin) continue;
@@ -799,7 +873,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       date: new Date().toLocaleDateString("en-GB"),
       ain: item.ain || ain,
       clientName: item.clientName || clientName,
-      phone: item.phone || phone,
+      phone:
+        queuePhoneOverrides[item.ain || ""] || item.phone || phone,
       beYear: `${item.beNumber}(${item.year})`,
       duty: item.duty,
       received: 0,
@@ -847,6 +922,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     }
 
     setQueue([]);
+    setQueuePhoneOverrides({});
     setAin("");
     setClientName("");
     setPhone("");
@@ -1585,50 +1661,143 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                 </div>
               )}
             </div>
-            <div className="space-y-1.5 md:pt-[2.1rem]">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                WhatsApp Number
-              </label>
-              {selectedClient && hasMultiplePhones ? (
-                <div className="relative">
-                  <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
-                  <select
-                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all appearance-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  >
-                    {availablePhones.map((phoneNumber) => (
-                      <option key={phoneNumber} value={phoneNumber}>
-                        {phoneNumber}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="relative">
-                  <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                  <input
-                    type="text"
-                    placeholder="Mobile No"
-                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-              )}
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Client Name (Auto)
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"}`}
+                  value={clientName}
+                  placeholder="Client name will appear here..."
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  WhatsApp Number
+                </label>
+                {selectedClient && hasMultiplePhones ? (
+                  <div className="relative">
+                    <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    <select
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all appearance-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    >
+                      {availablePhones.map((phoneNumber) => (
+                        <option key={phoneNumber} value={phoneNumber}>
+                          {phoneNumber}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input
+                      type="text"
+                      placeholder="Mobile No"
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                )}
+                <p className="text-[10px] font-bold text-slate-400 pt-1">
+                  Excel import করলে selected AIN ও WhatsApp Number auto-fill হবে।
+                </p>
+              </div>
             </div>
-            <div className="md:col-span-2 space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Client Name (Auto)
-              </label>
-              <input
-                type="text"
-                readOnly
-                className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"}`}
-                value={clientName}
-                placeholder="Client name will appear here..."
-              />
-            </div>
+            {queuedAinPreviewRows.length > 0 && (
+              <div className="md:col-span-2">
+                <div
+                  className={`rounded-xl border p-4 space-y-3 ${isDark ? "border-slate-700 bg-slate-900/40" : "border-slate-200 bg-slate-50/80"}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        AIN Database Preview
+                      </p>
+                      <p className="text-xs font-bold text-slate-500 mt-1">
+                        Excel import হওয়া AIN অনুযায়ী client info preview হচ্ছে।
+                        WhatsApp একাধিক থাকলে এখান থেকে সঠিক number select করুন।
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-[10px] font-bold ${isDark ? "bg-slate-800 text-slate-200" : "bg-white text-slate-600 border border-slate-200"}`}
+                    >
+                      {queuedAinPreviewRows.length} AIN
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {queuedAinPreviewRows.map((row) => {
+                      const hasMultipleRowPhones = row.phones.length > 1;
+                      const selectedRowPhone =
+                        queuePhoneOverrides[row.ain] || row.phones[0] || "";
+
+                      return (
+                        <div
+                          key={row.ain}
+                          className={`rounded-xl border p-3 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-3 ${isDark ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-white"}`}
+                        >
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              AIN / Client
+                            </p>
+                            <p className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-800"}`}>
+                              {row.ain}
+                            </p>
+                            <p className="text-xs font-bold text-slate-500">
+                              {row.clientName}
+                            </p>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              WhatsApp Number
+                            </label>
+                            {hasMultipleRowPhones ? (
+                              <div className="relative">
+                                <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                <select
+                                  value={selectedRowPhone}
+                                  onChange={(e) =>
+                                    setQueuePhoneOverrides((prev) => ({
+                                      ...prev,
+                                      [row.ain]: e.target.value,
+                                    }))
+                                  }
+                                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all appearance-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                                >
+                                  {row.phones.map((phoneNumber) => (
+                                    <option key={`${row.ain}-${phoneNumber}`} value={phoneNumber}>
+                                      {phoneNumber}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <input
+                                  type="text"
+                                  readOnly
+                                  value={selectedRowPhone}
+                                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-600"}`}
+                                  placeholder="No WhatsApp number"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Duty Info Grid */}
@@ -2255,7 +2424,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   Excel-এ header না থাকলেও সমস্যা নেই। `Column 1`, `Column 2`, `Column 3` দেখে `B/E Number`, `B/E Year`, `Duty Amount` mapping select করুন।
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  AIN column থাকলে সেটা select করুন, না হলে selected AIN auto use হবে।
+                  AIN column থাকলে সেটা select করুন, না হলে selected AIN ও
+                  WhatsApp Number auto-fill হবে।
                 </p>
               </div>
               <button
@@ -2276,8 +2446,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   <button
                     type="button"
                     onClick={handleDutyImportClick}
-                    disabled={!ain || !!editingId}
-                    className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${!ain || editingId ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400" : isDark ? "border-emerald-700 bg-emerald-900/40 text-emerald-300 hover:bg-emerald-900/60" : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"}`}
+                    disabled={!!editingId}
+                    className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${editingId ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400" : isDark ? "border-emerald-700 bg-emerald-900/40 text-emerald-300 hover:bg-emerald-900/60" : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"}`}
                   >
                     <i className="fas fa-file-excel mr-1.5"></i>
                     Import Excel
@@ -2350,7 +2520,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                           onChange={(e) => setSelectedAinColumn(e.target.value)}
                           className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
                         >
-                          <option value="">Use selected AIN</option>
+                          <option value="">
+                            Use selected AIN
+                          </option>
                           {importHeaders.map((header, index) => (
                             <option key={`${header}-${index}`} value={header}>
                               {header}
