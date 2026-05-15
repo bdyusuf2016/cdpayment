@@ -1,7 +1,7 @@
 {
   "name": "customs-duty-pro",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.1.0",
   "type": "module",
   "homepage": "https://bdyusuf2016.github.io/cdpayment",
   "scripts": {

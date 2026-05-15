@@ -1420,7 +1420,7 @@ const App: React.FC = () => {
             {config.agencyName}
           </p>
           <p className="text-[9px] font-bold text-slate-400 max-w-sm">
-            System v2.0 • {config.agencyAddress}
+            System v2.1.0 • {config.agencyAddress}
           </p>
           {config.showDeveloperCredit && config.developerCreditName ? (
             <p className="text-[10px] font-bold text-slate-500">
