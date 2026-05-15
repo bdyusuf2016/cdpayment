@@ -80,6 +80,7 @@ const userRolePermissions: GranularPermissions = {
   bill_wa_share: true,
   invoice_print: true,
   ain_view: true,
+  ain_add: true,
 };
 
 const getDefaultPermissionsForRole = (role: string): GranularPermissions =>
@@ -752,6 +753,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   Dark
                 </button>
               </div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span
+                className={`font-bold text-sm ${isDark ? "text-slate-200" : "text-slate-800"}`}
+              >
+                Admin Data Scope
+              </span>
+              <select
+                value={config.adminGlobalDataAccess ? "all" : "own"}
+                onChange={(e) =>
+                  updateConfig(
+                    "adminGlobalDataAccess",
+                    e.target.value === "all",
+                  )
+                }
+                className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-700"}`}
+              >
+                <option value="all">Admin sees all users data</option>
+                <option value="own">Admin sees own data only</option>
+              </select>
             </div>
           </div>
         </div>

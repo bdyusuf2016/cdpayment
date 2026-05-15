@@ -50,6 +50,7 @@ const sanitizeData = (input: any): any => {
 const normalizeDutyRecord = (row: any): PaymentRecord => ({
   id: row.id,
   date: row.date ?? "",
+  receiveDate: row.receiveDate ?? row.receive_date ?? "",
   ain: row.ain ?? "",
   clientName: row.clientName ?? row.client_name ?? "",
   phone: row.phone ?? "",
@@ -125,6 +126,8 @@ const normalizeSystemConfig = (row: any): Partial<SystemConfig> => ({
   themeTemplate: row.themeTemplate ?? row.theme_template,
   language: row.language,
   paymentMethods: row.paymentMethods ?? row.payment_methods,
+  adminGlobalDataAccess:
+    row.adminGlobalDataAccess ?? row.admin_global_data_access ?? true,
 });
 
 const getStoredBoolean = (key: string, fallback: boolean): boolean => {
@@ -192,6 +195,7 @@ const App: React.FC = () => {
         | null) || "soft",
     language: "en",
     paymentMethods: ["Cash", "Bank", "bKash", "Nagad"],
+    adminGlobalDataAccess: true,
     supabaseUrl: SUPABASE_SITE_URL || "",
     supabaseKey: SUPABASE_SITE_KEY || "",
     lastBackup: localStorage.getItem(BACKUP_STORAGE_KEYS.lastBackupAt)
@@ -1362,6 +1366,10 @@ const App: React.FC = () => {
               onVisibleRowsChange={setVisibleAinRows}
               systemConfig={config}
               supabase={supabase}
+              canAdd={hasPermission("ain_add")}
+              canDelete={hasPermission("ain_delete")}
+              canImport={hasPermission("ain_import")}
+              canExport={hasPermission("ain_export")}
             />
           )}
           {activeTab === "reports" && tabAccess.reports && (

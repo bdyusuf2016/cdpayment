@@ -10,8 +10,25 @@ import {
 import { formatAuditLogDate } from "./auditLogDate";
 import { getClientPhones, serializeClientPhones } from "./clientPhones";
 
+const formatSupabaseError = (action: string, error: any): Error => {
+  if (error?.code === "23505" && /clients/i.test(action)) {
+    return new Error(
+      "This AIN already exists. If each user should keep their own separate AIN list, run the per-user AIN migration SQL first.",
+    );
+  }
+
+  const parts = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code ? `code=${error.code}` : "",
+  ].filter(Boolean);
+  return new Error(parts.join(" | ") || `${action} failed.`);
+};
+
 const toDutyDb = (record: Partial<PaymentRecord>) => ({
   date: record.date,
+  receive_date: record.receiveDate,
   ain: record.ain,
   client_name: record.clientName,
   phone: record.phone,
@@ -26,6 +43,7 @@ const toDutyDb = (record: Partial<PaymentRecord>) => ({
 const fromDutyDb = (row: any): PaymentRecord => ({
   id: row.id,
   date: row.date ?? "",
+  receiveDate: row.receiveDate ?? row.receive_date ?? "",
   ain: row.ain ?? "",
   clientName: row.clientName ?? row.client_name ?? "",
   phone: row.phone ?? "",
@@ -100,7 +118,7 @@ export async function insertClient(
     .single();
   if (error) {
     console.error("insertClient error", error);
-    return null;
+    throw formatSupabaseError("Insert client", error);
   }
   return fromClientDb(data);
 }
@@ -122,7 +140,7 @@ export async function updateClient(
     .single();
   if (error) {
     console.error("updateClient error", error);
-    return null;
+    throw formatSupabaseError("Update client", error);
   }
   return fromClientDb(data);
 }
@@ -139,7 +157,7 @@ export async function deleteClient(
     .single();
   if (error) {
     console.error("deleteClient error", error);
-    return null;
+    throw formatSupabaseError("Delete client", error);
   }
   return data ? { ain } : null; // Return identifier for UI update
 }
@@ -366,6 +384,8 @@ export async function fetchSystemSettings(
     themeTemplate: data.themeTemplate ?? data.theme_template ?? "soft",
     language: data.language ?? "en",
     paymentMethods: data.paymentMethods ?? data.payment_methods ?? [],
+    adminGlobalDataAccess:
+      data.adminGlobalDataAccess ?? data.admin_global_data_access ?? true,
     supabaseUrl: data.supabaseUrl,
     supabaseKey: data.supabaseKey,
     lastBackup: data.lastBackup,
@@ -390,6 +410,7 @@ export async function updateSystemSettings(
     theme_template: patch.themeTemplate,
     language: patch.language,
     payment_methods: patch.paymentMethods,
+    admin_global_data_access: patch.adminGlobalDataAccess,
   } as Record<string, unknown>;
   Object.keys(dbPatch).forEach((k) => {
     if (dbPatch[k] === undefined) delete dbPatch[k];
@@ -422,6 +443,8 @@ export async function updateSystemSettings(
     themeTemplate: data.themeTemplate ?? data.theme_template ?? "soft",
     language: data.language ?? "en",
     paymentMethods: data.paymentMethods ?? data.payment_methods ?? [],
+    adminGlobalDataAccess:
+      data.adminGlobalDataAccess ?? data.admin_global_data_access ?? true,
     supabaseUrl: data.supabaseUrl,
     supabaseKey: data.supabaseKey,
     lastBackup: data.lastBackup,

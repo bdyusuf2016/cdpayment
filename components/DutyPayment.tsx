@@ -315,6 +315,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [queuePhoneOverrides, setQueuePhoneOverrides] = useState<
     Record<string, string>
   >({});
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Delete Confirmation State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -826,6 +827,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const handleAddOrUpdate = async () => {
     if (!beNumber || !dutyAmount || !beYear) return;
+    setActionError(null);
 
     let formattedBe = beNumber.trim().toUpperCase();
     if (!formattedBe.startsWith("C-")) {
@@ -844,8 +846,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         beYear: `${formattedBe}(${beYear})`,
         duty: parseFloat(dutyAmount),
       };
-      await updateDuty(supabase, editingId, updatedRec);
-      setEditingId(null);
+      try {
+        await updateDuty(supabase, editingId, updatedRec);
+        setEditingId(null);
+      } catch (error: any) {
+        const message = error?.message || "Duty update failed.";
+        setActionError(message);
+        alert(message);
+        return;
+      }
     } else {
       setQueue((prev) => [
         ...prev,
@@ -867,10 +876,12 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const submitQueue = async () => {
     if (queue.length === 0) return;
+    setActionError(null);
 
     const newRecords: PaymentRecord[] = queue.map((item) => ({
       id: Math.random().toString(36).substr(2, 9),
       date: new Date().toLocaleDateString("en-GB"),
+      receiveDate: "",
       ain: item.ain || ain,
       clientName: item.clientName || clientName,
       phone:
@@ -883,37 +894,35 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     }));
 
     if (supabase) {
+      const insertedFromDb: PaymentRecord[] = [];
       for (const record of newRecords) {
-        const res = await insertDuty(supabase, {
-          date: record.date,
-          ain: record.ain,
-          clientName: record.clientName,
-          phone: record.phone,
-          beYear: record.beYear,
-          duty: record.duty,
-          received: record.received,
-          status: record.status,
-          profit: record.profit,
+        try {
+          const res = await insertDuty(supabase, {
+            date: record.date,
+            ain: record.ain,
+            clientName: record.clientName,
+            phone: record.phone,
+            beYear: record.beYear,
+            duty: record.duty,
+            received: record.received,
+            status: record.status,
+            profit: record.profit,
+          });
+          console.debug("insertDuty result:", res, record);
+          if (res) insertedFromDb.push(res);
+        } catch (error: any) {
+          const message = error?.message || "Duty save failed.";
+          setActionError(message);
+          alert(message);
+          break;
+        }
+      }
+      if (insertedFromDb.length > 0) {
+        setInsertedRecords((prev) => [...insertedFromDb, ...prev]);
+        setHistory((prev) => {
+          const ids = new Set(insertedFromDb.map((p) => p.id));
+          return [...insertedFromDb, ...prev.filter((p) => !ids.has(p.id))];
         });
-        console.debug("insertDuty result:", res, record);
-        if (res) {
-          setInsertedRecords((prev) => [res, ...prev]);
-          setHistory((prev) => {
-            const next = prev.filter((p) => p.id !== res.id);
-            return [res, ...next];
-          });
-        }
-        else {
-          // If insert failed or returned null, still render locally so UX reflects the queue
-          console.warn(
-            "insertDuty returned null â€” rendering local record instead.",
-          );
-          setInsertedRecords((prev) => [record, ...prev]);
-          setHistory((prev) => {
-            const next = prev.filter((p) => p.id !== record.id);
-            return [record, ...next];
-          });
-        }
       }
     } else {
       // No supabase client â€” render locally
@@ -930,6 +939,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   const generateWAMessage = (recs: PaymentRecord[]) => {
     const clientName = recs[0].clientName;
+    const grandBeCount = recs.length;
     const subtotal = recs.reduce((a, b) => a + (b.duty || 0), 0);
     const totalReceived = recs.reduce((a, b) => a + (b.received || 0), 0);
     const serviceCharge = recs.reduce((a, b) => a + (b.profit || 0), 0);
@@ -963,13 +973,14 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       const ainName = ainRecords[0]?.clientName || "Unknown";
       msg += `*AIN:* ${ainValue} | *Name:* ${ainName}\n`;
       ainRecords.forEach((r, i) => {
-        msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Amount:* Tk ${r.duty.toLocaleString("en-BD")}\n`;
+        msg += `${i + 1}. *B/E:* ${r.beYear}\n    *Date:* ${r.date || "-"}\n    *Payment Receive:* Tk ${(r.received || 0).toLocaleString("en-BD")}\n    *Amount:* Tk ${r.duty.toLocaleString("en-BD")}\n`;
       });
       const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
       msg += `*Subtotal (${ainValue} - ${ainName}):* Tk ${ainSubtotal.toLocaleString("en-BD")}\n\n`;
     });
 
     msg += `--------------------------------\n`;
+    msg += `*Grand B/E Count:* ${grandBeCount}\n`;
     msg += `*Grand Subtotal:* Tk ${subtotal.toLocaleString("en-BD")}\n`;
     msg += `*Service Charge:* Tk ${serviceCharge.toLocaleString("en-BD")}\n`;
     if (showReceivedLine) {
@@ -1010,6 +1021,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     if (recs.length === 0) return;
 
     const targetPhone = recs.find((r) => r.phone)?.phone || "";
+    const grandBeCount = recs.length;
     const digits = targetPhone.replace(/\D/g, "");
     const waPhone = digits.startsWith("880")
       ? digits
@@ -1056,13 +1068,14 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       lines.push(`AIN: ${ainValue} | Name: ${ainName}`);
       ainRecords.forEach((r, idx) => {
         lines.push(
-          `${idx + 1}. B/E ${r.beYear} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
+          `${idx + 1}. B/E ${r.beYear} | Date ${r.date || "-"} | Payment Receive Tk ${(r.received || 0).toLocaleString("en-BD")} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
         );
       });
       const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
       lines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
       lines.push("");
     });
+    lines.push(`Grand B/E Count: ${grandBeCount}`);
     lines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
     lines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
     if (showReceivedLine) {
@@ -1106,13 +1119,14 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       summaryLines.push(`AIN: ${ainValue} | Name: ${ainName}`);
       ainRecords.forEach((r, idx) => {
         summaryLines.push(
-          `${idx + 1}. B/E ${r.beYear} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
+          `${idx + 1}. B/E ${r.beYear} | Date ${r.date || "-"} | Payment Receive Tk ${(r.received || 0).toLocaleString("en-BD")} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
         );
       });
       const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
       summaryLines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
       summaryLines.push("");
     });
+    summaryLines.push(`Grand B/E Count: ${grandBeCount}`);
     summaryLines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
     summaryLines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
     if (showReceivedLine) {
@@ -1228,7 +1242,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             (r, i) => `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${i + 1}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee;">Duty Payment for B/E: <strong>${r.beYear}</strong></td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">Duty Payment for B/E: <strong>${r.beYear}</strong><br><span style="font-size:12px;color:#64748b">Date: ${r.date || "-"} | Payment Receive: ${fmt(r.received || 0)}</span></td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${fmt(r.duty)}</td>
       </tr>`,
           )
@@ -1261,6 +1275,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           <div class="summary-wrap">
             <div class="status-seal">${settlementLabel}</div>
             <div class="summary">
+              <div class="summary-row"><span>Grand B/E Count</span><span>${recs.length}</span></div>
               <div class="summary-row"><span>Grand Subtotal</span><span>${fmt(subtotal)}</span></div>
               <div class="summary-row"><span>Service Charge</span><span>${fmt(serviceCharge)}</span></div>
               <div class="summary-row"><span>Due</span><span>${fmt(due)}</span></div>
@@ -1347,7 +1362,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       for (const rec of targetRecords) {
         const received = receivedById[rec.id] ?? 0;
         const patched: Partial<PaymentRecord> = {
-          date: paymentDateValue,
+          receiveDate: paymentDateValue,
           status: "Paid",
           received,
           profit: received - rec.duty,
@@ -1362,7 +1377,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         paymentIds.includes(rec.id)
             ? ({
               ...rec,
-              date: paymentDateValue,
+              receiveDate: paymentDateValue,
               status: "Paid",
               received: receivedById[rec.id] ?? 0,
               profit: (receivedById[rec.id] ?? 0) - rec.duty,
@@ -1374,33 +1389,39 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
     // Then sync with server in parallel
     if (supabase) {
-      const results = await Promise.all(
-        targetRecords.map(async (rec) => {
-          const received = receivedById[rec.id] ?? 0;
-          const patched: Partial<PaymentRecord> = {
-            date: paymentDateValue,
-            status: "Paid",
-            received,
-            profit: received - rec.duty,
-            paymentMethod: paymentMethod,
-          };
-          const res = await updateDuty(supabase, rec.id, patched);
-          return { id: rec.id, res };
-        }),
-      );
-      setUpdatedRecords((prev) => {
-        const next = { ...prev };
-        for (const { id, res } of results) {
-          if (res) next[id] = res;
-        }
-        return next;
-      });
-      setHistory((prev) =>
-        prev.map((rec) => {
-          const updated = results.find((r) => r.id === rec.id)?.res;
-          return updated ? updated : rec;
-        }),
-      );
+      try {
+        const results = await Promise.all(
+          targetRecords.map(async (rec) => {
+            const received = receivedById[rec.id] ?? 0;
+            const patched: Partial<PaymentRecord> = {
+              receiveDate: paymentDateValue,
+              status: "Paid",
+              received,
+              profit: received - rec.duty,
+              paymentMethod: paymentMethod,
+            };
+            const res = await updateDuty(supabase, rec.id, patched);
+            return { id: rec.id, res };
+          }),
+        );
+        setUpdatedRecords((prev) => {
+          const next = { ...prev };
+          for (const { id, res } of results) {
+            if (res) next[id] = res;
+          }
+          return next;
+        });
+        setHistory((prev) =>
+          prev.map((rec) => {
+            const updated = results.find((r) => r.id === rec.id)?.res;
+            return updated ? updated : rec;
+          }),
+        );
+      } catch (error: any) {
+        const message = error?.message || "Duty payment update failed.";
+        setActionError(message);
+        alert(message);
+      }
     }
 
     setShowPaymentModal(false);
@@ -1436,12 +1457,21 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
     if (!supabase) return;
 
-    const results = await Promise.all(
-      idsToDelete.map(async (id) => {
-        const res = await deleteDuty(supabase, id);
-        return { id, ok: Boolean(res) };
-      }),
-    );
+    let results: { id: string; ok: boolean }[] = [];
+    try {
+      results = await Promise.all(
+        idsToDelete.map(async (id) => {
+          const res = await deleteDuty(supabase, id);
+          return { id, ok: Boolean(res) };
+        }),
+      );
+    } catch (error: any) {
+      const message = error?.message || "Duty delete failed.";
+      setActionError(message);
+      alert(message);
+      setDeletedIds((prev) => prev.filter((id) => !idsToDelete.includes(id)));
+      return;
+    }
 
     const failedIds = results.filter((r) => !r.ok).map((r) => r.id);
     if (failedIds.length > 0) {
@@ -1478,25 +1508,31 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
     // Sync with server in parallel
     if (supabase) {
-      const results = await Promise.all(
-        idsToUpdate.map(async (id) => {
-          const res = await updateDuty(supabase, id, { status });
-          return { id, res };
-        }),
-      );
-      setUpdatedRecords((prev) => {
-        const next = { ...prev };
-        for (const { id, res } of results) {
-          if (res) next[id] = res;
-        }
-        return next;
-      });
-      setHistory((prev) =>
-        prev.map((rec) => {
-          const updated = results.find((r) => r.id === rec.id)?.res;
-          return updated ? updated : rec;
-        }),
-      );
+      try {
+        const results = await Promise.all(
+          idsToUpdate.map(async (id) => {
+            const res = await updateDuty(supabase, id, { status });
+            return { id, res };
+          }),
+        );
+        setUpdatedRecords((prev) => {
+          const next = { ...prev };
+          for (const { id, res } of results) {
+            if (res) next[id] = res;
+          }
+          return next;
+        });
+        setHistory((prev) =>
+          prev.map((rec) => {
+            const updated = results.find((r) => r.id === rec.id)?.res;
+            return updated ? updated : rec;
+          }),
+        );
+      } catch (error: any) {
+        const message = error?.message || "Duty status update failed.";
+        setActionError(message);
+        alert(message);
+      }
     }
 
   };
@@ -1547,6 +1583,17 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
+      {actionError && (
+        <div
+          className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
+            isDark
+              ? "bg-red-950/30 border-red-900 text-red-300"
+              : "bg-red-50 border-red-200 text-red-700"
+          }`}
+        >
+          {actionError}
+        </div>
+      )}
       {/* Top Section: Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Left: Input Form Card */}
@@ -2226,7 +2273,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     onClick={() => toggleSort("received")}
                     className="inline-flex items-center gap-1"
                   >
-                    Received <i className={`fas ${getSortIcon("received")}`}></i>
+                    Receive <i className={`fas ${getSortIcon("received")}`}></i>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1"
+                  >
+                    Receive Date
                   </button>
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
@@ -2318,6 +2373,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     {rec.received > 0
                       ? `৳${rec.received.toLocaleString()}`
                       : "-"}
+                  </td>
+                  <td
+                    className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                  >
+                    {rec.receiveDate || "-"}
                   </td>
                   <td className="px-6 py-3 text-center">
                     <span

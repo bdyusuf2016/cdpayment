@@ -15,6 +15,10 @@ interface AinDatabaseProps {
   onVisibleRowsChange: (rows: Client[]) => void;
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
+  canAdd: boolean;
+  canDelete: boolean;
+  canImport: boolean;
+  canExport: boolean;
 }
 
 const AinDatabase: React.FC<AinDatabaseProps> = ({
@@ -23,6 +27,10 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   onVisibleRowsChange,
   systemConfig,
   supabase,
+  canAdd,
+  canDelete,
+  canImport,
+  canExport,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -37,6 +45,8 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
     "latest",
   );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [isSaving, setIsSaving] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // For Custom Confirmation
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -123,6 +133,12 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   }, [sortedClients, onVisibleRowsChange]);
 
   const handleOpenModal = (client?: Client) => {
+    if (!canAdd) {
+      alert("You do not have permission to add or edit AIN profiles.");
+      return;
+    }
+    setActionError(null);
+
     if (client) {
       setEditingClient(client);
       setFormAin(client.ain);
@@ -138,68 +154,92 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   };
 
   const handleSave = async () => {
-    if (!formAin || !formName || !supabase) {
+    const trimmedAin = formAin.trim();
+    const trimmedName = formName.trim();
+
+    if (!trimmedAin || !trimmedName || !supabase) {
       alert("AIN, Name, and a valid Supabase client are required!");
       return;
     }
+    if (!canAdd) {
+      alert("You do not have permission to save AIN profiles.");
+      return;
+    }
+    setActionError(null);
 
     const phones = parseClientPhones(formPhonesText);
     const clientData = {
-      ain: formAin.trim(),
-      name: formName.trim(),
+      ain: trimmedAin,
+      name: trimmedName,
       phone: serializeClientPhones(phones),
       phones,
       active: true,
     };
-    if (editingClient) {
-      // If changing the AIN, ensure the new AIN is not already used by another record
-      if (
-        clientData.ain !== editingClient.ain &&
-        allClients.some((c) => c.ain === clientData.ain)
-      ) {
-        alert("This AIN already exists! Choose a different AIN.");
-        return;
-      }
-      const updated =
-        (await updateClient(supabase, editingClient.ain, clientData)) ||
-        (clientData as Client);
-      setClients((prev) => {
-        const next = prev.filter(
-          (c) => c.ain !== editingClient.ain && c.ain !== updated.ain,
+
+    try {
+      setIsSaving(true);
+
+      if (editingClient) {
+        // If changing the AIN, ensure the new AIN is not already used by another record
+        if (
+          clientData.ain !== editingClient.ain &&
+          allClients.some((c) => c.ain === clientData.ain)
+        ) {
+          alert("This AIN already exists! Choose a different AIN.");
+          return;
+        }
+        const updated = await updateClient(supabase, editingClient.ain, clientData);
+        if (!updated) return;
+        setClients((prev) => {
+          const next = prev.filter(
+            (c) => c.ain !== editingClient.ain && c.ain !== updated.ain,
+          );
+          return [...next, updated];
+        });
+        setLocalClients((prev) => {
+          const next = prev.filter(
+            (c) => c.ain !== editingClient.ain && c.ain !== updated.ain,
+          );
+          return [...next, updated];
+        });
+        setPendingDeletedAins((prev) =>
+          prev.filter((ain) => ain !== editingClient.ain),
         );
-        return [...next, updated];
-      });
-      setLocalClients((prev) => {
-        const next = prev.filter(
-          (c) => c.ain !== editingClient.ain && c.ain !== updated.ain,
+      } else {
+        if (allClients.some((c) => c.ain === clientData.ain)) {
+          alert("This AIN already exists!");
+          return;
+        }
+        const inserted = await insertClient(supabase, clientData);
+        if (!inserted) return;
+        setClients((prev) => {
+          const next = prev.filter((c) => c.ain !== inserted.ain);
+          return [...next, inserted];
+        });
+        setLocalClients((prev) => {
+          const next = prev.filter((c) => c.ain !== inserted.ain);
+          return [...next, inserted];
+        });
+        setPendingDeletedAins((prev) =>
+          prev.filter((ain) => ain !== inserted.ain),
         );
-        return [...next, updated];
-      });
-      setPendingDeletedAins((prev) =>
-        prev.filter((ain) => ain !== editingClient.ain),
-      );
-    } else {
-      if (allClients.some((c) => c.ain === clientData.ain)) {
-        alert("This AIN already exists!");
-        return;
       }
-      const inserted = (await insertClient(supabase, clientData)) || clientData;
-      setClients((prev) => {
-        const next = prev.filter((c) => c.ain !== inserted.ain);
-        return [...next, inserted];
-      });
-      setLocalClients((prev) => {
-        const next = prev.filter((c) => c.ain !== inserted.ain);
-        return [...next, inserted];
-      });
-      setPendingDeletedAins((prev) =>
-        prev.filter((ain) => ain !== inserted.ain),
-      );
+      setShowModal(false);
+    } catch (error: any) {
+      const message = error?.message || "AIN save failed.";
+      setActionError(message);
+      alert(message);
+    } finally {
+      setIsSaving(false);
     }
-    setShowModal(false);
   };
 
   const processDelete = async () => {
+    if (!canDelete) {
+      alert("You do not have permission to delete AIN profiles.");
+      return;
+    }
+    setActionError(null);
     if (!supabase) return;
     const idsToDelete = confirmDelete.isBulk
       ? selectedAins
@@ -212,23 +252,47 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       return;
     }
 
-    setPendingDeletedAins((prev) => Array.from(new Set([...prev, ...idsToDelete])));
-    setLocalClients((prev) => prev.filter((c) => !idsToDelete.includes(c.ain)));
-    setClients((prev) => prev.filter((c) => !idsToDelete.includes(c.ain)));
+    const deletedAins: string[] = [];
 
-    if (confirmDelete.isBulk) {
-      for (const ain of selectedAins) {
-        await deleteClient(supabase, ain);
+    try {
+      if (confirmDelete.isBulk) {
+        for (const ain of selectedAins) {
+          const deleted = await deleteClient(supabase, ain);
+          if (deleted) deletedAins.push(ain);
+        }
+        setSelectedAins((prev) => prev.filter((id) => !deletedAins.includes(id)));
+      } else if (confirmDelete.ain) {
+        const deleted = await deleteClient(supabase, confirmDelete.ain);
+        if (deleted) deletedAins.push(confirmDelete.ain);
+        setSelectedAins((prev) => prev.filter((id) => id !== confirmDelete.ain));
       }
-      setSelectedAins([]);
-    } else if (confirmDelete.ain) {
-      await deleteClient(supabase, confirmDelete.ain);
-      setSelectedAins((prev) => prev.filter((id) => id !== confirmDelete.ain));
+    } catch (error: any) {
+      const message = error?.message || "Delete failed.";
+      setActionError(message);
+      alert(message);
+      return;
+    }
+
+    if (deletedAins.length === 0) {
+      alert("Delete failed. This account may not have AIN delete permission.");
+      return;
+    }
+
+    setPendingDeletedAins((prev) => Array.from(new Set([...prev, ...deletedAins])));
+    setLocalClients((prev) => prev.filter((c) => !deletedAins.includes(c.ain)));
+    setClients((prev) => prev.filter((c) => !deletedAins.includes(c.ain)));
+
+    if (deletedAins.length !== idsToDelete.length) {
+      alert("Some selected AIN profiles could not be deleted.");
     }
     setConfirmDelete({ show: false, ain: null, isBulk: false });
   };
 
   const handleExport = () => {
+    if (!canExport) {
+      alert("You do not have permission to export AIN profiles.");
+      return;
+    }
     const headers = "AIN,Name,Phone\n";
     const rows = allClients
       .map((c) => `${c.ain},${c.name},${serializeClientPhones(getClientPhones(c))}`)
@@ -242,10 +306,19 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   };
 
   const handleImportClick = () => {
+    if (!canImport) {
+      alert("You do not have permission to import AIN profiles.");
+      return;
+    }
     fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canImport) {
+      alert("You do not have permission to import AIN profiles.");
+      return;
+    }
+    setActionError(null);
     const file = e.target.files?.[0];
     if (!file || !supabase) return;
 
@@ -272,27 +345,45 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       }
 
       if (newClients.length > 0) {
+        const insertedClients: Client[] = [];
+        let failedCount = 0;
+
+        for (const client of newClients) {
+          try {
+            const inserted = await insertClient(supabase, client);
+            if (inserted) insertedClients.push(inserted);
+          } catch (error) {
+            failedCount += 1;
+          }
+        }
+
+        if (insertedClients.length === 0) {
+          alert("Import failed. This account may not have AIN import/add permission.");
+          return;
+        }
+
         setClients((prev) => {
           const map = new Map(prev.map((c) => [c.ain, c]));
-          newClients.forEach((c) => map.set(c.ain, c as Client));
+          insertedClients.forEach((c) => map.set(c.ain, c));
           return Array.from(map.values());
         });
         setLocalClients((prev) => {
           const next = [...prev];
-          for (const nc of newClients) {
+          for (const nc of insertedClients) {
             const idx = next.findIndex((c) => c.ain === nc.ain);
-            if (idx >= 0) next[idx] = nc as Client;
-            else next.push(nc as Client);
+            if (idx >= 0) next[idx] = nc;
+            else next.push(nc);
           }
           return next;
         });
-        for (const client of newClients) {
-          await insertClient(supabase, client);
-        }
         setPendingDeletedAins((prev) =>
-          prev.filter((ain) => !newClients.some((c) => c.ain === ain)),
+          prev.filter((ain) => !insertedClients.some((c) => c.ain === ain)),
         );
-        alert(`${newClients.length} new clients imported successfully!`);
+        alert(
+          failedCount > 0
+            ? `${insertedClients.length} clients imported successfully, ${failedCount} failed.`
+            : `${insertedClients.length} new clients imported successfully!`,
+        );
       }
     };
     reader.readAsText(file);
@@ -326,6 +417,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       >
         <button
           onClick={() => handleOpenModal()}
+          disabled={!canAdd}
           className="bg-blue-600 hover:bg-blue-700 text-white font-black py-2.5 px-6 rounded-xl flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-200 uppercase text-[11px] tracking-wider"
         >
           <i className="fas fa-plus-circle"></i> New Client
@@ -348,6 +440,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
         <div className="flex gap-2">
           <button
             onClick={handleImportClick}
+            disabled={!canImport}
             className="bg-slate-800 hover:bg-slate-900 text-white font-black py-2.5 px-5 rounded-xl flex items-center gap-2 transition-all active:scale-95 shadow-sm uppercase text-[10px] tracking-widest"
           >
             <i className="fas fa-file-import text-blue-400"></i> Import
@@ -361,12 +454,25 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
           />
           <button
             onClick={handleExport}
+            disabled={!canExport}
             className={`font-black py-2.5 px-5 rounded-xl flex items-center gap-2 transition-all active:scale-95 shadow-sm uppercase text-[10px] tracking-widest border ${isDark ? "bg-slate-900 border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-700"}`}
           >
             <i className="fas fa-file-export text-green-500"></i> Export
           </button>
         </div>
       </div>
+
+      {actionError && (
+        <div
+          className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
+            isDark
+              ? "bg-red-950/30 border-red-900 text-red-300"
+              : "bg-red-50 border-red-200 text-red-700"
+          }`}
+        >
+          {actionError}
+        </div>
+      )}
 
       {/* Table Section */}
       <div
@@ -408,6 +514,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                       selectedAins.length === sortedClients.length
                     }
                     onChange={toggleSelectAll}
+                    disabled={!canDelete}
                   />
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -473,6 +580,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                         className="w-4 h-4 rounded cursor-pointer accent-blue-600"
                         checked={selectedAins.includes(client.ain)}
                         onChange={() => toggleSelectOne(client.ain)}
+                        disabled={!canDelete}
                       />
                     </td>
                     <td className="px-6 py-3">
@@ -521,6 +629,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                       <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-all">
                         <button
                           onClick={() => handleOpenModal(client)}
+                          disabled={!canAdd}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-blue-400 hover:bg-blue-600 hover:text-white" : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"}`}
                           title="Edit Profile"
                         >
@@ -534,6 +643,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                               isBulk: false,
                             })
                           }
+                          disabled={!canDelete}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-red-400 hover:bg-red-500 hover:text-white" : "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"}`}
                           title="Delete Record"
                         >
@@ -633,9 +743,14 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                 </button>
                 <button
                   onClick={handleSave}
+                  disabled={isSaving || !canAdd}
                   className="flex-grow py-3 rounded-2xl font-black text-white uppercase text-[11px] tracking-widest bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-95"
                 >
-                  {editingClient ? "Update Profile" : "Save Profile"}
+                  {isSaving
+                    ? "Saving..."
+                    : editingClient
+                      ? "Update Profile"
+                      : "Save Profile"}
                 </button>
               </div>
             </div>

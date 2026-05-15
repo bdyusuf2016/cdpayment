@@ -4,12 +4,13 @@ create extension if not exists "uuid-ossp";
 
 -- 1. Clients Table (Stores AIN and Client Info)
 create table public.clients (
-  ain text primary key,
+  id uuid default uuid_generate_v4() primary key,
   owner_auth_id uuid references auth.users(id) default auth.uid(),
   name text not null,
   phone text,
   active boolean default true,
-  created_at timestamp with time zone default timezone('utc'::text, now())
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  unique (owner_auth_id, ain)
 );
 
 -- 2. Duty Payments Table (Transaction History)
@@ -17,7 +18,7 @@ create table public.duty_payments (
   id uuid default uuid_generate_v4() primary key,
   owner_auth_id uuid references auth.users(id) default auth.uid(),
   date text not null,
-  ain text references public.clients(ain) on delete set null,
+  ain text,
   client_name text,
   phone text,
   be_year text,
@@ -34,7 +35,7 @@ create table public.assessments (
   id uuid default uuid_generate_v4() primary key,
   owner_auth_id uuid references auth.users(id) default auth.uid(),
   date text not null,
-  ain text references public.clients(ain) on delete set null,
+  ain text,
   client_name text,
   phone text,
   nos_of_be integer default 0,
@@ -84,6 +85,7 @@ create table public.system_settings (
   currency text default 'BDT',
   theme text default 'light',
   language text default 'en',
+  admin_global_data_access boolean default true,
   payment_methods jsonb default '["Cash", "Bank", "bKash", "Nagad"]'::jsonb,
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
@@ -136,6 +138,25 @@ $$;
 
 grant execute on function public.has_current_user_permission(text) to authenticated;
 
+create or replace function public.can_current_user_access_all_business_data()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    public.is_current_user_admin()
+    and coalesce(
+      (select ss.admin_global_data_access
+       from public.system_settings ss
+       order by ss.id asc
+       limit 1),
+      true
+    );
+$$;
+
+grant execute on function public.can_current_user_access_all_business_data() to authenticated;
+
 create or replace function public.has_current_user_bill_access()
 returns boolean
 language sql
@@ -159,7 +180,7 @@ create policy "Clients owner or admin select"
   on public.clients
   for select
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('ain_view')
   );
 
@@ -167,7 +188,7 @@ create policy "Clients owner or admin insert"
   on public.clients
   for insert
   with check (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('ain_add')
   );
 
@@ -175,11 +196,11 @@ create policy "Clients owner or admin update"
   on public.clients
   for update
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('ain_add')
   )
   with check (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('ain_add')
   );
 
@@ -187,7 +208,7 @@ create policy "Clients owner or admin delete"
   on public.clients
   for delete
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('ain_delete')
   );
 
@@ -196,7 +217,7 @@ create policy "Duty owner or admin select"
   on public.duty_payments
   for select
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_bill_access()
   );
 
@@ -204,7 +225,7 @@ create policy "Duty owner or admin insert"
   on public.duty_payments
   for insert
   with check (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('bill_add')
   );
 
@@ -212,14 +233,14 @@ create policy "Duty owner or admin update"
   on public.duty_payments
   for update
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and (
       public.has_current_user_permission('bill_edit')
       or public.has_current_user_permission('bill_bulk_pay')
     )
   )
   with check (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and (
       public.has_current_user_permission('bill_edit')
       or public.has_current_user_permission('bill_bulk_pay')
@@ -230,7 +251,7 @@ create policy "Duty owner or admin delete"
   on public.duty_payments
   for delete
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('bill_delete')
   );
 
@@ -239,7 +260,7 @@ create policy "Assessments owner or admin select"
   on public.assessments
   for select
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_bill_access()
   );
 
@@ -247,7 +268,7 @@ create policy "Assessments owner or admin insert"
   on public.assessments
   for insert
   with check (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('bill_add')
   );
 
@@ -255,14 +276,14 @@ create policy "Assessments owner or admin update"
   on public.assessments
   for update
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and (
       public.has_current_user_permission('bill_edit')
       or public.has_current_user_permission('bill_bulk_pay')
     )
   )
   with check (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and (
       public.has_current_user_permission('bill_edit')
       or public.has_current_user_permission('bill_bulk_pay')
@@ -273,7 +294,7 @@ create policy "Assessments owner or admin delete"
   on public.assessments
   for delete
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('bill_delete')
   );
 
@@ -282,25 +303,25 @@ create policy "Audit logs owner or admin select"
   on public.audit_logs
   for select
   using (
-    (owner_auth_id = auth.uid() or public.is_current_user_admin())
+    (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data())
     and public.has_current_user_permission('view_logs')
   );
 
 create policy "Audit logs owner or admin insert"
   on public.audit_logs
   for insert
-  with check (owner_auth_id = auth.uid() or public.is_current_user_admin());
+  with check (owner_auth_id = auth.uid() or public.can_current_user_access_all_business_data());
 
 create policy "Audit logs owner or admin update"
   on public.audit_logs
   for update
-  using (public.is_current_user_admin())
-  with check (public.is_current_user_admin());
+  using (public.can_current_user_access_all_business_data())
+  with check (public.can_current_user_access_all_business_data());
 
 create policy "Audit logs owner or admin delete"
   on public.audit_logs
   for delete
-  using (public.is_current_user_admin());
+  using (public.can_current_user_access_all_business_data());
 
 -- Keep system settings shared
 create policy "Enable all access for system_settings" on public.system_settings for all using (true);

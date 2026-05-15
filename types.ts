@@ -20,6 +20,7 @@ export interface DutyItem {
 export interface PaymentRecord {
   id: string;
   date: string;
+  receiveDate?: string;
   ain: string;
   clientName: string;
   phone: string;
@@ -103,6 +104,7 @@ export interface SystemConfig {
   themeTemplate?: 'soft' | 'paper' | 'sand' | 'ink';
   language: 'en' | 'bn';
   paymentMethods: string[];
+  adminGlobalDataAccess?: boolean;
   // Supabase & Backup Settings
   supabaseUrl?: string;
   supabaseKey?: string;

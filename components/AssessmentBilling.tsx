@@ -84,6 +84,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     show: boolean;
     ids: string[];
   }>({ show: false, ids: [] });
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const beCountRef = useRef<HTMLInputElement>(null);
 
@@ -239,6 +240,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
   const handleAddOrUpdate = async () => {
     if (!nosOfBe || !ain) return;
+    setActionError(null);
     if (editingId) {
       // Editing mode - direct update
       const discountVal = parseFloat(batchDiscount) || 0; // In edit mode, we might use this as item discount
@@ -254,11 +256,19 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         net: netVal,
       };
       if (supabase) {
-        const res = await updateAssessment(
-          supabase,
-          editingId as string,
-          patched,
-        );
+        let res: AssessmentRecord | null = null;
+        try {
+          res = await updateAssessment(
+            supabase,
+            editingId as string,
+            patched,
+          );
+        } catch (error: any) {
+          const message = error?.message || "Assessment update failed.";
+          setActionError(message);
+          alert(message);
+          return;
+        }
         setHistory((prev) =>
           prev.map((r) =>
             r.id === editingId
@@ -303,6 +313,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
   const submitQueue = async () => {
     if (queue.length === 0) return;
+    setActionError(null);
 
     const totalAmount = queue.reduce((sum, item) => sum + item.amount, 0);
     const totalDiscount = parseFloat(batchDiscount) || 0;
@@ -331,20 +342,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       };
     });
 
-    const url = systemConfig.supabaseUrl;
-    const key = systemConfig.supabaseKey;
-
     if (supabase) {
       const inserted: AssessmentRecord[] = [];
       for (const rec of newRecords) {
-        const res = await insertAssessment(supabase, rec as any);
-        console.debug("insertAssessment result:", res, rec);
-        if (res) inserted.push(res);
-        else {
-          console.warn(
-            "insertAssessment returned null â€” rendering local record instead.",
-          );
-          inserted.push(rec as AssessmentRecord);
+        try {
+          const res = await insertAssessment(supabase, rec as any);
+          console.debug("insertAssessment result:", res, rec);
+          if (res) inserted.push(res);
+        } catch (error: any) {
+          const message = error?.message || "Assessment save failed.";
+          setActionError(message);
+          alert(message);
+          break;
         }
       }
       if (inserted.length > 0)
@@ -750,7 +759,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
           paymentMethod: paymentMethod,
         };
         if (supabase) {
-          const res = await updateAssessment(supabase, rec.id, patched);
+          let res: AssessmentRecord | null = null;
+          try {
+            res = await updateAssessment(supabase, rec.id, patched);
+          } catch (error: any) {
+            const message = error?.message || "Assessment payment update failed.";
+            setActionError(message);
+            alert(message);
+            return;
+          }
           if (res) {
             setHistory((prev) =>
               prev.map((r) => (r.id === rec.id ? res : r)),
@@ -806,12 +823,21 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
     if (!supabase) return;
 
-    const results = await Promise.all(
-      idsToDelete.map(async (id) => {
-        const res = await deleteAssessment(supabase, id);
-        return { id, ok: Boolean(res) };
-      }),
-    );
+    let results: { id: string; ok: boolean }[] = [];
+    try {
+      results = await Promise.all(
+        idsToDelete.map(async (id) => {
+          const res = await deleteAssessment(supabase, id);
+          return { id, ok: Boolean(res) };
+        }),
+      );
+    } catch (error: any) {
+      const message = error?.message || "Assessment delete failed.";
+      setActionError(message);
+      alert(message);
+      setDeletedIds((prev) => prev.filter((id) => !idsToDelete.includes(id)));
+      return;
+    }
 
     const failedIds = results.filter((r) => !r.ok).map((r) => r.id);
     if (failedIds.length > 0) {
@@ -834,6 +860,17 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
+      {actionError && (
+        <div
+          className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
+            isDark
+              ? "bg-red-950/30 border-red-900 text-red-300"
+              : "bg-red-50 border-red-200 text-red-700"
+          }`}
+        >
+          {actionError}
+        </div>
+      )}
       {/* Top Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Left: Smart Calculator Form */}
