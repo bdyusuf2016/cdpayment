@@ -1656,12 +1656,14 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       {showPaymentModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
           <div
-            className={`w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95 ${isDark ? "bg-slate-800" : "bg-white"}`}
+            className={`w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-[1.5rem] shadow-2xl p-5 sm:p-6 animate-in zoom-in-95 ${isDark ? "bg-slate-800" : "bg-white"}`}
           >
-            <div className="flex justify-between items-center mb-6">
+            <div
+              className={`sticky top-0 z-10 -mx-5 sm:-mx-6 px-5 sm:px-6 pb-4 mb-4 flex justify-between items-start ${isDark ? "bg-slate-800" : "bg-white"}`}
+            >
               <div>
                 <h3
-                  className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-800"}`}
+                  className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
                 >
                   Assessment Payment
                 </h3>
@@ -1671,21 +1673,25 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               </div>
               <button
                 onClick={() => setShowPaymentModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all"
+                className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center transition-all ${
+                  isDark
+                    ? "bg-slate-700 text-slate-200 hover:bg-red-900/40 hover:text-red-300"
+                    : "bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500"
+                }`}
               >
                 <i className="fas fa-times"></i>
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div
-                className={`p-4 rounded-xl border flex justify-between items-center ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-300"}`}
+                className={`p-3 rounded-xl border flex justify-between items-center ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-300"}`}
               >
                 <span className="text-xs font-bold text-slate-500 uppercase">
                   Total Selected Amount
                 </span>
                 <span
-                  className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
+                  className={`text-base font-bold ${isDark ? "text-white" : "text-slate-800"}`}
                 >
                   ৳
                   {paymentSelectedAmount.toLocaleString()}
@@ -1699,7 +1705,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 <input
                   type="number"
                   readOnly
-                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none ${isDark ? "bg-slate-900/70 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  className={`w-full px-4 py-2.5 rounded-xl border-2 font-bold text-base outline-none ${isDark ? "bg-slate-900/70 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                   value={paymentSelectedDue}
                 />
               </div>
@@ -1712,7 +1718,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   type="number"
                   min="0"
                   max={paymentSelectedDue || 0}
-                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                  className={`w-full px-4 py-2.5 rounded-xl border-2 font-bold text-base outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
                   value={paymentDiscount}
                   onChange={(e) => setPaymentDiscount(e.target.value)}
                 />
@@ -1725,7 +1731,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 <input
                   type="number"
                   readOnly
-                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none ${isDark ? "bg-slate-900/70 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  className={`w-full px-4 py-2.5 rounded-xl border-2 font-bold text-base outline-none ${isDark ? "bg-slate-900/70 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                   value={paymentCashReceive}
                 />
                 <p className="text-[11px] text-slate-500 ml-1">
@@ -1739,7 +1745,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 </label>
                 <input
                   type="date"
-                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                  className={`w-full px-4 py-2.5 rounded-xl border-2 font-bold outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
                   value={paymentDate}
                   onChange={(e) => setPaymentDate(e.target.value)}
                 />
@@ -1754,7 +1760,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     <button
                       key={m}
                       onClick={() => setPaymentMethod(m)}
-                      className={`py-3 px-2 rounded-xl text-xs font-bold uppercase border-2 transition-all ${paymentMethod === m ? "border-purple-500 bg-purple-50 text-purple-700" : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                      className={`py-2.5 px-2 rounded-xl text-[11px] font-bold uppercase border-2 transition-all ${paymentMethod === m ? "border-purple-500 bg-purple-50 text-purple-700" : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
                     >
                       {m}
                     </button>
@@ -1764,7 +1770,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
               <button
                 onClick={processPayment}
-                className="w-full py-4 mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl uppercase tracking-widest text-xs shadow-xl shadow-purple-200 transition-all active:scale-95"
+                className="w-full py-3 mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl uppercase tracking-widest text-xs shadow-xl shadow-purple-200 transition-all active:scale-95"
               >
                 Confirm Payment
               </button>
