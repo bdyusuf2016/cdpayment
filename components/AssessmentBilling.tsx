@@ -809,6 +809,75 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     });
   };
 
+  const handleStatusUpdate = async (
+    status: "Completed" | "Pending",
+    targetId?: string,
+  ) => {
+    const idsToUpdate = targetId ? [targetId] : selectedIds;
+    if (idsToUpdate.length === 0) return;
+
+    const targetRecords = allHistory.filter((r) => idsToUpdate.includes(r.id));
+
+    setUpdatedRecords((prev) => {
+      const next = { ...prev };
+      for (const rec of targetRecords) {
+        next[rec.id] = { ...rec, status } as AssessmentRecord;
+      }
+      return next;
+    });
+    setHistory((prev) =>
+      prev.map((rec) =>
+        idsToUpdate.includes(rec.id)
+          ? ({ ...rec, status } as AssessmentRecord)
+          : rec,
+      ),
+    );
+
+    if (supabase) {
+      try {
+        const results = await Promise.all(
+          idsToUpdate.map(async (id) => {
+            const res = await updateAssessment(supabase, id, { status });
+            return { id, res };
+          }),
+        );
+        setUpdatedRecords((prev) => {
+          const next = { ...prev };
+          for (const { id, res } of results) {
+            if (res) next[id] = res;
+          }
+          return next;
+        });
+        setHistory((prev) =>
+          prev.map((rec) => {
+            const updated = results.find((r) => r.id === rec.id)?.res;
+            return updated ? updated : rec;
+          }),
+        );
+      } catch (error: any) {
+        const message = error?.message || "Assessment status update failed.";
+        setActionError(message);
+        alert(message);
+      }
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    const rec = allHistory.find((r) => r.id === id);
+    if (!rec) return;
+
+    setEditingId(rec.id);
+    setAin(rec.ain);
+    setClientName(rec.clientName);
+    setPhone(rec.phone || "");
+    setComments(rec.comments || "");
+    setNosOfBe(String(rec.nosOfBe || ""));
+    setRate(String(rec.rate || systemConfig.defaultRate));
+    setBatchDiscount(String(rec.discount || ""));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => beCountRef.current?.focus(), 50);
+  };
+
   const handleDeleteRecord = (id?: string) => {
     const idsToDelete = id ? [id] : selectedIds;
     if (idsToDelete.length === 0) return;
@@ -871,6 +940,20 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     (sum, rec) => sum + Math.max(0, rec.net - (rec.received || 0)),
     0,
   );
+
+  const getRowBackground = (status: string) => {
+    if (status === "New")
+      return isDark
+        ? "bg-indigo-900/30"
+        : "bg-indigo-50/70 border-l-4 border-l-indigo-500";
+    if (status === "Completed")
+      return isDark
+        ? "bg-amber-900/30"
+        : "bg-amber-50/70 border-l-4 border-l-amber-500";
+    return isDark
+      ? "hover:bg-slate-700/30"
+      : "bg-white hover:bg-slate-50 border-l-4 border-l-transparent";
+  };
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
@@ -1193,6 +1276,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               <option value="Due">Due</option>
               <option value="Pending">Pending</option>
               <option value="Paid">Paid</option>
+              <option value="Completed">Completed</option>
               <option value="New">New</option>
             </select>
 
@@ -1279,9 +1363,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               </span>
               <button
                 onClick={() => initiatePayment(selectedIds)}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
+                className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all"
               >
-                Bulk Pay
+                Bulk Settle
               </button>
               <button
                 onClick={() => printAssessmentInvoice(selectedRecords)}
@@ -1397,9 +1481,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   className={`group transition-all ${
                     selectedIds.includes(rec.id)
                       ? "bg-blue-50/50 dark:bg-blue-900/10"
-                      : isDark
-                        ? "hover:bg-slate-800/40"
-                        : "hover:bg-slate-50/70"
+                      : getRowBackground(rec.status)
                   }`}
                 >
                   <td className="px-6 py-3 text-center">
@@ -1458,7 +1540,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   </td>
                   <td className="px-6 py-3 text-center">
                     <span
-                      className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${rec.status === "Paid" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                        rec.status === "Paid"
+                          ? "bg-green-100 text-green-700"
+                          : rec.status === "Completed"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-indigo-100 text-indigo-700"
+                      }`}
                     >
                       {rec.status === "Paid" && rec.paymentMethod
                         ? `${rec.status} | ${rec.paymentMethod}`
@@ -1466,33 +1554,57 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     </span>
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <div className="flex justify-center gap-2 opacity-60 group-hover:opacity-100 transition-all">
-                      {(rec.status === "New" || rec.status === "Pending") && (
+                    <div className="flex justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                      {rec.status === "New" && (
                         <button
-                          onClick={() => initiatePayment([rec.id])}
-                          title="Receive Payment"
-                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white transition-all"
+                          type="button"
+                          onClick={() => handleStatusUpdate("Completed", rec.id)}
+                          title="Mark as Completed"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md animate-in zoom-in"
                         >
-                          <i className="fas fa-hand-holding-dollar"></i>
+                          <i className="fas fa-check pointer-events-none"></i>
+                        </button>
+                      )}
+                      {rec.status === "Completed" && (
+                        <button
+                          type="button"
+                          onClick={() => initiatePayment([rec.id])}
+                          title="Settle Payment"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-md animate-in zoom-in"
+                        >
+                          <i className="fas fa-hand-holding-dollar pointer-events-none"></i>
                         </button>
                       )}
                       <button
+                        type="button"
                         onClick={() => shareWhatsApp([rec])}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm"
                       >
-                        <i className="fab fa-whatsapp"></i>
+                        <i className="fab fa-whatsapp pointer-events-none"></i>
                       </button>
                       <button
+                        type="button"
                         onClick={() => printAssessmentInvoice([rec])}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-600 hover:bg-slate-600 hover:text-white transition-all"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-600 hover:bg-slate-600 hover:text-white transition-all shadow-sm"
                       >
-                        <i className="fas fa-print"></i>
+                        <i className="fas fa-print pointer-events-none"></i>
                       </button>
                       <button
-                        onClick={() => handleDeleteRecord(rec.id)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all"
+                        type="button"
+                        onClick={() => handleEdit(rec.id)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
                       >
-                        <i className="fas fa-trash"></i>
+                        <i className="fas fa-pen pointer-events-none"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteRecord(rec.id);
+                        }}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                      >
+                        <i className="fas fa-trash pointer-events-none"></i>
                       </button>
                     </div>
                   </td>
