@@ -24,6 +24,7 @@ export interface PaymentRecord {
   ain: string;
   clientName: string;
   phone: string;
+  comments?: string;
   beYear: string;
   duty: number;
   received: number;
@@ -34,6 +35,10 @@ export interface PaymentRecord {
 
 export interface AssessmentItem {
   id: string;
+  ain: string;
+  clientName: string;
+  phone: string;
+  comments?: string;
   nosOfBe: number;
   rate: number;
   amount: number;

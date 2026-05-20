@@ -38,6 +38,7 @@ create table public.assessments (
   ain text,
   client_name text,
   phone text,
+  comments text,
   nos_of_be integer default 0,
   rate numeric default 0,
   amount numeric default 0,

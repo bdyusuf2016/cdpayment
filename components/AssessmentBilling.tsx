@@ -47,6 +47,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const [ain, setAin] = useState("");
   const [clientName, setClientName] = useState("");
   const [phone, setPhone] = useState("");
+  const [comments, setComments] = useState("");
   const [nosOfBe, setNosOfBe] = useState("");
   const [rate, setRate] = useState(systemConfig.defaultRate.toString());
   // Discount is now handled at batch level in the queue
@@ -130,11 +131,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       const recAin = rec.ain || "";
       const recBeCount = String(rec.nosOfBe ?? "");
       const recPhone = rec.phone || "";
+      const recComments = (rec.comments || "").toLowerCase();
       const matchesSearch =
         recClientName.includes(filterSearch.toLowerCase()) ||
         recAin.includes(filterSearch) ||
         recBeCount.includes(filterSearch) ||
-        recPhone.includes(filterSearch);
+        recPhone.includes(filterSearch) ||
+        recComments.includes(filterSearch.toLowerCase());
       const isDue = (rec.received || 0) < (rec.net || 0);
       const matchesStatus =
         filterStatus === "All"
@@ -241,6 +244,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   const handleAddOrUpdate = async () => {
     if (!nosOfBe || !ain) return;
     setActionError(null);
+    const isEditing = Boolean(editingId);
     if (editingId) {
       // Editing mode - direct update
       const discountVal = parseFloat(batchDiscount) || 0; // In edit mode, we might use this as item discount
@@ -249,6 +253,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         ain,
         clientName,
         phone,
+        comments,
         nosOfBe: parseInt(nosOfBe),
         rate: parseFloat(rate),
         amount: calculatedAmount,
@@ -299,6 +304,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
         ...queue,
         {
           id: Math.random().toString(36).substr(2, 9),
+          ain,
+          clientName,
+          phone,
+          comments: comments.trim(),
           nosOfBe: parseInt(nosOfBe),
           rate: parseFloat(rate),
           amount: calculatedAmount,
@@ -308,6 +317,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       ]);
     }
     setNosOfBe("");
+    if (!isEditing) {
+      setComments("");
+    }
     beCountRef.current?.focus();
   };
 
@@ -328,9 +340,10 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       return {
         id: Math.random().toString(36).substr(2, 9),
         date: new Date().toLocaleDateString("en-GB"),
-        ain,
-        clientName,
-        phone,
+        ain: item.ain,
+        clientName: item.clientName,
+        phone: item.phone,
+        comments: item.comments || "",
         nosOfBe: item.nosOfBe,
         rate: item.rate,
         amount: item.amount,
@@ -373,6 +386,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     setAin("");
     setClientName("");
     setPhone("");
+    setComments("");
     setBatchDiscount("");
   };
 
@@ -925,6 +939,33 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">
+                  Phone No
+                </label>
+                <input
+                  type="text"
+                  placeholder="01XXXXXXXXX"
+                  className={`w-full px-4 py-2 rounded-xl border font-bold text-sm outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+              <div className="md:col-span-2 space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">
+                  Comments
+                </label>
+                <input
+                  type="text"
+                  placeholder="Optional note for this bill"
+                  className={`w-full px-4 py-2 rounded-xl border font-medium text-sm outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  value={comments}
+                  onChange={(e) => setComments(e.target.value)}
+                />
+              </div>
+            </div>
+
             {/* Calculation Grid */}
             <div
               className={`p-4 rounded-2xl border ${isDark ? "bg-slate-900/40 border-slate-700" : "bg-purple-50/20 border-purple-100"}`}
@@ -1002,22 +1043,45 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               queue.map((item, idx) => (
                 <div
                   key={item.id}
-                  className={`p-2.5 rounded-xl border flex justify-between items-center relative group ${isDark ? "bg-slate-800 border-slate-700 hover:border-slate-600" : "bg-slate-50 border-slate-300 hover:border-slate-200"}`}
+                  className={`p-2.5 rounded-xl border relative group ${isDark ? "bg-slate-800 border-slate-700 hover:border-slate-600" : "bg-slate-50 border-slate-300 hover:border-slate-200"}`}
                 >
-                  <div className="flex items-center justify-between w-full gap-3 pr-14">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[10px] font-bold text-slate-400 w-5">
-                        #{idx + 1}
-                      </span>
-                      <p className="text-[10px] font-bold text-slate-500 truncate">
-                        {item.nosOfBe} B/E @ {item.rate}
-                      </p>
-                    </div>
-                    <p
-                      className={`font-bold text-sm text-right whitespace-nowrap ${isDark ? "text-white" : "text-slate-800"}`}
-                    >
+                  <div className="pr-14">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[10px] font-bold text-slate-400 w-5">
+                            #{idx + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-bold text-slate-500 truncate">
+                              {item.nosOfBe} B/E @ {item.rate}
+                            </p>
+                            <p
+                              className={`text-xs font-bold truncate ${isDark ? "text-slate-100" : "text-slate-800"}`}
+                            >
+                              {item.clientName || "Unknown Client"}
+                            </p>
+                          </div>
+                        </div>
+                      <p
+                        className={`font-bold text-sm text-right whitespace-nowrap ${isDark ? "text-white" : "text-slate-800"}`}
+                      >
                       ৳{item.amount.toLocaleString()}
                     </p>
+                    </div>
+                    {(item.phone || item.comments) && (
+                      <div className="mt-2 space-y-1 pl-7">
+                        {item.phone && (
+                          <p className="text-[11px] font-medium text-slate-500 break-all">
+                            Phone: {item.phone}
+                          </p>
+                        )}
+                        {item.comments && (
+                          <p className="text-[11px] font-medium text-slate-500 break-words">
+                            Note: {item.comments}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() =>
@@ -1374,6 +1438,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                       {rec.phone}{" "}
                       <i className="fas fa-copy ml-1 opacity-50 hover:opacity-100 text-xs"></i>
                     </div>
+                    {rec.comments && (
+                      <p
+                        className={`mt-2 text-xs font-medium leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}
+                      >
+                        Note: {rec.comments}
+                      </p>
+                    )}
                   </td>
                   <td
                     className={`px-6 py-3 text-center text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}
