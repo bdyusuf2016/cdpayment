@@ -1494,9 +1494,6 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     Net Value <i className={`fas ${getSortIcon("net")}`}></i>
                   </button>
                 </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  Receive Amount
-                </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   <button
                     type="button"
@@ -1505,6 +1502,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   >
                     Status <i className={`fas ${getSortIcon("status")}`}></i>
                   </button>
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                  Receive Amount
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   Actions
