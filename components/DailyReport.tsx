@@ -57,6 +57,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
   const [dutyClientFilter, setDutyClientFilter] = useState("all");
   const [showDutyClientGroups, setShowDutyClientGroups] = useState(true);
   const dutyTableRef = useRef<HTMLDivElement | null>(null);
+  const assessmentTableRef = useRef<HTMLDivElement | null>(null);
   const isDark = systemConfig.theme === "dark";
 
   const t =
@@ -213,6 +214,13 @@ const DailyReport: React.FC<DailyReportProps> = ({
         .reduce((sum, rec) => sum + (rec.duty || 0), 0),
     [visibleDuty],
   );
+  const assessmentPaidSubtotal = useMemo(
+    () =>
+      exportAssessmentRows
+        .filter((rec) => isPaidStatus(rec.status))
+        .reduce((sum, rec) => sum + (rec.received || 0), 0),
+    [exportAssessmentRows],
+  );
 
   const clientNameByAin = useMemo(() => {
     const map = new Map<string, string>();
@@ -230,7 +238,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     return map;
   }, [assessmentHistory, dutyHistory]);
 
-  const allTimeDueByAin = useMemo(() => {
+  const dutyDueByAin = useMemo(() => {
     const grouped = new Map<
       string,
       {
@@ -271,14 +279,66 @@ const DailyReport: React.FC<DailyReportProps> = ({
       .sort((a, b) => b.duty - a.duty);
   }, [clientNameByAin, dutyHistory]);
 
-  const allTimeDueTotal = useMemo(
-    () => allTimeDueByAin.reduce((sum, row) => sum + row.duty, 0),
-    [allTimeDueByAin],
+  const dutyDueTotal = useMemo(
+    () => dutyDueByAin.reduce((sum, row) => sum + row.duty, 0),
+    [dutyDueByAin],
   );
 
-  const allTimeDueBeTotal = useMemo(
-    () => allTimeDueByAin.reduce((sum, row) => sum + row.totalBe, 0),
-    [allTimeDueByAin],
+  const dutyDueBeTotal = useMemo(
+    () => dutyDueByAin.reduce((sum, row) => sum + row.totalBe, 0),
+    [dutyDueByAin],
+  );
+
+  const assessmentDueByAin = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        ain: string;
+        client: string;
+        totalBe: number;
+        amount: number;
+      }
+    >();
+
+    assessmentHistory.forEach((rec) => {
+      const ain = String(rec.ain || "").trim() || "N/A";
+      const fallbackClient = clientNameByAin.get(ain) || "-";
+      const current = grouped.get(ain) || {
+        ain,
+        client: String(rec.clientName || "").trim() || fallbackClient,
+        totalBe: 0,
+        amount: 0,
+      };
+
+      const base = rec.net && rec.net > 0 ? rec.net : rec.amount || 0;
+      const due = Math.max(0, base - (rec.received || 0));
+      if (due > 0) {
+        current.totalBe += Math.max(0, Number(rec.nosOfBe || 0));
+        current.amount += due;
+        if (
+          current.client === "-" &&
+          rec.clientName &&
+          rec.clientName.trim().length > 0
+        ) {
+          current.client = rec.clientName;
+        }
+      }
+      grouped.set(ain, current);
+    });
+
+    return Array.from(grouped.values())
+      .filter((row) => row.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+  }, [assessmentHistory, clientNameByAin]);
+
+  const assessmentDueTotal = useMemo(
+    () => assessmentDueByAin.reduce((sum, row) => sum + row.amount, 0),
+    [assessmentDueByAin],
+  );
+
+  const assessmentDueBeTotal = useMemo(
+    () => assessmentDueByAin.reduce((sum, row) => sum + row.totalBe, 0),
+    [assessmentDueByAin],
   );
 
   const assessmentSummary = useMemo(() => {
@@ -355,6 +415,28 @@ const DailyReport: React.FC<DailyReportProps> = ({
     return { start: toInputDate(minTs), end: toInputDate(maxTs) };
   }, [dutyHistory]);
 
+  const assessmentDateRange = useMemo(() => {
+    if (assessmentHistory.length === 0) return null;
+    let minTs = Number.POSITIVE_INFINITY;
+    let maxTs = Number.NEGATIVE_INFINITY;
+
+    assessmentHistory.forEach((rec) => {
+      const ts = parseDate(rec.date).getTime();
+      if (!Number.isFinite(ts) || ts <= 0) return;
+      if (ts < minTs) minTs = ts;
+      if (ts > maxTs) maxTs = ts;
+    });
+
+    if (!Number.isFinite(minTs) || !Number.isFinite(maxTs)) return null;
+    const toInputDate = (ts: number) => {
+      const d = new Date(ts);
+      const offset = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - offset * 60000);
+      return local.toISOString().split("T")[0];
+    };
+    return { start: toInputDate(minTs), end: toInputDate(maxTs) };
+  }, [assessmentHistory]);
+
   const clearFilters = () => {
     const today = getTodayDateInputValue();
     setStartDate(today);
@@ -363,7 +445,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     setGroupByStatus("all");
   };
 
-  const handleDueItemClick = (ain: string) => {
+  const handleDutyDueItemClick = (ain: string) => {
     setActiveView("duty");
     setStatusFilter("all");
     setGroupByStatus("all");
@@ -376,6 +458,23 @@ const DailyReport: React.FC<DailyReportProps> = ({
     }
     setTimeout(() => {
       dutyTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
+  const handleAssessmentDueItemClick = (ain: string) => {
+    setActiveView("assessment");
+    setStatusFilter("all");
+    setGroupByStatus("all");
+    setAinFilter(ain === "N/A" ? "" : ain);
+    if (assessmentDateRange) {
+      setStartDate(assessmentDateRange.start);
+      setEndDate(assessmentDateRange.end);
+    }
+    setTimeout(() => {
+      assessmentTableRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }, 0);
   };
 
@@ -1381,79 +1480,163 @@ const DailyReport: React.FC<DailyReportProps> = ({
           }`}
         >
           {(activeView === "combined" || activeView === "duty") && (
-            <div
-              ref={dutyTableRef}
-              className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
-            >
+            <div className="space-y-4">
               <div
-                className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+                ref={dutyTableRef}
+                className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
               >
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  {t.reportDutyRows}
-                </p>
-                <div className="text-right space-y-1">
-                  <span className="block text-[10px] font-bold text-slate-400">
-                    {visibleDuty.length}
-                  </span>
-                  <span className="block text-[10px] font-black uppercase tracking-widest text-emerald-500">
-                    Paid Subtotal: {formatMoney(dutyPaidSubtotal)}
-                  </span>
+                <div
+                  className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    {t.reportDutyRows}
+                  </p>
+                  <div className="text-right space-y-1">
+                    <span className="block text-[10px] font-bold text-slate-400">
+                      {visibleDuty.length}
+                    </span>
+                    <span className="block text-[10px] font-black uppercase tracking-widest text-emerald-500">
+                      Paid Subtotal: {formatMoney(dutyPaidSubtotal)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              {visibleDuty.length === 0 ? (
-                <p className="px-4 py-6 text-xs font-bold text-slate-400">
-                  {t.reportEmpty}
-                </p>
-              ) : (
-                <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
-                  <table className="w-full min-w-[720px] text-left text-xs">
-                    <thead
-                      className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
-                    >
-                      <tr>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest">
-                          Date
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest">
-                          Client
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest">
-                          AIN
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest">
-                          B/E
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                          Amount
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                          Received
-                        </th>
-                        <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                      {visibleDuty.map((rec) => (
-                        <tr key={rec.id}>
-                          <td className="px-4 py-2">{rec.date}</td>
-                        <td className="px-4 py-2">{rec.clientName}</td>
-                        <td className="px-4 py-2">{rec.ain}</td>
-                        <td className="px-4 py-2">{rec.beYear}</td>
-                          <td className="px-4 py-2 text-right">
-                            {formatMoney(rec.duty || 0)}
-                          </td>
-                          <td className="px-4 py-2 text-right">
-                            {formatMoney(rec.received || 0)}
-                          </td>
-                          <td className="px-4 py-2 text-center">{rec.status}</td>
+                {visibleDuty.length === 0 ? (
+                  <p className="px-4 py-6 text-xs font-bold text-slate-400">
+                    {t.reportEmpty}
+                  </p>
+                ) : (
+                  <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
+                    <table className="w-full min-w-[720px] text-left text-xs">
+                      <thead
+                        className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
+                      >
+                        <tr>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            Date
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            Client
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            AIN
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            B/E
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            Amount
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            Received
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
+                            Status
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
+                        {visibleDuty.map((rec) => (
+                          <tr key={rec.id}>
+                            <td className="px-4 py-2">{rec.date}</td>
+                            <td className="px-4 py-2">{rec.clientName}</td>
+                            <td className="px-4 py-2">{rec.ain}</td>
+                            <td className="px-4 py-2">{rec.beYear}</td>
+                            <td className="px-4 py-2 text-right">
+                              {formatMoney(rec.duty || 0)}
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              {formatMoney(rec.received || 0)}
+                            </td>
+                            <td className="px-4 py-2 text-center">{rec.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div
+                className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
+              >
+                <div
+                  className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Duty AIN-wise Due Summary
+                  </p>
+                  <div className="text-right space-y-1">
+                    <span className="block text-[10px] font-bold text-slate-400">
+                      {dutyDueByAin.length} AIN
+                    </span>
+                    <span className="block text-[10px] font-black uppercase tracking-widest text-rose-500">
+                      Total Due: {formatMoney(dutyDueTotal)}
+                    </span>
+                  </div>
                 </div>
-              )}
+                {dutyDueByAin.length === 0 ? (
+                  <p className="px-4 py-6 text-xs font-bold text-slate-400">
+                    No duty due balance found.
+                  </p>
+                ) : (
+                  <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
+                    <table className="w-full min-w-[560px] text-left text-xs">
+                      <thead
+                        className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
+                      >
+                        <tr>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            AIN
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            Client
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            Total B/E
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            Duty
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
+                        {dutyDueByAin.map((row) => (
+                          <tr
+                            key={row.ain}
+                            onClick={() => handleDutyDueItemClick(row.ain)}
+                            className={`cursor-pointer transition-colors ${isDark ? "hover:bg-slate-800/70" : "hover:bg-blue-50"}`}
+                          >
+                            <td className="px-4 py-2 font-bold">{row.ain}</td>
+                            <td className="px-4 py-2">{row.client}</td>
+                            <td className="px-4 py-2 text-right">
+                              {row.totalBe}
+                            </td>
+                            <td className="px-4 py-2 text-right font-black text-rose-500">
+                              {formatMoney(row.duty)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot
+                        className={`${isDark ? "bg-slate-800/90 text-slate-200" : "bg-slate-100 text-slate-700"}`}
+                      >
+                        <tr>
+                          <td className="px-4 py-2 font-black uppercase tracking-widest">
+                            Grand Total
+                          </td>
+                          <td className="px-4 py-2" />
+                          <td className="px-4 py-2 text-right font-black">
+                            {dutyDueBeTotal}
+                          </td>
+                          <td className="px-4 py-2 text-right font-black text-rose-500">
+                            {formatMoney(dutyDueTotal)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1531,87 +1714,165 @@ const DailyReport: React.FC<DailyReportProps> = ({
             </div>
           )}
 
+
           {(activeView === "combined" || activeView === "assessment") && (
-            <div
-              className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
-            >
+            <div className="space-y-4">
               <div
-                className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+                ref={assessmentTableRef}
+                className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
               >
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  AIN-wise Due Summary
-                </p>
-                <div className="text-right space-y-1">
-                  <span className="block text-[10px] font-bold text-slate-400">
-                    {allTimeDueByAin.length} AIN
-                  </span>
-                  <span className="block text-[10px] font-black uppercase tracking-widest text-rose-500">
-                    Total Due: {formatMoney(allTimeDueTotal)}
-                  </span>
-                </div>
-              </div>
-              {allTimeDueByAin.length === 0 ? (
-                <p className="px-4 py-6 text-xs font-bold text-slate-400">
-                  No due balance found.
-                </p>
-              ) : (
-                <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
-                  <table className="w-full min-w-[560px] text-left text-xs">
-                    <thead
-                      className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
-                    >
-                      <tr>
-                    <th className="px-4 py-2 font-black uppercase tracking-widest">
-                      AIN
-                    </th>
-                    <th className="px-4 py-2 font-black uppercase tracking-widest">
-                      Client
-                    </th>
-                    <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                      Total B/E
-                    </th>
-                    <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                      Duty
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                  {allTimeDueByAin.map((row) => (
-                    <tr
-                      key={row.ain}
-                      onClick={() => handleDueItemClick(row.ain)}
-                      className={`cursor-pointer transition-colors ${isDark ? "hover:bg-slate-800/70" : "hover:bg-blue-50"}`}
-                    >
-                      <td className="px-4 py-2 font-bold">{row.ain}</td>
-                      <td className="px-4 py-2">{row.client}</td>
-                      <td className="px-4 py-2 text-right">
-                        {row.totalBe}
-                      </td>
-                      <td className="px-4 py-2 text-right font-black text-rose-500">
-                        {formatMoney(row.duty)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot
-                  className={`${isDark ? "bg-slate-800/90 text-slate-200" : "bg-slate-100 text-slate-700"}`}
+                <div
+                  className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
                 >
-                  <tr>
-                    <td className="px-4 py-2 font-black uppercase tracking-widest">
-                      Grand Total
-                    </td>
-                    <td className="px-4 py-2" />
-                    <td className="px-4 py-2 text-right font-black">
-                      {allTimeDueBeTotal}
-                    </td>
-                    <td className="px-4 py-2 text-right font-black text-rose-500">
-                      {formatMoney(allTimeDueTotal)}
-                    </td>
-                  </tr>
-                </tfoot>
-                  </table>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    {t.reportAssessmentRows}
+                  </p>
+                  <div className="text-right space-y-1">
+                    <span className="block text-[10px] font-bold text-slate-400">
+                      {exportAssessmentRows.length}
+                    </span>
+                    <span className="block text-[10px] font-black uppercase tracking-widest text-emerald-500">
+                      Paid Subtotal: {formatMoney(assessmentPaidSubtotal)}
+                    </span>
+                  </div>
                 </div>
-              )}
+                {exportAssessmentRows.length === 0 ? (
+                  <p className="px-4 py-6 text-xs font-bold text-slate-400">
+                    {t.reportEmpty}
+                  </p>
+                ) : (
+                  <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
+                    <table className="w-full min-w-[760px] text-left text-xs">
+                      <thead
+                        className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
+                      >
+                        <tr>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            Date
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            Client
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            AIN
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            B/E
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            Amount
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            Received
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
+                        {exportAssessmentRows.map((rec) => (
+                          <tr key={rec.id}>
+                            <td className="px-4 py-2">{rec.date}</td>
+                            <td className="px-4 py-2">{rec.clientName}</td>
+                            <td className="px-4 py-2">{rec.ain}</td>
+                            <td className="px-4 py-2 text-right">{rec.nosOfBe}</td>
+                            <td className="px-4 py-2 text-right">
+                              {formatMoney(rec.net && rec.net > 0 ? rec.net : rec.amount || 0)}
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              {formatMoney(rec.received || 0)}
+                            </td>
+                            <td className="px-4 py-2 text-center">{rec.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div
+                className={`rounded-xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}
+              >
+                <div
+                  className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Assessment Duty AIN-wise Report
+                  </p>
+                  <div className="text-right space-y-1">
+                    <span className="block text-[10px] font-bold text-slate-400">
+                      {assessmentDueByAin.length} AIN
+                    </span>
+                    <span className="block text-[10px] font-black uppercase tracking-widest text-rose-500">
+                      Total Due: {formatMoney(assessmentDueTotal)}
+                    </span>
+                  </div>
+                </div>
+                {assessmentDueByAin.length === 0 ? (
+                  <p className="px-4 py-6 text-xs font-bold text-slate-400">
+                    No assessment due balance found.
+                  </p>
+                ) : (
+                  <div className="max-h-[24rem] overflow-y-auto overflow-x-auto overscroll-contain">
+                    <table className="w-full min-w-[560px] text-left text-xs">
+                      <thead
+                        className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-50 text-slate-500"}`}
+                      >
+                        <tr>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            AIN
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            Client
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            Total B/E
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            Assessment Due
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
+                        {assessmentDueByAin.map((row) => (
+                          <tr
+                            key={row.ain}
+                            onClick={() => handleAssessmentDueItemClick(row.ain)}
+                            className={`cursor-pointer transition-colors ${isDark ? "hover:bg-slate-800/70" : "hover:bg-amber-50"}`}
+                          >
+                            <td className="px-4 py-2 font-bold">{row.ain}</td>
+                            <td className="px-4 py-2">{row.client}</td>
+                            <td className="px-4 py-2 text-right">
+                              {row.totalBe}
+                            </td>
+                            <td className="px-4 py-2 text-right font-black text-rose-500">
+                              {formatMoney(row.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot
+                        className={`${isDark ? "bg-slate-800/90 text-slate-200" : "bg-slate-100 text-slate-700"}`}
+                      >
+                        <tr>
+                          <td className="px-4 py-2 font-black uppercase tracking-widest">
+                            Grand Total
+                          </td>
+                          <td className="px-4 py-2" />
+                          <td className="px-4 py-2 text-right font-black">
+                            {assessmentDueBeTotal}
+                          </td>
+                          <td className="px-4 py-2 text-right font-black text-rose-500">
+                            {formatMoney(assessmentDueTotal)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -78,7 +78,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   // Payment Modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentIds, setPaymentIds] = useState<string[]>([]);
-  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDiscount, setPaymentDiscount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDate, setPaymentDate] = useState(getTodayDateInputValue);
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -686,17 +686,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
 
   const initiatePayment = (ids: string[]) => {
     setPaymentIds(ids);
-    setPaymentAmount(""); // Received Amount starts blank
+    setPaymentDiscount("");
     setPaymentMethod(systemConfig.paymentMethods[0] || "Cash");
     setPaymentDate(getTodayDateInputValue());
     setShowPaymentModal(true);
   };
 
   const processPayment = () => {
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount)) return;
-    const url = systemConfig.supabaseUrl;
-    const key = systemConfig.supabaseKey;
+    const discountAmount = paymentDiscountValue;
+    if (discountAmount > paymentSelectedDue) {
+      alert("Discount amount cannot be greater than total due amount.");
+      return;
+    }
     const targetRecords = allHistory.filter((r) => paymentIds.includes(r.id));
     if (targetRecords.length === 0) return;
 
@@ -747,7 +748,21 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       return amountById;
     };
 
-    const receivedById = allocateByWeight(targetRecords, amount, (r) => r.net);
+    const dueByRecordId: Record<string, number> = {};
+    targetRecords.forEach((rec) => {
+      dueByRecordId[rec.id] = Math.max(0, (rec.net || 0) - (rec.received || 0));
+    });
+
+    const discountById = allocateByWeight(
+      targetRecords,
+      discountAmount,
+      (r) => dueByRecordId[r.id] ?? 0,
+    );
+    const receivedById = allocateByWeight(
+      targetRecords,
+      paymentCashReceive,
+      (r) => Math.max(0, (dueByRecordId[r.id] ?? 0) - (discountById[r.id] ?? 0)),
+    );
     const paymentDateValue = formatDateInputForRecord(paymentDate);
 
     const apply = async () => {
@@ -758,7 +773,12 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 ...rec,
                 date: paymentDateValue,
                 status: "Paid",
-                received: receivedById[rec.id] ?? 0,
+                discount: (rec.discount || 0) + (discountById[rec.id] ?? 0),
+                net: Math.max(
+                  0,
+                  (rec.net || 0) - (discountById[rec.id] ?? 0),
+                ),
+                received: (rec.received || 0) + (receivedById[rec.id] ?? 0),
                 paymentMethod,
               } as AssessmentRecord)
             : rec,
@@ -766,10 +786,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       );
       for (const rec of targetRecords) {
         const received = receivedById[rec.id] ?? 0;
+        const extraDiscount = discountById[rec.id] ?? 0;
+        const nextDiscount = (rec.discount || 0) + extraDiscount;
+        const nextNet = Math.max(0, (rec.net || 0) - extraDiscount);
         const patched: Partial<AssessmentRecord> = {
           date: paymentDateValue,
           status: "Paid",
-          received,
+          discount: nextDiscount,
+          net: nextNet,
+          received: (rec.received || 0) + received,
           paymentMethod: paymentMethod,
         };
         if (supabase) {
@@ -940,6 +965,17 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     (sum, rec) => sum + Math.max(0, rec.net - (rec.received || 0)),
     0,
   );
+  const paymentRecords = allHistory.filter((r) => paymentIds.includes(r.id));
+  const paymentSelectedAmount = paymentRecords.reduce(
+    (sum, rec) => sum + (rec.net || 0),
+    0,
+  );
+  const paymentSelectedDue = paymentRecords.reduce(
+    (sum, rec) => sum + Math.max(0, (rec.net || 0) - (rec.received || 0)),
+    0,
+  );
+  const paymentDiscountValue = Math.max(0, parseFloat(paymentDiscount) || 0);
+  const paymentCashReceive = Math.max(0, paymentSelectedDue - paymentDiscountValue);
 
   const getRowBackground = (status: string) => {
     if (status === "New")
@@ -1652,23 +1688,49 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}
                 >
                   ৳
-                  {allHistory
-                    .filter((r) => paymentIds.includes(r.id))
-                    .reduce((a, b) => a + b.net, 0)
-                    .toLocaleString()}
+                  {paymentSelectedAmount.toLocaleString()}
                 </span>
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  Received Amount (BDT)
+                  Total Due Amount (BDT)
                 </label>
                 <input
                   type="number"
-                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  readOnly
+                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none ${isDark ? "bg-slate-900/70 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  value={paymentSelectedDue}
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Discount Amount (BDT)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max={paymentSelectedDue || 0}
+                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                  value={paymentDiscount}
+                  onChange={(e) => setPaymentDiscount(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Cash Receive (BDT)
+                </label>
+                <input
+                  type="number"
+                  readOnly
+                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold text-lg outline-none ${isDark ? "bg-slate-900/70 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                  value={paymentCashReceive}
+                />
+                <p className="text-[11px] text-slate-500 ml-1">
+                  Cash Receive = Total Due - Discount
+                </p>
               </div>
 
               <div className="space-y-1">
