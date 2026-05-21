@@ -500,6 +500,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     [ain, clients],
   );
 
+  const currentAinDue = useMemo(() => {
+    const normalizedAin = String(ain || "").trim();
+    if (!normalizedAin) return 0;
+    return allHistory.reduce((sum, rec) => {
+      if (String(rec.ain || "").trim() !== normalizedAin) return sum;
+      return sum + Math.max(0, (rec.duty || 0) - (rec.received || 0));
+    }, 0);
+  }, [ain, allHistory]);
+
   const availablePhones = useMemo(() => {
     const phones = getClientPhones(selectedClient);
     if (phone && !phones.includes(phone)) {
@@ -1673,6 +1682,29 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   ))}
                 </datalist>
               </div>
+              {currentAinDue > 0 && (
+                <div
+                  className={`rounded-2xl border px-4 py-3 text-sm font-bold mt-3 ${
+                    isDark
+                      ? "bg-amber-950/20 border-amber-600 text-amber-100"
+                      : "bg-amber-50 border-amber-200 text-amber-800"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="mt-1 text-lg">
+                      <i className="fas fa-exclamation-triangle"></i>
+                    </span>
+                    <div>
+                      <p className="font-semibold">
+                        পূর্বের বকেয়া আছে: ৳{currentAinDue.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        এই AIN-এর সকল unpaid ডিউ টেকেন আপনাকে payment entry করার আগে দেখানো হয়েছে।
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               {false && (
                 <div className="flex items-center justify-between gap-3 pt-1">
                   <p className="text-[10px] font-bold text-slate-400">
