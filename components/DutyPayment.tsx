@@ -730,6 +730,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const importPatternText =
     "Pattern: selected AIN/WhatsApp auto-fill হবে, আর চাইলে AIN column manually select করা যাবে.";
   const previewBeCount = importRows.length;
+  const previewTotalDuty = useMemo(() => {
+    if (!selectedDutyColumn) return 0;
+    const dutyIndex = importHeaders.findIndex((header) => header === selectedDutyColumn);
+    if (dutyIndex < 0) return 0;
+    return selectedPreviewRows.reduce((sum, rowIndex) => {
+      const row = importRows[rowIndex];
+      const dutyValue = parseImportedDutyAmount(row[dutyIndex]);
+      return sum + (dutyValue || 0);
+    }, 0);
+  }, [importHeaders, importRows, selectedDutyColumn, selectedPreviewRows]);
 
   useEffect(() => {
     if (!showDutyImportOption) {
@@ -2698,6 +2708,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                       className={`rounded-full px-3 py-1 text-[11px] font-bold tracking-normal ${isDark ? "bg-blue-900/40 text-blue-200" : "bg-blue-50 text-blue-700 border border-blue-100"}`}
                     >
                       Selected B/E: {selectedPreviewRows.length}
+                    </span>
+                    <span
+                      className={`rounded-full px-3 py-1 text-[11px] font-bold tracking-normal ${isDark ? "bg-emerald-900/40 text-emerald-200" : "bg-emerald-50 text-emerald-700 border border-emerald-100"}`}
+                    >
+                      Total Tax: ৳{previewTotalDuty.toLocaleString("en-BD")}
                     </span>
                   </div>
                 </div>
