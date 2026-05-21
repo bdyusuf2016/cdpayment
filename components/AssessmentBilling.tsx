@@ -1284,13 +1284,26 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               </span>
             </div>
 
-            <button
-              onClick={submitQueue}
-              disabled={queue.length === 0}
-              className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-2.5 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
-            >
-              Submit Queue
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={submitQueue}
+                disabled={queue.length === 0}
+                className="flex-1 bg-slate-800 dark:bg-slate-700 hover:bg-black text-white font-bold py-2.5 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all active:scale-95"
+              >
+                Submit Queue
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setQueue([]);
+                  setBatchDiscount("");
+                }}
+                disabled={queue.length === 0}
+                className="flex-1 bg-slate-100 text-slate-900 hover:bg-slate-200 font-bold py-2.5 rounded-xl uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200 shadow-sm transition-all active:scale-95"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       </div>
