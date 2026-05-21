@@ -956,6 +956,15 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   };
 
   const isDark = systemConfig.theme === "dark";
+  const currentAinDue = useMemo(() => {
+    if (!ain) return 0;
+    return allHistory.reduce((sum, rec) => {
+      if ((rec.ain || "").trim() !== ain.trim()) return sum;
+      return sum + Math.max(0, (rec.net || 0) - (rec.received || 0));
+    }, 0);
+  }, [ain, allHistory]);
+
+  const currentAinTotalPayable = Math.max(0, calculatedAmount + currentAinDue);
   const queueTotal = queue.reduce((sum, item) => sum + item.amount, 0);
   const queueDiscount = parseFloat(batchDiscount) || 0;
   const queueNetTotal = Math.max(0, queueTotal - queueDiscount);
@@ -1121,14 +1130,35 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                   Add to Queue
                 </button>
               </div>
-              {/* Live Result Display */}
-              <div className="mt-4 pt-4 border-t border-dashed border-slate-300 dark:border-slate-700 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Current Line Amount
-                </span>
-                <span className="text-2xl font-bold text-purple-600">
-                  ৳{calculatedAmount.toLocaleString()}
-                </span>
+              {/* Live Result Alert */}
+              <div
+                className={`mt-4 pt-4 border-t border-dashed ${
+                  isDark ? "border-slate-700" : "border-slate-300"
+                }`}
+              >
+                <div
+                  className={`rounded-2xl p-4 flex items-start gap-3 border ${
+                    currentAinDue > 0
+                      ? "bg-amber-50/90 border-amber-200 text-amber-900"
+                      : "bg-slate-100/90 border-slate-200 text-slate-900"
+                  } ${isDark ? "bg-slate-900/70 border-slate-700 text-slate-200" : ""}`}
+                >
+                  <span className="text-xl mt-1">
+                    <i className="fas fa-exclamation-circle"></i>
+                  </span>
+                  <div className="space-y-1">
+                    <p className="font-bold">
+                      {currentAinDue > 0
+                        ? `ঐ AIN-এর পূর্বের বকেয়া: ৳${currentAinDue.toLocaleString()}`
+                        : `এই লাইনটির মোট টাকার পরিমাণ: ৳${calculatedAmount.toLocaleString()}`}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {currentAinDue > 0
+                        ? `মোট পরিশোধযোগ্য: ৳${currentAinTotalPayable.toLocaleString()}`
+                        : "আপনার বর্তমান চিহ্নিত AIN-এর কোন পূর্ববর্তী বকেয়া নেই।"}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
