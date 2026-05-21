@@ -12,6 +12,7 @@ import {
 } from "../utils/supabaseApi";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createSimplePdfBlob } from "../utils/simplePdf";
+import { getClientPhones, getPrimaryClientPhone } from "../utils/clientPhones";
 
 interface AssessmentBillingProps {
   clients: Client[];
@@ -234,12 +235,22 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
     const client = clients.find((c) => c.ain === normalizedAin);
     if (client) {
       setClientName(client.name);
-      setPhone(client.phone);
+      setPhone(getPrimaryClientPhone(client));
     } else {
       setClientName("");
       setPhone("");
     }
   };
+
+  const selectedClient = useMemo(
+    () => clients.find((c) => c.ain === ain) || null,
+    [ain, clients],
+  );
+
+  const availablePhones = useMemo(
+    () => getClientPhones(selectedClient),
+    [selectedClient],
+  );
 
   const handleAddOrUpdate = async () => {
     if (!nosOfBe || !ain) return;
@@ -1072,13 +1083,32 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                 <label className="text-[10px] font-bold text-slate-400 uppercase">
                   Phone No
                 </label>
-                <input
-                  type="text"
-                  placeholder="01XXXXXXXXX"
-                  className={`w-full px-4 py-2 rounded-xl border font-bold text-sm outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
+                {selectedClient && availablePhones.length > 1 ? (
+                  <div className="relative">
+                    <select
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className={`w-full px-4 py-2 rounded-xl border font-bold text-sm outline-none focus:border-purple-500 transition-all appearance-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                    >
+                      {availablePhones.map((phoneNumber) => (
+                        <option key={phoneNumber} value={phoneNumber}>
+                          {phoneNumber}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                      <i className="fas fa-chevron-down"></i>
+                    </span>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="01XXXXXXXXX"
+                    className={`w-full px-4 py-2 rounded-xl border font-bold text-sm outline-none focus:border-purple-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                )}
               </div>
               <div className="md:col-span-2 space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase">
@@ -1150,7 +1180,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     <p className="font-bold">
                       {currentAinDue > 0
                         ? `ঐ AIN-এর পূর্বের বকেয়া: ৳${currentAinDue.toLocaleString()}`
-                        : `এই লাইনটির মোট টাকার পরিমাণ: ৳${calculatedAmount.toLocaleString()}`}
+                        : `এই AIN মোট টাকার পরিমাণ: ৳${calculatedAmount.toLocaleString()}`}
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {currentAinDue > 0
