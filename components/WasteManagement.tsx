@@ -102,6 +102,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState("all");
+  const [showHistoryCompanyDropdown, setShowHistoryCompanyDropdown] = useState(false);
+  const [historyCompanySearchQuery, setHistoryCompanySearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -169,6 +171,13 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       company.name.toLowerCase().includes(query)
     );
   }, [activeCompanies, companySearchQuery]);
+
+  const filteredCompaniesInHistoryDropdown = useMemo(() => {
+    const query = historyCompanySearchQuery.trim().toLowerCase();
+    return companies.filter((company) =>
+      company.name.toLowerCase().includes(query)
+    );
+  }, [companies, historyCompanySearchQuery]);
 
   const totals = useMemo(() => {
     const garbage = Math.max(0, Number(garbageTrips) || 0);
@@ -888,10 +897,100 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3 w-full lg:w-auto">
             <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search company, note or type" className={`rounded-xl border px-4 py-3 font-bold outline-none md:col-span-2 ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
-            <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}>
-              <option value="all">All Company</option>
-              {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-            </select>
+            <div className="relative w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowHistoryCompanyDropdown(!showHistoryCompanyDropdown);
+                  setHistoryCompanySearchQuery("");
+                }}
+                className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 font-bold outline-none text-left text-xs ${
+                  isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                }`}
+              >
+                <span className="truncate">
+                  {companyFilter === "all" ? "All Company" : companies.find((c) => c.id === companyFilter)?.name || "All Company"}
+                </span>
+                <svg className="w-4 h-4 ml-2 fill-current shrink-0 text-slate-400" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </button>
+
+              {showHistoryCompanyDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-[80]"
+                    onClick={() => setShowHistoryCompanyDropdown(false)}
+                  />
+                  
+                  <div
+                    className={`absolute right-0 w-64 mt-2 z-[85] max-h-60 rounded-xl border shadow-xl flex flex-col overflow-hidden ${
+                      isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"
+                    }`}
+                  >
+                    <div className={`p-2 border-b ${isDark ? "border-slate-700" : "border-slate-100"}`}>
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Search company..."
+                        value={historyCompanySearchQuery}
+                        onChange={(e) => setHistoryCompanySearchQuery(e.target.value)}
+                        className={`w-full rounded-lg border px-3 py-2 text-xs font-bold outline-none ${
+                          isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                        }`}
+                      />
+                    </div>
+
+                    <div className="overflow-y-auto flex-1 max-h-48 text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCompanyFilter("all");
+                          setShowHistoryCompanyDropdown(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 hover:bg-blue-500 hover:text-white transition-all ${
+                          companyFilter === "all"
+                            ? isDark
+                              ? "bg-blue-900/40 text-blue-400"
+                              : "bg-blue-50 text-blue-600"
+                            : isDark
+                              ? "text-slate-200 hover:bg-slate-800"
+                              : "text-slate-700 hover:bg-slate-100"
+                        }`}
+                      >
+                        All Company
+                      </button>
+
+                      {filteredCompaniesInHistoryDropdown.length > 0 ? (
+                        filteredCompaniesInHistoryDropdown.map((company) => (
+                          <button
+                            key={company.id}
+                            type="button"
+                            onClick={() => {
+                              setCompanyFilter(company.id);
+                              setShowHistoryCompanyDropdown(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 hover:bg-blue-500 hover:text-white transition-all ${
+                              companyFilter === company.id
+                                ? isDark
+                                  ? "bg-blue-900/40 text-blue-400"
+                                  : "bg-blue-50 text-blue-600"
+                                : isDark
+                                  ? "text-slate-200 hover:bg-slate-800"
+                                  : "text-slate-700 hover:bg-slate-100"
+                            }`}
+                          >
+                            {company.name}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-slate-400 text-center italic">No company found</div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}>
               <option value="all">All Status</option>
               <option value="paid">Paid</option>
@@ -909,9 +1008,20 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
           <div className={`rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-amber-50 border-amber-100"}`}><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Trips</p><p className="mt-2 text-2xl font-black text-amber-500">{summary.totalTrips.toLocaleString("en-BD")}</p><p className="mt-1 text-[11px] font-bold text-slate-400">G {summary.garbageTrips.toLocaleString("en-BD")} | W {summary.wastageTrips.toLocaleString("en-BD")}</p></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
+          <button
+            type="button"
+            onClick={() => {
+              const today = getTodayDateInputValue();
+              setStartDate(today);
+              setEndDate(today);
+            }}
+            className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-md active:scale-95 transition-all flex items-center justify-center"
+          >
+            Today
+          </button>
           <div className={`rounded-xl border px-4 py-3 ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-700"}`}><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Trips</p><p className="mt-2 text-lg font-black">{summary.totalTrips.toLocaleString("en-BD")}</p></div>
           <div className={`rounded-xl border px-4 py-3 ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-700"}`}><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Outstanding Due</p><p className="mt-2 text-lg font-black text-rose-500">{money(summary.due)}</p></div>
         </div>
