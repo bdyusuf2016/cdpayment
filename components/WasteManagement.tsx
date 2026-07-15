@@ -133,14 +133,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     }
   }, [activeCompanies, selectedCompanyId]);
 
-  useEffect(() => {
-    if (carType === "Garbage Only") {
-      setWastageTrips("0");
-    }
-    if (carType === "Wastage Only") {
-      setGarbageTrips("0");
-    }
-  }, [carType]);
+
 
   const handleGarbageTripsChange = (value: string) => {
     setGarbageTrips(value);
@@ -159,10 +152,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   };
 
   const totals = useMemo(() => {
-    const garbage =
-      carType === "Wastage Only" ? 0 : Math.max(0, Number(garbageTrips) || 0);
-    const wastage =
-      carType === "Garbage Only" ? 0 : Math.max(0, Number(wastageTrips) || 0);
+    const garbage = Math.max(0, Number(garbageTrips) || 0);
+    const wastage = Math.max(0, Number(wastageTrips) || 0);
     const totalTrips = garbage + wastage;
     const rate = Math.max(0, Number(ratePerTrip) || 0);
     const amount = totalTrips * rate;
@@ -171,7 +162,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     const status: WasteRecord["status"] =
       due <= 0 && amount > 0 ? "Paid" : receivedAmount > 0 ? "Partial" : "Unpaid";
     return { garbage, wastage, totalTrips, rate, amount, receivedAmount, due, status };
-  }, [carType, garbageTrips, wastageTrips, ratePerTrip, received]);
+  }, [garbageTrips, wastageTrips, ratePerTrip, received]);
 
   const filteredHistory = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -703,8 +694,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
-          <input type="number" min="0" disabled={carType === "Wastage Only"} value={garbageTrips} onChange={(e) => handleGarbageTripsChange(e.target.value)} placeholder="Garbage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"} ${carType === "Wastage Only" ? "opacity-50" : ""}`} />
-          <input type="number" min="0" disabled={carType === "Garbage Only"} value={wastageTrips} onChange={(e) => handleWastageTripsChange(e.target.value)} placeholder="Wastage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"} ${carType === "Garbage Only" ? "opacity-50" : ""}`} />
+          <input type="number" min="0" value={garbageTrips} onChange={(e) => handleGarbageTripsChange(e.target.value)} placeholder="Garbage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
+          <input type="number" min="0" value={wastageTrips} onChange={(e) => handleWastageTripsChange(e.target.value)} placeholder="Wastage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <input type="number" min="0" value={ratePerTrip} onChange={(e) => setRatePerTrip(e.target.value)} placeholder="Rate per trip" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <input type="number" min="0" value={received} onChange={(e) => setReceived(e.target.value)} placeholder="Received amount" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}>
