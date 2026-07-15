@@ -378,7 +378,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
 
   const handleSettlementStart = (record: WasteRecord) => {
     setSettlementRecord(record);
-    setSettlementAmount(String(record.due || 0));
+    setSettlementAmount(String(record.amount || 0));
     setSettlementDate(getTodayDateInputValue());
     setSettlementPaymentMethod(
       record.paymentMethod || systemConfig.paymentMethods[0] || paymentMethod || "",
@@ -390,22 +390,18 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const handleSettlementSubmit = async () => {
     if (!supabase || !settlementRecord) return;
 
-    const outstandingDue = Math.max(
-      0,
-      (settlementRecord.amount || 0) - (settlementRecord.received || 0),
-    );
     const amount = Math.max(0, Number(settlementAmount) || 0);
 
-    if (amount <= 0) {
-      setActionError("Settlement amount must be greater than 0.");
+    if (amount < 0) {
+      setActionError("Settlement amount cannot be negative.");
       return;
     }
-    if (amount > outstandingDue) {
-      setActionError("Settlement amount cannot be greater than due.");
+    if (amount > (settlementRecord.amount || 0)) {
+      setActionError("Settlement amount cannot be greater than bill amount.");
       return;
     }
 
-    const nextReceived = (settlementRecord.received || 0) + amount;
+    const nextReceived = amount;
     const nextDue = Math.max(0, (settlementRecord.amount || 0) - nextReceived);
     const nextStatus: WasteRecord["status"] =
       nextDue <= 0 && (settlementRecord.amount || 0) > 0
