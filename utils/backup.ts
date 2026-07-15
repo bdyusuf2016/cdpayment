@@ -1,4 +1,13 @@
-import { AssessmentRecord, Client, PaymentRecord, StaffUser, SystemConfig } from "../types";
+import {
+  AssessmentRecord,
+  ClearanceRecord,
+  Client,
+  PaymentRecord,
+  StaffUser,
+  SystemConfig,
+  WasteCompany,
+  WasteRecord,
+} from "../types";
 
 export const BACKUP_STORAGE_KEYS = {
   lastBackupAt: "backup_last_backup_at",
@@ -13,6 +22,9 @@ interface BackupPayloadInput {
   clients: Client[];
   dutyHistory: PaymentRecord[];
   assessmentHistory: AssessmentRecord[];
+  clearanceHistory: ClearanceRecord[];
+  wasteCompanies: WasteCompany[];
+  wasteHistory: WasteRecord[];
   users: StaffUser[];
   trigger: "manual" | "auto";
 }
@@ -22,6 +34,9 @@ export const buildBackupPayload = ({
   clients,
   dutyHistory,
   assessmentHistory,
+  clearanceHistory,
+  wasteCompanies,
+  wasteHistory,
   users,
   trigger,
 }: BackupPayloadInput) => ({
@@ -31,6 +46,9 @@ export const buildBackupPayload = ({
   clients,
   dutyHistory,
   assessmentHistory,
+  clearanceHistory,
+  wasteCompanies,
+  wasteHistory,
   users,
 });
 

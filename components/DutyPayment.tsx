@@ -298,6 +298,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
   // Payment Modal State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [completionTargetId, setCompletionTargetId] = useState<string | null>(null);
+  const [completionRNo, setCompletionRNo] = useState("");
   const [paymentIds, setPaymentIds] = useState<string[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -1503,24 +1506,34 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const handleStatusUpdate = async (
     status: "Completed" | "Pending",
     targetId?: string,
+    rNo?: string,
   ) => {
     const idsToUpdate = targetId ? [targetId] : selectedIds;
     if (idsToUpdate.length === 0) return;
 
     const targetRecords = allHistory.filter((r) => idsToUpdate.includes(r.id));
+    const normalizedRNo = rNo?.trim() || "";
 
     // Optimistic update first for instant UI response
     setUpdatedRecords((prev) => {
       const next = { ...prev };
       for (const rec of targetRecords) {
-        next[rec.id] = { ...rec, status } as PaymentRecord;
+        next[rec.id] = {
+          ...rec,
+          status,
+          ...(status === "Completed" ? { rNo: normalizedRNo } : {}),
+        } as PaymentRecord;
       }
       return next;
     });
     setHistory((prev) =>
       prev.map((rec) =>
         idsToUpdate.includes(rec.id)
-          ? ({ ...rec, status } as PaymentRecord)
+          ? ({
+              ...rec,
+              status,
+              ...(status === "Completed" ? { rNo: normalizedRNo } : {}),
+            } as PaymentRecord)
           : rec,
       ),
     );
@@ -1530,7 +1543,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       try {
         const results = await Promise.all(
           idsToUpdate.map(async (id) => {
-            const res = await updateDuty(supabase, id, { status });
+            const res = await updateDuty(supabase, id, {
+              status,
+              ...(status === "Completed" ? { rNo: normalizedRNo } : {}),
+            });
             return { id, res };
           }),
         );
@@ -1553,7 +1569,14 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         alert(message);
       }
     }
+  };
 
+  const confirmCompleteStatus = async () => {
+    if (!completionTargetId) return;
+    await handleStatusUpdate("Completed", completionTargetId, completionRNo);
+    setShowCompleteDialog(false);
+    setCompletionTargetId(null);
+    setCompletionRNo("");
   };
 
   const handleEdit = (id: string) => {
@@ -2399,10 +2422,13 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                       <i className="fas fa-copy ml-1 opacity-50 hover:opacity-100 text-xs"></i>
                     </div>
                   </td>
-                  <td
-                    className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-900"}`}
-                  >
-                    {rec.beYear}
+                  <td className={`px-6 py-3 ${isDark ? "text-slate-300" : "text-slate-900"}`}>
+                    <div className="text-sm font-bold">{rec.beYear}</div>
+                    {rec.rNo ? (
+                      <div className="text-[10px] font-semibold text-slate-500 mt-1">
+                        R No: {rec.rNo}
+                      </div>
+                    ) : null}
                   </td>
                   <td
                     className={`px-6 py-3 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
@@ -2422,19 +2448,26 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     {rec.receiveDate || "-"}
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <span
-                      className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                        rec.status === "Paid"
-                          ? "bg-green-100 text-green-700"
-                          : rec.status === "Completed"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-indigo-100 text-indigo-700"
-                      }`}
-                    >
-                      {rec.status === "Paid" && rec.paymentMethod
-                        ? `${rec.status} | ${rec.paymentMethod}`
-                        : rec.status}
-                    </span>
+                    <div className="flex flex-col items-center gap-1">
+                      <span
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                          rec.status === "Paid"
+                            ? "bg-green-100 text-green-700"
+                            : rec.status === "Completed"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-indigo-100 text-indigo-700"
+                        }`}
+                      >
+                        {rec.status === "Paid" && rec.paymentMethod
+                          ? `${rec.status} | ${rec.paymentMethod}`
+                          : rec.status}
+                      </span>
+                      {rec.rNo ? (
+                        <span className="text-[10px] font-semibold text-slate-500">
+                          R No: {rec.rNo}
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
                     {rec.status === "Paid"
@@ -2447,9 +2480,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                       {rec.status === "New" && (
                         <button
                           type="button"
-                          onClick={() =>
-                            handleStatusUpdate("Completed", rec.id)
-                          }
+                          onClick={() => {
+                            setCompletionTargetId(rec.id);
+                            setCompletionRNo(rec.rNo || "");
+                            setShowCompleteDialog(true);
+                          }}
                           title="Mark as Completed"
                           className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md animate-in zoom-in"
                         >
@@ -2808,6 +2843,69 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   className={`px-5 py-3 rounded-xl text-white text-xs font-bold uppercase tracking-widest transition-all ${importRows.length === 0 || importHeaders.length === 0 ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}
                 >
                   Import to Batch
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCompleteDialog && (
+        <div className="fixed inset-0 z-[105] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className={`w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95 ${isDark ? "bg-slate-800" : "bg-white"}`}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-800"}`}>
+                  Mark as Complete
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  R No optional. এটা later reference হিসেবে ব্যবহার হবে.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCompleteDialog(false);
+                  setCompletionTargetId(null);
+                  setCompletionRNo("");
+                }}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  R No (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter R No"
+                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold outline-none focus:border-indigo-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                  value={completionRNo}
+                  onChange={(e) => setCompletionRNo(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCompleteDialog(false);
+                    setCompletionTargetId(null);
+                    setCompletionRNo("");
+                  }}
+                  className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmCompleteStatus}
+                  className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-widest transition-all"
+                >
+                  Confirm Complete
                 </button>
               </div>
             </div>

@@ -7,6 +7,9 @@ import supabaseDefault, {
 import StatsCards from "./components/StatsCards";
 import DutyPayment from "./components/DutyPayment";
 import AssessmentBilling from "./components/AssessmentBilling";
+import ClearanceTracker from "./components/ClearanceTracker";
+import WasteCompanySetup from "./components/WasteCompanySetup";
+import WasteManagement from "./components/WasteManagement";
 import AinDatabase from "./components/AinDatabase";
 import AdminPanel from "./components/AdminPanel";
 import AuditLogs from "./components/AuditLogs";
@@ -27,6 +30,9 @@ import {
   SystemConfig,
   PaymentRecord,
   AssessmentRecord,
+  ClearanceRecord,
+  WasteCompany,
+  WasteRecord,
   StaffUser,
   LogEntry,
 } from "./types";
@@ -77,6 +83,40 @@ const normalizeAssessmentRecord = (row: any): AssessmentRecord => ({
   status: (row.status ?? "New") as AssessmentRecord["status"],
   profit: Number(row.profit ?? 0),
   paymentMethod: row.paymentMethod ?? row.payment_method ?? undefined,
+});
+
+const normalizeWasteCompany = (row: any): WasteCompany => ({
+  id: row.id,
+  name: row.name ?? "",
+  phone: row.phone ?? "",
+  address: row.address ?? "",
+  active: Boolean(row.active),
+});
+
+const normalizeClearanceRecord = (row: any): ClearanceRecord => ({
+  id: row.id,
+  date: row.date ?? "",
+  totalClearance: Number(row.totalClearance ?? row.total_clearance ?? 0),
+  notes: row.notes ?? "",
+});
+
+const normalizeWasteRecord = (row: any): WasteRecord => ({
+  id: row.id,
+  date: row.date ?? "",
+  companyId: row.companyId ?? row.company_id ?? "",
+  companyName: row.companyName ?? row.company_name ?? "",
+  carType:
+    (row.carType ?? row.car_type ?? "Wastage & Garbage") as WasteRecord["carType"],
+  garbageTrips: Number(row.garbageTrips ?? row.garbage_trips ?? 0),
+  wastageTrips: Number(row.wastageTrips ?? row.wastage_trips ?? 0),
+  totalTrips: Number(row.totalTrips ?? row.total_trips ?? 0),
+  ratePerTrip: Number(row.ratePerTrip ?? row.rate_per_trip ?? 0),
+  amount: Number(row.amount ?? 0),
+  received: Number(row.received ?? 0),
+  due: Number(row.due ?? 0),
+  paymentMethod: row.paymentMethod ?? row.payment_method ?? undefined,
+  notes: row.notes ?? "",
+  status: (row.status ?? "Unpaid") as WasteRecord["status"],
 });
 
 const normalizeStaffUser = (row: any): StaffUser => ({
@@ -171,10 +211,17 @@ const App: React.FC = () => {
   const [assessmentHistory, setAssessmentHistory] = useState<
     AssessmentRecord[]
   >([]);
+  const [clearanceHistory, setClearanceHistory] = useState<ClearanceRecord[]>([]);
+  const [wasteCompanies, setWasteCompanies] = useState<WasteCompany[]>([]);
+  const [wasteHistory, setWasteHistory] = useState<WasteRecord[]>([]);
   const [visibleDutyRows, setVisibleDutyRows] = useState<PaymentRecord[]>([]);
   const [visibleAssessmentRows, setVisibleAssessmentRows] = useState<
     AssessmentRecord[]
   >([]);
+  const [visibleClearanceRows, setVisibleClearanceRows] = useState<
+    ClearanceRecord[]
+  >([]);
+  const [visibleWasteRows, setVisibleWasteRows] = useState<WasteRecord[]>([]);
   const [visibleAinRows, setVisibleAinRows] = useState<Client[]>([]);
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [auditLogs, setAuditLogs] = useState<LogEntry[]>([]);
@@ -360,6 +407,21 @@ const App: React.FC = () => {
       setAssessmentHistory,
       normalizeAssessmentRecord,
     ).then((channel) => channels.push(channel));
+    fetchAndSubscribe(
+      "clearance_records",
+      setClearanceHistory,
+      normalizeClearanceRecord,
+    ).then((channel) => channels.push(channel));
+    fetchAndSubscribe(
+      "waste_companies",
+      setWasteCompanies,
+      normalizeWasteCompany,
+    ).then((channel) => channels.push(channel));
+    fetchAndSubscribe(
+      "waste_records",
+      setWasteHistory,
+      normalizeWasteRecord,
+    ).then((channel) => channels.push(channel));
     fetchAndSubscribe("staff_users", setUsers, normalizeStaffUser).then(
       (channel) => channels.push(channel),
     );
@@ -440,6 +502,9 @@ const App: React.FC = () => {
         clients,
         dutyHistory,
         assessmentHistory,
+        clearanceHistory,
+        wasteCompanies,
+        wasteHistory,
         users,
         trigger,
       });
@@ -450,7 +515,7 @@ const App: React.FC = () => {
         lastBackup: new Date(payload.timestamp).toLocaleString(),
       }));
     },
-    [assessmentHistory, clients, config, dutyHistory, users],
+    [assessmentHistory, clearanceHistory, clients, config, dutyHistory, users, wasteCompanies, wasteHistory],
   );
 
   useEffect(() => {
@@ -463,6 +528,9 @@ const App: React.FC = () => {
         clients.length > 0 ||
         dutyHistory.length > 0 ||
         assessmentHistory.length > 0 ||
+        clearanceHistory.length > 0 ||
+        wasteCompanies.length > 0 ||
+        wasteHistory.length > 0 ||
         users.length > 0;
       if (!hasData) return;
 
@@ -485,6 +553,7 @@ const App: React.FC = () => {
     return () => window.clearInterval(timerId);
   }, [
     assessmentHistory.length,
+    clearanceHistory.length,
     clients.length,
     config.autoBackupEnabled,
     config.autoBackupFrequencyHours,
@@ -492,6 +561,8 @@ const App: React.FC = () => {
     handleBackup,
     session,
     users.length,
+    wasteCompanies.length,
+    wasteHistory.length,
   ]);
 
   const nextAutoBackupAt = useMemo(() => {
@@ -537,6 +608,9 @@ const App: React.FC = () => {
     en: {
       duty: "Duty Payment",
       assessment: "Assessment",
+      clearance: "Clearance Tracker",
+      wasteCompanies: "Company Setup",
+      waste: "Waste Management",
       ain: "AIN Database",
       reports: "Reports",
       admin: "Admin Panel",
@@ -547,6 +621,9 @@ const App: React.FC = () => {
     bn: {
       duty: "ডিউটি পেমেন্ট",
       assessment: "অ্যাসেসমেন্ট",
+      clearance: "শুল্কায়ন ট্র্যাকার",
+      wasteCompanies: "কোম্পানি সেটআপ",
+      waste: "গারবেজ ও ওয়েস্টেজ",
       ain: "AIN ডাটাবেস",
       reports: "রিপোর্ট",
       admin: "এডমিন প্যানেল",
@@ -587,6 +664,9 @@ const App: React.FC = () => {
     [hasPermission],
   );
   const canAccessAssessmentModule = canAccessDutyModule;
+  const canAccessClearanceModule = canAccessDutyModule;
+  const canAccessWasteCompanyModule = canAccessDutyModule;
+  const canAccessWasteModule = canAccessDutyModule;
   const canAccessAinModule = hasPermission("ain_view");
   const canAccessReportsModule = hasPermission("report_view");
   const canAccessLogsModule = hasPermission("view_logs");
@@ -595,6 +675,9 @@ const App: React.FC = () => {
     () => ({
       duty: canAccessDutyModule,
       assessment: canAccessAssessmentModule,
+      clearance: canAccessClearanceModule,
+      wasteCompanies: canAccessWasteCompanyModule,
+      waste: canAccessWasteModule,
       ain: canAccessAinModule,
       reports: canAccessReportsModule,
       admin: canAccessAdminModule,
@@ -605,7 +688,10 @@ const App: React.FC = () => {
       canAccessAdminModule,
       canAccessAinModule,
       canAccessAssessmentModule,
+      canAccessClearanceModule,
+      canAccessWasteCompanyModule,
       canAccessDutyModule,
+      canAccessWasteModule,
       canAccessReportsModule,
       canAccessLogsModule,
     ],
@@ -741,12 +827,15 @@ const App: React.FC = () => {
   const allTabs = [
     { id: "duty", label: t.duty, icon: "fa-file-invoice" },
     { id: "assessment", label: t.assessment, icon: "fa-calculator" },
+    { id: "clearance", label: t.clearance, icon: "fa-clipboard-check" },
+    { id: "waste", label: t.waste, icon: "fa-truck-moving" },
+    { id: "wasteCompanies", label: t.wasteCompanies, icon: "fa-building" },
     { id: "ain", label: t.ain, icon: "fa-database" },
     { id: "reports", label: t.reports, icon: "fa-chart-line" },
     { id: "logs", label: t.logs, icon: "fa-list-check" },
   ];
   if (isAdminUser) {
-    allTabs.splice(3, 0, { id: "admin", label: t.admin, icon: "fa-shield-halved" });
+    allTabs.splice(4, 0, { id: "admin", label: t.admin, icon: "fa-shield-halved" });
   }
   const navTabs = allTabs.filter((tab) => tabAccess[tab.id as TabType]);
 
@@ -820,6 +909,64 @@ const App: React.FC = () => {
               value: totalBeCount.toLocaleString(),
               color: "#f59e0b",
             },
+        ];
+      }
+      case "clearance": {
+        const rows = visibleClearanceRows;
+        const total = rows.reduce((acc, row) => acc + (row.totalClearance || 0), 0);
+        const days = rows.length;
+        const average = days > 0 ? Math.round(total / days) : 0;
+        return [
+          { label: "Total Clearance", value: total.toLocaleString("en-BD"), color: "#2563eb" },
+          { label: "Working Days", value: days.toLocaleString("en-BD"), color: "#10b981" },
+          { label: "Average/Day", value: average.toLocaleString("en-BD"), color: "#f59e0b" },
+          { label: "Latest Entry", value: rows[0]?.date || "-", color: "#ef4444" },
+        ];
+      }
+      case "wasteCompanies": {
+        const totalCompanies = wasteCompanies.length;
+        const activeCompanies = wasteCompanies.filter((company) => company.active).length;
+        const inactiveCompanies = totalCompanies - activeCompanies;
+        const withPhone = wasteCompanies.filter((company) => Boolean(company.phone)).length;
+        return [
+          { label: "Total Company", value: totalCompanies, color: "#2563eb" },
+          { label: "Active", value: activeCompanies, color: "#10b981" },
+          { label: "Inactive", value: inactiveCompanies, color: "#ef4444" },
+          { label: "With Phone", value: withPhone, color: "#f59e0b" },
+        ];
+      }
+      case "waste": {
+        const rows = visibleWasteRows;
+        const totalAmount = rows.reduce((acc, r) => acc + (r.amount || 0), 0);
+        const totalReceived = rows.reduce((acc, r) => acc + (r.received || 0), 0);
+        const totalDue = rows.reduce((acc, r) => acc + (r.due || 0), 0);
+        const totalTrips = rows.reduce((acc, r) => acc + (r.totalTrips || 0), 0);
+        const garbageTrips = rows.reduce((acc, r) => acc + (r.garbageTrips || 0), 0);
+        return [
+          {
+            label: "Total Bill",
+            value: `Tk ${totalAmount.toLocaleString()}`,
+            color: "#2563eb",
+            subtitle: `${rows.length.toLocaleString()} entries`,
+          },
+          {
+            label: "Received",
+            value: `Tk ${totalReceived.toLocaleString()}`,
+            color: "#10b981",
+            subtitle: `${rows.filter((r) => (r.received || 0) > 0).length.toLocaleString()} entries`,
+          },
+          {
+            label: "Due",
+            value: `Tk ${totalDue.toLocaleString()}`,
+            color: "#ef4444",
+            subtitle: `${rows.filter((r) => (r.due || 0) > 0).length.toLocaleString()} entries`,
+          },
+          {
+            label: "Trips",
+            value: totalTrips.toLocaleString(),
+            color: "#f59e0b",
+            subtitle: `${garbageTrips.toLocaleString()} garbage`,
+          },
         ];
       }
       case "admin": {
@@ -899,7 +1046,10 @@ const App: React.FC = () => {
     config,
     visibleDutyRows,
     visibleAssessmentRows,
+    visibleClearanceRows,
+    visibleWasteRows,
     visibleAinRows,
+    wasteCompanies,
     users,
     sortedAuditLogs,
   ]);
@@ -987,6 +1137,89 @@ const App: React.FC = () => {
           ],
         };
       }
+      case "clearance": {
+        if (activeStatIndex === 0) {
+          return {
+            title: "Clearance Details",
+            items: [
+              `Visible Days: ${visibleClearanceRows.length}`,
+              `Total Clearance: ${visibleClearanceRows.reduce((sum, row) => sum + (row.totalClearance || 0), 0).toLocaleString("en-BD")}`,
+            ],
+          };
+        }
+        if (activeStatIndex === 1) {
+          return {
+            title: "Working Days Details",
+            items: [
+              `Logged Days: ${visibleClearanceRows.length}`,
+              `Latest Day: ${visibleClearanceRows[0]?.date || "-"}`,
+            ],
+          };
+        }
+        if (activeStatIndex === 2) {
+          const total = visibleClearanceRows.reduce((sum, row) => sum + (row.totalClearance || 0), 0);
+          const avg = visibleClearanceRows.length > 0 ? Math.round(total / visibleClearanceRows.length) : 0;
+          return {
+            title: "Average Details",
+            items: [
+              `Average Per Day: ${avg.toLocaleString("en-BD")}`,
+              `Highest Entry: ${Math.max(0, ...visibleClearanceRows.map((row) => row.totalClearance || 0)).toLocaleString("en-BD")}`,
+            ],
+          };
+        }
+        return {
+          title: "Latest Entry Details",
+          items: visibleClearanceRows.length > 0
+            ? visibleClearanceRows.slice(0, 5).map((row) => `${row.date} | ${row.totalClearance} clearance`)
+            : ["No clearance records available."],
+        };
+      }
+      case "waste": {
+        if (activeStatIndex === 0) {
+          return {
+            title: "Waste Billing Details",
+            items: [
+              `Entries: ${visibleWasteRows.length}`,
+              `Companies: ${new Set(visibleWasteRows.map((row) => row.companyId)).size}`,
+            ],
+          };
+        }
+        if (activeStatIndex === 1) {
+          return {
+            title: "Collection Details",
+            items: [
+              `Received Entries: ${visibleWasteRows.filter((row) => (row.received || 0) > 0).length}`,
+              `Paid Entries: ${visibleWasteRows.filter((row) => row.status === "Paid").length}`,
+            ],
+          };
+        }
+        if (activeStatIndex === 2) {
+          return {
+            title: "Due Details",
+            items: [
+              `Entries With Due: ${visibleWasteRows.filter((row) => (row.due || 0) > 0).length}`,
+              `Outstanding Due: ${money(visibleWasteRows.reduce((sum, row) => sum + (row.due || 0), 0))}`,
+            ],
+          };
+        }
+        return {
+          title: "Trip Details",
+          items: [
+            `Garbage Trips: ${visibleWasteRows.reduce((sum, row) => sum + (row.garbageTrips || 0), 0)}`,
+            `Wastage Trips: ${visibleWasteRows.reduce((sum, row) => sum + (row.wastageTrips || 0), 0)}`,
+          ],
+        };
+      }
+      case "wasteCompanies": {
+        return {
+          title: `${stats[activeStatIndex].label} Details`,
+          items: [
+            `Total Companies: ${wasteCompanies.length}`,
+            `Active Companies: ${wasteCompanies.filter((company) => company.active).length}`,
+            `Inactive Companies: ${wasteCompanies.filter((company) => !company.active).length}`,
+          ],
+        };
+      }
       case "ain": {
         const noPhone = visibleAinRows.filter((c) => !c.phone).length;
         const inactive = visibleAinRows.filter((c) => !c.active).length;
@@ -1030,7 +1263,10 @@ const App: React.FC = () => {
     stats,
     visibleDutyRows,
     visibleAssessmentRows,
+    visibleClearanceRows,
+    visibleWasteRows,
     visibleAinRows,
+    wasteCompanies,
     sortedAuditLogs,
     users,
   ]);
@@ -1326,6 +1562,10 @@ const App: React.FC = () => {
             ((activeTab === "duty" && visibleDutyRows.length === 0) ||
               (activeTab === "assessment" &&
                 visibleAssessmentRows.length === 0) ||
+              (activeTab === "clearance" &&
+                visibleClearanceRows.length === 0) ||
+              (activeTab === "wasteCompanies" && wasteCompanies.length === 0) ||
+              (activeTab === "waste" && visibleWasteRows.length === 0) ||
               (activeTab === "ain" && visibleAinRows.length === 0) ||
               (activeTab === "logs" && auditLogs.length === 0)) && (
               <div
@@ -1359,6 +1599,33 @@ const App: React.FC = () => {
               supabase={supabase}
             />
           )}
+          {activeTab === "clearance" && tabAccess.clearance && (
+            <ClearanceTracker
+              history={clearanceHistory}
+              setHistory={setClearanceHistory}
+              onVisibleRowsChange={setVisibleClearanceRows}
+              systemConfig={config}
+              supabase={supabase}
+            />
+          )}
+          {activeTab === "wasteCompanies" && tabAccess.wasteCompanies && (
+            <WasteCompanySetup
+              companies={wasteCompanies}
+              setCompanies={setWasteCompanies}
+              systemConfig={config}
+              supabase={supabase}
+            />
+          )}
+          {activeTab === "waste" && tabAccess.waste && (
+            <WasteManagement
+              companies={wasteCompanies}
+              history={wasteHistory}
+              setHistory={setWasteHistory}
+              onVisibleRowsChange={setVisibleWasteRows}
+              systemConfig={config}
+              supabase={supabase}
+            />
+          )}
           {activeTab === "ain" && tabAccess.ain && (
             <AinDatabase
               clients={clients}
@@ -1376,6 +1643,7 @@ const App: React.FC = () => {
             <DailyReport
               dutyHistory={dutyHistory}
               assessmentHistory={assessmentHistory}
+              clearanceHistory={clearanceHistory}
               systemConfig={config}
             />
           )}

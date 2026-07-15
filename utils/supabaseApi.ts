@@ -3,6 +3,9 @@ import {
   Client,
   PaymentRecord,
   AssessmentRecord,
+  ClearanceRecord,
+  WasteCompany,
+  WasteRecord,
   StaffUser,
   SystemConfig,
   LogEntry,
@@ -38,6 +41,7 @@ const toDutyDb = (record: Partial<PaymentRecord>) => ({
   status: record.status,
   profit: record.profit,
   payment_method: record.paymentMethod,
+  r_no: record.rNo,
 });
 
 const fromDutyDb = (row: any): PaymentRecord => ({
@@ -53,6 +57,7 @@ const fromDutyDb = (row: any): PaymentRecord => ({
   status: (row.status ?? "New") as PaymentRecord["status"],
   profit: Number(row.profit ?? 0),
   paymentMethod: row.paymentMethod ?? row.payment_method ?? undefined,
+  rNo: row.rNo ?? row.r_no ?? "",
 });
 
 const toAssessmentDb = (record: Partial<AssessmentRecord>) => ({
@@ -88,6 +93,70 @@ const fromAssessmentDb = (row: any): AssessmentRecord => ({
   status: (row.status ?? "New") as AssessmentRecord["status"],
   profit: Number(row.profit ?? 0),
   paymentMethod: row.paymentMethod ?? row.payment_method ?? undefined,
+});
+
+const toClearanceDb = (record: Partial<ClearanceRecord>) => ({
+  date: record.date,
+  total_clearance: record.totalClearance,
+  notes: record.notes,
+});
+
+const fromClearanceDb = (row: any): ClearanceRecord => ({
+  id: row.id,
+  date: row.date ?? "",
+  totalClearance: Number(row.totalClearance ?? row.total_clearance ?? 0),
+  notes: row.notes ?? "",
+});
+
+const toWasteCompanyDb = (company: Partial<WasteCompany>) => ({
+  name: company.name,
+  phone: company.phone,
+  address: company.address,
+  active: company.active,
+});
+
+const fromWasteCompanyDb = (row: any): WasteCompany => ({
+  id: row.id,
+  name: row.name ?? "",
+  phone: row.phone ?? "",
+  address: row.address ?? "",
+  active: Boolean(row.active),
+});
+
+const toWasteRecordDb = (record: Partial<WasteRecord>) => ({
+  date: record.date,
+  company_id: record.companyId,
+  company_name: record.companyName,
+  car_type: record.carType,
+  garbage_trips: record.garbageTrips,
+  wastage_trips: record.wastageTrips,
+  total_trips: record.totalTrips,
+  rate_per_trip: record.ratePerTrip,
+  amount: record.amount,
+  received: record.received,
+  due: record.due,
+  payment_method: record.paymentMethod,
+  notes: record.notes,
+  status: record.status,
+});
+
+const fromWasteRecordDb = (row: any): WasteRecord => ({
+  id: row.id,
+  date: row.date ?? "",
+  companyId: row.companyId ?? row.company_id ?? "",
+  companyName: row.companyName ?? row.company_name ?? "",
+  carType:
+    (row.carType ?? row.car_type ?? "Wastage & Garbage") as WasteRecord["carType"],
+  garbageTrips: Number(row.garbageTrips ?? row.garbage_trips ?? 0),
+  wastageTrips: Number(row.wastageTrips ?? row.wastage_trips ?? 0),
+  totalTrips: Number(row.totalTrips ?? row.total_trips ?? 0),
+  ratePerTrip: Number(row.ratePerTrip ?? row.rate_per_trip ?? 0),
+  amount: Number(row.amount ?? 0),
+  received: Number(row.received ?? 0),
+  due: Number(row.due ?? 0),
+  paymentMethod: row.paymentMethod ?? row.payment_method ?? undefined,
+  notes: row.notes ?? "",
+  status: (row.status ?? "Unpaid") as WasteRecord["status"],
 });
 
 // Generic fetch
@@ -274,6 +343,157 @@ export async function deleteAssessment(
     return null;
   }
   return data ? { id } : null;
+}
+
+// Clearance records CRUD
+export async function insertClearanceRecord(
+  supabase: SupabaseClient,
+  record: Omit<ClearanceRecord, "id">,
+): Promise<ClearanceRecord | null> {
+  const { data, error } = await supabase
+    .from("clearance_records")
+    .insert(toClearanceDb(record))
+    .select()
+    .single();
+  if (error) {
+    console.error("insertClearanceRecord error", error);
+    throw formatSupabaseError("Insert clearance record", error);
+  }
+  return fromClearanceDb(data);
+}
+
+export async function updateClearanceRecord(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<ClearanceRecord>,
+): Promise<ClearanceRecord | null> {
+  const dbPatch = toClearanceDb(patch) as Record<string, unknown>;
+  Object.keys(dbPatch).forEach((key) => {
+    if (dbPatch[key] === undefined) delete dbPatch[key];
+  });
+  const { data, error } = await supabase
+    .from("clearance_records")
+    .update(dbPatch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("updateClearanceRecord error", error);
+    throw formatSupabaseError("Update clearance record", error);
+  }
+  return fromClearanceDb(data);
+}
+
+export async function deleteClearanceRecord(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<{ id: string } | null> {
+  const { data, error } = await supabase
+    .from("clearance_records")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .single();
+  if (error) {
+    console.error("deleteClearanceRecord error", error);
+    throw formatSupabaseError("Delete clearance record", error);
+  }
+  return data ? { id: data.id } : null;
+}
+
+// Waste companies CRUD
+export async function insertWasteCompany(
+  supabase: SupabaseClient,
+  company: Omit<WasteCompany, "id">,
+): Promise<WasteCompany | null> {
+  const { data, error } = await supabase
+    .from("waste_companies")
+    .insert(toWasteCompanyDb(company))
+    .select()
+    .single();
+  if (error) {
+    console.error("insertWasteCompany error", error);
+    throw formatSupabaseError("Insert waste company", error);
+  }
+  return fromWasteCompanyDb(data);
+}
+
+export async function updateWasteCompany(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<WasteCompany>,
+): Promise<WasteCompany | null> {
+  const dbPatch = toWasteCompanyDb(patch) as Record<string, unknown>;
+  Object.keys(dbPatch).forEach((key) => {
+    if (dbPatch[key] === undefined) delete dbPatch[key];
+  });
+  const { data, error } = await supabase
+    .from("waste_companies")
+    .update(dbPatch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("updateWasteCompany error", error);
+    throw formatSupabaseError("Update waste company", error);
+  }
+  return fromWasteCompanyDb(data);
+}
+
+// Waste records CRUD
+export async function insertWasteRecord(
+  supabase: SupabaseClient,
+  record: Omit<WasteRecord, "id">,
+): Promise<WasteRecord | null> {
+  const { data, error } = await supabase
+    .from("waste_records")
+    .insert(toWasteRecordDb(record))
+    .select()
+    .single();
+  if (error) {
+    console.error("insertWasteRecord error", error);
+    throw formatSupabaseError("Insert waste record", error);
+  }
+  return fromWasteRecordDb(data);
+}
+
+export async function updateWasteRecord(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<WasteRecord>,
+): Promise<WasteRecord | null> {
+  const dbPatch = toWasteRecordDb(patch) as Record<string, unknown>;
+  Object.keys(dbPatch).forEach((key) => {
+    if (dbPatch[key] === undefined) delete dbPatch[key];
+  });
+  const { data, error } = await supabase
+    .from("waste_records")
+    .update(dbPatch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("updateWasteRecord error", error);
+    throw formatSupabaseError("Update waste record", error);
+  }
+  return fromWasteRecordDb(data);
+}
+
+export async function deleteWasteRecord(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<{ id: string } | null> {
+  const { error, data } = await supabase
+    .from("waste_records")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .single();
+  if (error) {
+    console.error("deleteWasteRecord error", error);
+    throw formatSupabaseError("Delete waste record", error);
+  }
+  return data ? { id: data.id } : null;
 }
 
 // Staff Users CRUD

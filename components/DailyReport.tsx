@@ -1,10 +1,16 @@
 import React, { useMemo, useRef, useState } from "react";
-import { PaymentRecord, AssessmentRecord, SystemConfig } from "../types";
+import {
+  PaymentRecord,
+  AssessmentRecord,
+  ClearanceRecord,
+  SystemConfig,
+} from "../types";
 import { createSimplePdfBlob } from "../utils/simplePdf";
 
 interface DailyReportProps {
   dutyHistory: PaymentRecord[];
   assessmentHistory: AssessmentRecord[];
+  clearanceHistory: ClearanceRecord[];
   systemConfig: SystemConfig;
 }
 
@@ -44,6 +50,7 @@ const isWithinRange = (
 const DailyReport: React.FC<DailyReportProps> = ({
   dutyHistory,
   assessmentHistory,
+  clearanceHistory,
   systemConfig,
 }) => {
   const [startDate, setStartDate] = useState(getTodayDateInputValue);
@@ -131,6 +138,13 @@ const DailyReport: React.FC<DailyReportProps> = ({
         return String(rec.ain || "").toLowerCase().includes(normalizedAinFilter);
       }),
     [assessmentHistory, endDate, normalizedAinFilter, startDate],
+  );
+  const dailyClearance = useMemo(
+    () =>
+      clearanceHistory.filter((rec) =>
+        isWithinRange(rec.date, startDate, endDate),
+      ),
+    [clearanceHistory, endDate, startDate],
   );
 
   const paidDuty = useMemo(
@@ -367,15 +381,28 @@ const DailyReport: React.FC<DailyReportProps> = ({
     };
   }, [dailyAssessment]);
 
+  const clearanceSummary = useMemo(() => {
+    const total = dailyClearance.reduce(
+      (sum, rec) => sum + Number(rec.totalClearance || 0),
+      0,
+    );
+    return {
+      count: dailyClearance.length,
+      total,
+      average:
+        dailyClearance.length > 0 ? Math.round(total / dailyClearance.length) : 0,
+    };
+  }, [dailyClearance]);
+
   const combinedSummary = useMemo(
     () => ({
-      count: dutySummary.count + assessmentSummary.count,
+      count: dutySummary.count + assessmentSummary.count + clearanceSummary.count,
       amount: dutySummary.amount + assessmentSummary.amount,
       received: dutySummary.received + assessmentSummary.received,
       due: dutySummary.due + assessmentSummary.due,
       profit: dutySummary.profit + assessmentSummary.profit,
     }),
-    [assessmentSummary, dutySummary],
+    [assessmentSummary, clearanceSummary.count, dutySummary],
   );
   const dutyBeCount = useMemo(() => dailyDuty.length, [dailyDuty]);
   const assessmentBeCount = useMemo(
@@ -506,6 +533,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     lines.push(
       `Combined,${combinedSummary.count},${combinedSummary.amount},${combinedSummary.received},${combinedSummary.due},${combinedSummary.profit}`,
     );
+    lines.push(`Clearance Days,${clearanceSummary.count},${clearanceSummary.total},0,0,0`);
     lines.push("");
 
     if (activeView === "duty") {
@@ -613,6 +641,16 @@ const DailyReport: React.FC<DailyReportProps> = ({
             rec.profit ?? 0,
             rec.paymentMethod ?? "",
           ]
+            .map(toCsvValue)
+            .join(","),
+        );
+      });
+      lines.push("");
+      lines.push("Daily Clearance");
+      lines.push(["Date", "Total Clearance", "Notes"].join(","));
+      dailyClearance.forEach((rec) => {
+        lines.push(
+          [rec.date, rec.totalClearance ?? 0, rec.notes ?? ""]
             .map(toCsvValue)
             .join(","),
         );
@@ -809,6 +847,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     );
     lines.push(
       `Combined: ${combinedSummary.count} | Amount ${formatMoney(combinedSummary.amount)} | Received ${formatMoney(combinedSummary.received)} | Due ${formatMoney(combinedSummary.due)} | Profit ${formatMoney(combinedSummary.profit)}`,
+      `Clearance: ${clearanceSummary.count} days | Total ${clearanceSummary.total} | Avg ${clearanceSummary.average}`,
     );
     lines.push("");
     lines.push("STATEMENT");
@@ -1470,6 +1509,32 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   </div>
                 </div>
               </div>
+
+              <div
+                className={`p-4 rounded-xl border ${
+                  isDark
+                    ? "bg-slate-900 border-slate-700"
+                    : "bg-slate-50 border-slate-200"
+                }`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                  Daily Clearance
+                </p>
+                <div className="space-y-2 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span>Days Logged</span>
+                    <span>{clearanceSummary.count}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Total Clearance</span>
+                    <span>{clearanceSummary.total.toLocaleString("en-BD")}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Average/Day</span>
+                    <span>{clearanceSummary.average.toLocaleString("en-BD")}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1869,6 +1934,82 @@ const DailyReport: React.FC<DailyReportProps> = ({
                           </td>
                         </tr>
                       </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeView === "combined" && (
+            <div className="space-y-4 lg:col-span-2">
+              <div
+                className={`rounded-xl border overflow-hidden ${
+                  isDark
+                    ? "bg-slate-900 border-slate-700"
+                    : "bg-white border-slate-200"
+                }`}
+              >
+                <div
+                  className={`px-4 py-3 border-b flex items-center justify-between ${
+                    isDark ? "border-slate-700" : "border-slate-200"
+                  }`}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Daily Clearance Summary
+                  </p>
+                  <div className="text-right space-y-1">
+                    <span className="block text-[10px] font-bold text-slate-400">
+                      {dailyClearance.length} day(s)
+                    </span>
+                    <span className="block text-[10px] font-black uppercase tracking-widest text-blue-500">
+                      Total: {clearanceSummary.total.toLocaleString("en-BD")}
+                    </span>
+                  </div>
+                </div>
+                {dailyClearance.length === 0 ? (
+                  <p className="px-4 py-6 text-xs font-bold text-slate-400">
+                    No clearance records for this date range.
+                  </p>
+                ) : (
+                  <div className="max-h-[20rem] overflow-y-auto overflow-x-auto overscroll-contain">
+                    <table className="w-full min-w-[520px] text-left text-xs">
+                      <thead
+                        className={`${
+                          isDark
+                            ? "bg-slate-800 text-slate-300"
+                            : "bg-slate-50 text-slate-500"
+                        }`}
+                      >
+                        <tr>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            Date
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
+                            Total Clearance
+                          </th>
+                          <th className="px-4 py-2 font-black uppercase tracking-widest">
+                            Notes
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody
+                        className={`${
+                          isDark ? "divide-slate-700" : "divide-slate-200"
+                        } divide-y`}
+                      >
+                        {dailyClearance.map((rec) => (
+                          <tr key={rec.id}>
+                            <td className="px-4 py-2">{rec.date}</td>
+                            <td className="px-4 py-2 text-right font-black text-blue-600">
+                              {Number(rec.totalClearance || 0).toLocaleString(
+                                "en-BD",
+                              )}
+                            </td>
+                            <td className="px-4 py-2">{rec.notes || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
                     </table>
                   </div>
                 )}

@@ -31,6 +31,7 @@ export interface PaymentRecord {
   status: 'Completed' | 'Pending' | 'Paid' | 'New';
   profit: number;
   paymentMethod?: string;
+  rNo?: string;
 }
 
 export interface AssessmentItem {
@@ -52,6 +53,39 @@ export interface AssessmentRecord extends Omit<PaymentRecord, 'duty' | 'beYear'>
   amount: number;
   discount: number;
   net: number;
+}
+
+export interface WasteCompany {
+  id: string;
+  name: string;
+  phone?: string;
+  address?: string;
+  active: boolean;
+}
+
+export interface WasteRecord {
+  id: string;
+  date: string;
+  companyId: string;
+  companyName: string;
+  carType: 'Wastage & Garbage' | 'Garbage Only' | 'Wastage Only';
+  garbageTrips: number;
+  wastageTrips: number;
+  totalTrips: number;
+  ratePerTrip: number;
+  amount: number;
+  received: number;
+  due: number;
+  paymentMethod?: string;
+  notes?: string;
+  status: 'Paid' | 'Partial' | 'Unpaid';
+}
+
+export interface ClearanceRecord {
+  id: string;
+  date: string;
+  totalClearance: number;
+  notes?: string;
 }
 
 export interface LogEntry {
@@ -122,6 +156,9 @@ export interface SystemConfig {
 export type TabType =
   | 'duty'
   | 'assessment'
+  | 'clearance'
+  | 'wasteCompanies'
+  | 'waste'
   | 'ain'
   | 'reports'
   | 'admin'
