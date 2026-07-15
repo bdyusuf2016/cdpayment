@@ -50,6 +50,19 @@ const formatDisplayDate = (value: string): string => {
 
 const money = (value: number) => `Tk ${value.toLocaleString("en-BD")}`;
 
+const getCarTypeFromTrips = (
+  garbageTripsValue: string,
+  wastageTripsValue: string,
+): WasteRecord["carType"] | null => {
+  const garbage = Math.max(0, Number(garbageTripsValue) || 0);
+  const wastage = Math.max(0, Number(wastageTripsValue) || 0);
+
+  if (garbage > 0 && wastage > 0) return "Wastage & Garbage";
+  if (garbage > 0) return "Garbage Only";
+  if (wastage > 0) return "Wastage Only";
+  return null;
+};
+
 const toCsvValue = (value: string | number | null | undefined) => {
   const str = String(value ?? "");
   if (str.includes("\"") || str.includes(",") || str.includes("\n")) {
@@ -82,7 +95,23 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const [statusFilter, setStatusFilter] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [showSettlementModal, setShowSettlementModal] = useState(false);
+  const [settlementRecord, setSettlementRecord] = useState<WasteRecord | null>(null);
+  const [settlementAmount, setSettlementAmount] = useState("");
+  const [settlementPaymentMethod, setSettlementPaymentMethod] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Bulk Settlement & Selection State
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkSettlementModal, setShowBulkSettlementModal] = useState(false);
+  const [bulkSettlementAmount, setBulkSettlementAmount] = useState("");
+  const [bulkSettlementPaymentMethod, setBulkSettlementPaymentMethod] = useState("");
+  const [bulkSettlementIds, setBulkSettlementIds] = useState<string[]>([]);
+
+  // Reset selectedIds when filters change to prevent actions on hidden records
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [search, companyFilter, statusFilter, startDate, endDate]);
 
   const activeCompanies = useMemo(
     () =>
@@ -112,6 +141,22 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       setGarbageTrips("0");
     }
   }, [carType]);
+
+  const handleGarbageTripsChange = (value: string) => {
+    setGarbageTrips(value);
+    const nextCarType = getCarTypeFromTrips(value, wastageTrips);
+    if (nextCarType) {
+      setCarType(nextCarType);
+    }
+  };
+
+  const handleWastageTripsChange = (value: string) => {
+    setWastageTrips(value);
+    const nextCarType = getCarTypeFromTrips(garbageTrips, value);
+    if (nextCarType) {
+      setCarType(nextCarType);
+    }
+  };
 
   const totals = useMemo(() => {
     const garbage =
@@ -163,6 +208,18 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   useEffect(() => {
     onVisibleRowsChange(filteredHistory);
   }, [filteredHistory, onVisibleRowsChange]);
+
+  const selectedRecords = useMemo(() => {
+    return filteredHistory.filter((r) => selectedIds.includes(r.id));
+  }, [filteredHistory, selectedIds]);
+
+  const selectedTotalAmount = useMemo(() => {
+    return selectedRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
+  }, [selectedRecords]);
+
+  const selectedDueAmount = useMemo(() => {
+    return selectedRecords.reduce((sum, r) => sum + (r.due || 0), 0);
+  }, [selectedRecords]);
 
   const summary = useMemo(
     () =>
@@ -247,11 +304,6 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       setActionError("At least one garbage or wastage trip is required.");
       return;
     }
-    if (totals.rate <= 0) {
-      setActionError("Rate per trip is required.");
-      return;
-    }
-
     const payload = {
       date: formatDisplayDate(entryDate),
       companyId: company.id,
@@ -300,7 +352,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     setCarType(record.carType || "Wastage & Garbage");
     setGarbageTrips(String(record.garbageTrips || 0));
     setWastageTrips(String(record.wastageTrips || 0));
-    setRatePerTrip(String(record.ratePerTrip || 0));
+    setRatePerTrip(String(record.ratePerTrip ?? 0));
     setReceived(String(record.received || 0));
     setPaymentMethod(record.paymentMethod || systemConfig.paymentMethods[0] || "");
     setNotes(record.notes || "");
@@ -317,6 +369,206 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       if (editingRecordId === id) resetEntryForm();
     } catch (error: any) {
       setActionError(error?.message || "Failed to delete record.");
+    }
+  };
+
+  const closeSettlementModal = () => {
+    setShowSettlementModal(false);
+    setSettlementRecord(null);
+    setSettlementAmount("");
+    setSettlementPaymentMethod("");
+    setActionError(null);
+  };
+
+  const handleSettlementStart = (record: WasteRecord) => {
+    setSettlementRecord(record);
+    setSettlementAmount(String(record.due || 0));
+    setSettlementPaymentMethod(
+      record.paymentMethod || systemConfig.paymentMethods[0] || paymentMethod || "",
+    );
+    setActionError(null);
+    setShowSettlementModal(true);
+  };
+
+  const handleSettlementSubmit = async () => {
+    if (!supabase || !settlementRecord) return;
+
+    const outstandingDue = Math.max(
+      0,
+      (settlementRecord.amount || 0) - (settlementRecord.received || 0),
+    );
+    const amount = Math.max(0, Number(settlementAmount) || 0);
+
+    if (amount <= 0) {
+      setActionError("Settlement amount must be greater than 0.");
+      return;
+    }
+    if (amount > outstandingDue) {
+      setActionError("Settlement amount cannot be greater than due.");
+      return;
+    }
+
+    const nextReceived = (settlementRecord.received || 0) + amount;
+    const nextDue = Math.max(0, (settlementRecord.amount || 0) - nextReceived);
+    const nextStatus: WasteRecord["status"] =
+      nextDue <= 0 && (settlementRecord.amount || 0) > 0
+        ? "Paid"
+        : nextReceived > 0
+          ? "Partial"
+          : "Unpaid";
+
+    const patch: Partial<WasteRecord> = {
+      received: nextReceived,
+      due: nextDue,
+      status: nextStatus,
+      paymentMethod: settlementPaymentMethod || settlementRecord.paymentMethod,
+    };
+
+    setActionError(null);
+    try {
+      const updated = await updateWasteRecord(supabase, settlementRecord.id, patch);
+      if (updated) {
+        setHistory((prev) =>
+          prev.map((item) => (item.id === updated.id ? updated : item)),
+        );
+      }
+      closeSettlementModal();
+    } catch (error: any) {
+      setActionError(error?.message || "Failed to settle waste record.");
+    }
+  };
+
+  const initiateBulkPayment = (ids: string[]) => {
+    const targetRecords = history.filter((r) => ids.includes(r.id));
+    if (targetRecords.length === 0) return;
+    setBulkSettlementIds(targetRecords.map((r) => r.id));
+    setBulkSettlementAmount("");
+    setBulkSettlementPaymentMethod(
+      targetRecords[0]?.paymentMethod || systemConfig.paymentMethods[0] || "Cash"
+    );
+    setActionError(null);
+    setShowBulkSettlementModal(true);
+  };
+
+  const closeBulkSettlementModal = () => {
+    setShowBulkSettlementModal(false);
+    setBulkSettlementIds([]);
+    setBulkSettlementAmount("");
+    setBulkSettlementPaymentMethod("");
+    setActionError(null);
+  };
+
+  const handleBulkSettlementSubmit = async () => {
+    if (!supabase || bulkSettlementIds.length === 0) return;
+
+    const amount = Math.max(0, Number(bulkSettlementAmount) || 0);
+    if (amount <= 0) {
+      setActionError("Settlement amount must be greater than 0.");
+      return;
+    }
+
+    const targetRecords = history.filter((r) => bulkSettlementIds.includes(r.id));
+    const totalDue = targetRecords.reduce((sum, r) => sum + (r.due || 0), 0);
+
+    const allocateByWeight = (
+      records: WasteRecord[],
+      totalAmount: number,
+      getWeight: (r: WasteRecord) => number,
+    ) => {
+      const n = records.length;
+      if (n === 0) return {} as Record<string, number>;
+      const totalCents = Math.max(0, Math.round(totalAmount * 100));
+      const weights = records.map((r) => Math.max(0, getWeight(r)));
+      const weightSum = weights.reduce((a, b) => a + b, 0);
+
+      const centsById: Record<string, number> = {};
+      if (weightSum <= 0) {
+        const base = Math.floor(totalCents / n);
+        let rem = totalCents - base * n;
+        records.forEach((r) => {
+          centsById[r.id] = base + (rem > 0 ? 1 : 0);
+          if (rem > 0) rem -= 1;
+        });
+      } else {
+        const raw = records.map((r, i) => {
+          const exact = (totalCents * weights[i]) / weightSum;
+          const floor = Math.floor(exact);
+          return { id: r.id, floor, frac: exact - floor };
+        });
+        let used = 0;
+        raw.forEach((x) => {
+          centsById[x.id] = x.floor;
+          used += x.floor;
+        });
+        let rem = totalCents - used;
+        raw
+          .sort((a, b) => b.frac - a.frac)
+          .forEach((x) => {
+            if (rem <= 0) return;
+            centsById[x.id] += 1;
+            rem -= 1;
+          });
+      }
+
+      const amountById: Record<string, number> = {};
+      Object.keys(centsById).forEach((id) => {
+        amountById[id] = centsById[id] / 100;
+      });
+      return amountById;
+    };
+
+    const receivedById = allocateByWeight(targetRecords, amount, (r) => r.due || 0);
+
+    setActionError(null);
+    try {
+      const results = await Promise.all(
+        targetRecords.map(async (rec) => {
+          const allocReceived = receivedById[rec.id] ?? 0;
+          const nextReceived = (rec.received || 0) + allocReceived;
+          const nextDue = Math.max(0, (rec.amount || 0) - nextReceived);
+          const nextStatus: WasteRecord["status"] =
+            nextDue <= 0 && (nextReceived > 0 || (rec.amount || 0) > 0)
+              ? "Paid"
+              : nextReceived > 0
+                ? "Partial"
+                : "Unpaid";
+
+          const patch: Partial<WasteRecord> = {
+            received: nextReceived,
+            due: nextDue,
+            status: nextStatus,
+            paymentMethod: bulkSettlementPaymentMethod || rec.paymentMethod,
+          };
+          const updated = await updateWasteRecord(supabase, rec.id, patch);
+          return { id: rec.id, updated };
+        })
+      );
+
+      setHistory((prev) =>
+        prev.map((rec) => {
+          const res = results.find((r) => r.id === rec.id)?.updated;
+          return res ? res : rec;
+        })
+      );
+
+      closeBulkSettlementModal();
+      setSelectedIds([]);
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to save bulk settlement.");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!supabase || selectedIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} selected waste collection entry(ies)?`)) return;
+
+    setActionError(null);
+    try {
+      await Promise.all(selectedIds.map((id) => deleteWasteRecord(supabase, id)));
+      setHistory((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
+      setSelectedIds([]);
+    } catch (error: any) {
+      setActionError(error?.message || "Failed to delete selected records.");
     }
   };
 
@@ -451,8 +703,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
-          <input type="number" min="0" disabled={carType === "Wastage Only"} value={garbageTrips} onChange={(e) => setGarbageTrips(e.target.value)} placeholder="Garbage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"} ${carType === "Wastage Only" ? "opacity-50" : ""}`} />
-          <input type="number" min="0" disabled={carType === "Garbage Only"} value={wastageTrips} onChange={(e) => setWastageTrips(e.target.value)} placeholder="Wastage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"} ${carType === "Garbage Only" ? "opacity-50" : ""}`} />
+          <input type="number" min="0" disabled={carType === "Wastage Only"} value={garbageTrips} onChange={(e) => handleGarbageTripsChange(e.target.value)} placeholder="Garbage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"} ${carType === "Wastage Only" ? "opacity-50" : ""}`} />
+          <input type="number" min="0" disabled={carType === "Garbage Only"} value={wastageTrips} onChange={(e) => handleWastageTripsChange(e.target.value)} placeholder="Wastage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"} ${carType === "Garbage Only" ? "opacity-50" : ""}`} />
           <input type="number" min="0" value={ratePerTrip} onChange={(e) => setRatePerTrip(e.target.value)} placeholder="Rate per trip" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <input type="number" min="0" value={received} onChange={(e) => setReceived(e.target.value)} placeholder="Received amount" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}>
@@ -561,6 +813,23 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
           <table className="w-full min-w-[1200px] text-left text-xs">
             <thead className={`${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
               <tr>
+                <th className="px-4 py-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={
+                      filteredHistory.length > 0 &&
+                      selectedIds.length === filteredHistory.length
+                    }
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedIds(filteredHistory.map((r) => r.id));
+                      } else {
+                        setSelectedIds([]);
+                      }
+                    }}
+                    className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                </th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest">Date</th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest">Company</th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest">Car Type</th>
@@ -577,7 +846,26 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
             </thead>
             <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
               {filteredHistory.map((record) => (
-                <tr key={record.id}>
+                <tr
+                  key={record.id}
+                  className={`group transition-all ${
+                    selectedIds.includes(record.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(record.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds((prev) => [...prev, record.id]);
+                        } else {
+                          setSelectedIds((prev) => prev.filter((id) => id !== record.id));
+                        }
+                      }}
+                      className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-3 font-bold">{record.date}</td>
                   <td className="px-4 py-3"><div className="font-bold">{record.companyName}</div>{record.notes ? <div className="mt-1 text-[11px] text-slate-400">{record.notes}</div> : null}</td>
                   <td className="px-4 py-3">{record.carType}</td>
@@ -589,13 +877,200 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                   <td className="px-4 py-3 text-right text-emerald-600 font-black">{money(record.received)}</td>
                   <td className="px-4 py-3 text-right text-rose-500 font-black">{money(record.due)}</td>
                   <td className="px-4 py-3 text-center"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${record.status === "Paid" ? "bg-emerald-50 text-emerald-600" : record.status === "Partial" ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"}`}>{record.status}</span></td>
-                  <td className="px-4 py-3"><div className="flex justify-end gap-2"><button type="button" onClick={() => handleRecordEdit(record)} className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600">Edit</button><button type="button" onClick={() => handleRecordDelete(record.id)} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600">Delete</button></div></td>
+                  <td className="px-4 py-3"><div className="flex justify-end gap-2">{record.due > 0 ? <button type="button" onClick={() => handleSettlementStart(record)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">Settle</button> : null}<button type="button" onClick={() => handleRecordEdit(record)} className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600">Edit</button><button type="button" onClick={() => handleRecordDelete(record.id)} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600">Delete</button></div></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+      {showSettlementModal && settlementRecord ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className={`w-full max-w-sm rounded-[1.5rem] shadow-2xl p-5 sm:p-6 ${isDark ? "bg-slate-800" : "bg-white"}`}>
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className={`text-lg font-black ${isDark ? "text-white" : "text-slate-900"}`}>Waste Settlement</h3>
+                <p className="mt-1 text-xs font-medium text-slate-400">{settlementRecord.companyName} | {settlementRecord.date}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeSettlementModal}
+                className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? "bg-slate-700 text-slate-200" : "bg-slate-100 text-slate-500"}`}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {actionError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+                  {actionError}
+                </div>
+              ) : null}
+              <div className={`grid grid-cols-3 gap-3 rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Amount</p><p className="mt-2 text-sm font-black text-blue-600">{money(settlementRecord.amount)}</p></div>
+                <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Received</p><p className="mt-2 text-sm font-black text-emerald-600">{money(settlementRecord.received)}</p></div>
+                <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Due</p><p className="mt-2 text-sm font-black text-rose-500">{money(settlementRecord.due)}</p></div>
+              </div>
+
+              <input
+                type="number"
+                min="0"
+                max={settlementRecord.due}
+                value={settlementAmount}
+                onChange={(e) => setSettlementAmount(e.target.value)}
+                placeholder="Settlement amount"
+                className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
+              />
+
+              <select
+                value={settlementPaymentMethod}
+                onChange={(e) => setSettlementPaymentMethod(e.target.value)}
+                className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
+              >
+                <option value="">Payment method</option>
+                {systemConfig.paymentMethods.map((method) => (
+                  <option key={method} value={method}>{method}</option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={handleSettlementSubmit}
+                className="w-full rounded-xl bg-emerald-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg hover:bg-emerald-700"
+              >
+                Confirm Settlement
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.length > 0 && !showBulkSettlementModal && (
+        <div className="fixed top-[112px] md:top-[116px] left-1/2 -translate-x-1/2 z-[90] w-[calc(100vw-1rem)] md:w-auto md:max-w-[calc(100vw-2rem)] px-2 md:px-4 pt-2">
+          <div
+            className={`rounded-xl border px-3 md:px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2 md:gap-3 flex-wrap justify-center ${
+              isDark
+                ? "bg-slate-900/95 border-slate-700 text-slate-100"
+                : "bg-white/95 border-slate-200 text-slate-700"
+            }`}
+          >
+            <span className="text-xs font-black uppercase tracking-wider">
+              Selected {selectedIds.length}
+            </span>
+            <span className="text-base md:text-lg font-extrabold tracking-wide">
+              Total {money(selectedTotalAmount)}
+            </span>
+            <span className="text-base md:text-lg font-extrabold tracking-wide text-red-500">
+              Due {money(selectedDueAmount)}
+            </span>
+            <button
+              type="button"
+              onClick={() => initiateBulkPayment(selectedIds)}
+              className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all active:scale-95"
+            >
+              Bulk Settle
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all active:scale-95"
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm transition-all active:scale-95 ${
+                isDark
+                  ? "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+              }`}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Settlement Modal */}
+      {showBulkSettlementModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className={`w-full max-w-sm rounded-[1.5rem] shadow-2xl p-5 sm:p-6 ${isDark ? "bg-slate-800" : "bg-white"}`}>
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className={`text-lg font-black ${isDark ? "text-white" : "text-slate-900"}`}>Waste Bulk Settlement</h3>
+                <p className="mt-1 text-xs font-medium text-slate-400">Processing {bulkSettlementIds.length} entry(ies)</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeBulkSettlementModal}
+                className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? "bg-slate-700 text-slate-200" : "bg-slate-100 text-slate-500"}`}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {actionError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+                  {actionError}
+                </div>
+              ) : null}
+
+              <div className={`grid grid-cols-2 gap-3 rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Selected</p>
+                  <p className="mt-2 text-sm font-black text-blue-600">{money(selectedTotalAmount)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Due</p>
+                  <p className="mt-2 text-sm font-black text-rose-500">{money(selectedDueAmount)}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Received Amount
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={bulkSettlementAmount}
+                  onChange={(e) => setBulkSettlementAmount(e.target.value)}
+                  placeholder="Settlement amount"
+                  className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Payment Method
+                </label>
+                <select
+                  value={bulkSettlementPaymentMethod}
+                  onChange={(e) => setBulkSettlementPaymentMethod(e.target.value)}
+                  className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
+                >
+                  <option value="">Payment method</option>
+                  {systemConfig.paymentMethods.map((method) => (
+                    <option key={method} value={method}>{method}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleBulkSettlementSubmit}
+                className="w-full rounded-xl bg-emerald-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg hover:bg-emerald-700 active:scale-95 transition-all mt-2"
+              >
+                Confirm Settlement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
