@@ -107,6 +107,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const [settlementRecord, setSettlementRecord] = useState<WasteRecord | null>(null);
   const [settlementAmount, setSettlementAmount] = useState("");
   const [settlementPaymentMethod, setSettlementPaymentMethod] = useState("");
+  const [settlementDate, setSettlementDate] = useState(getTodayDateInputValue);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Bulk Settlement & Selection State
@@ -114,6 +115,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const [showBulkSettlementModal, setShowBulkSettlementModal] = useState(false);
   const [bulkSettlementAmount, setBulkSettlementAmount] = useState("");
   const [bulkSettlementPaymentMethod, setBulkSettlementPaymentMethod] = useState("");
+  const [bulkSettlementDate, setBulkSettlementDate] = useState(getTodayDateInputValue);
   const [bulkSettlementIds, setBulkSettlementIds] = useState<string[]>([]);
 
   // Reset selectedIds when filters change to prevent actions on hidden records
@@ -369,6 +371,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     setShowSettlementModal(false);
     setSettlementRecord(null);
     setSettlementAmount("");
+    setSettlementDate(getTodayDateInputValue());
     setSettlementPaymentMethod("");
     setActionError(null);
   };
@@ -376,6 +379,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const handleSettlementStart = (record: WasteRecord) => {
     setSettlementRecord(record);
     setSettlementAmount(String(record.due || 0));
+    setSettlementDate(getTodayDateInputValue());
     setSettlementPaymentMethod(
       record.paymentMethod || systemConfig.paymentMethods[0] || paymentMethod || "",
     );
@@ -410,11 +414,15 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
           ? "Partial"
           : "Unpaid";
 
+    const noteAppend = `Settle Date: ${formatDisplayDate(settlementDate)}`;
+    const nextNotes = settlementRecord.notes ? `${settlementRecord.notes} | ${noteAppend}` : noteAppend;
+
     const patch: Partial<WasteRecord> = {
       received: nextReceived,
       due: nextDue,
       status: nextStatus,
       paymentMethod: settlementPaymentMethod || settlementRecord.paymentMethod,
+      notes: nextNotes,
     };
 
     setActionError(null);
@@ -436,6 +444,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     if (targetRecords.length === 0) return;
     setBulkSettlementIds(targetRecords.map((r) => r.id));
     setBulkSettlementAmount("");
+    setBulkSettlementDate(getTodayDateInputValue());
     setBulkSettlementPaymentMethod(
       targetRecords[0]?.paymentMethod || systemConfig.paymentMethods[0] || "Cash"
     );
@@ -447,6 +456,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     setShowBulkSettlementModal(false);
     setBulkSettlementIds([]);
     setBulkSettlementAmount("");
+    setBulkSettlementDate(getTodayDateInputValue());
     setBulkSettlementPaymentMethod("");
     setActionError(null);
   };
@@ -526,11 +536,17 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                 ? "Partial"
                 : "Unpaid";
 
+          const noteAppend = `Settle Date: ${formatDisplayDate(bulkSettlementDate)}`;
+          const nextNotes = allocReceived > 0
+            ? (rec.notes ? `${rec.notes} | ${noteAppend}` : noteAppend)
+            : rec.notes;
+
           const patch: Partial<WasteRecord> = {
             received: nextReceived,
             due: nextDue,
             status: nextStatus,
             paymentMethod: bulkSettlementPaymentMethod || rec.paymentMethod,
+            notes: nextNotes,
           };
           const updated = await updateWasteRecord(supabase, rec.id, patch);
           return { id: rec.id, updated };
@@ -963,15 +979,32 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                 <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Due</p><p className="mt-2 text-sm font-black text-rose-500">{money(settlementRecord.due)}</p></div>
               </div>
 
-              <input
-                type="number"
-                min="0"
-                max={settlementRecord.due}
-                value={settlementAmount}
-                onChange={(e) => setSettlementAmount(e.target.value)}
-                placeholder="Settlement amount"
-                className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
-              />
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Settlement Date
+                </label>
+                <input
+                  type="date"
+                  value={settlementDate}
+                  onChange={(e) => setSettlementDate(e.target.value)}
+                  className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Settlement Amount
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max={settlementRecord.due}
+                  value={settlementAmount}
+                  onChange={(e) => setSettlementAmount(e.target.value)}
+                  placeholder="Settlement amount"
+                  className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
+                />
+              </div>
 
               <select
                 value={settlementPaymentMethod}
@@ -1078,6 +1111,18 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Due</p>
                   <p className="mt-2 text-sm font-black text-rose-500">{money(selectedDueAmount)}</p>
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Settlement Date
+                </label>
+                <input
+                  type="date"
+                  value={bulkSettlementDate}
+                  onChange={(e) => setBulkSettlementDate(e.target.value)}
+                  className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
+                />
               </div>
 
               <div className="space-y-1">
