@@ -90,6 +90,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const isDark = systemConfig.theme === "dark";
   const [entryDate, setEntryDate] = useState(getTodayDateInputValue);
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [companySearch, setCompanySearch] = useState("");
   const [carType, setCarType] = useState<WasteRecord["carType"]>("Wastage & Garbage");
   const [garbageTrips, setGarbageTrips] = useState("0");
   const [wastageTrips, setWastageTrips] = useState("0");
@@ -140,6 +141,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   useEffect(() => {
     if (!selectedCompanyId && activeCompanies.length > 0) {
       setSelectedCompanyId(activeCompanies[0].id);
+      setCompanySearch(activeCompanies[0].name);
     }
   }, [activeCompanies, selectedCompanyId]);
 
@@ -158,6 +160,16 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     const nextCarType = getCarTypeFromTrips(garbageTrips, value);
     if (nextCarType) {
       setCarType(nextCarType);
+    }
+  };
+
+  const handleCompanySearchChange = (val: string) => {
+    setCompanySearch(val);
+    const company = companies.find((c) => c.name.toLowerCase() === val.trim().toLowerCase());
+    if (company) {
+      setSelectedCompanyId(company.id);
+    } else {
+      setSelectedCompanyId("");
     }
   };
 
@@ -279,6 +291,13 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const resetEntryForm = () => {
     setEditingRecordId(null);
     setEntryDate(getTodayDateInputValue());
+    if (activeCompanies.length > 0) {
+      setSelectedCompanyId(activeCompanies[0].id);
+      setCompanySearch(activeCompanies[0].name);
+    } else {
+      setSelectedCompanyId("");
+      setCompanySearch("");
+    }
     setCarType("Wastage & Garbage");
     setGarbageTrips("0");
     setWastageTrips("0");
@@ -344,6 +363,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       setEntryDate(local.toISOString().split("T")[0]);
     }
     setSelectedCompanyId(record.companyId);
+    setCompanySearch(record.companyName);
     setCarType(record.carType || "Wastage & Garbage");
     setGarbageTrips(String(record.garbageTrips || 0));
     setWastageTrips(String(record.wastageTrips || 0));
@@ -759,12 +779,21 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
-          <select value={selectedCompanyId} onChange={(e) => setSelectedCompanyId(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}>
-            <option value="">Select company</option>
-            {activeCompanies.map((company) => (
-              <option key={company.id} value={company.id}>{company.name}</option>
-            ))}
-          </select>
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder="Search company..."
+              list="company-entry-options"
+              value={companySearch}
+              onChange={(e) => handleCompanySearchChange(e.target.value)}
+              className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
+            />
+            <datalist id="company-entry-options">
+              {activeCompanies.map((company) => (
+                <option key={company.id} value={company.name} />
+              ))}
+            </datalist>
+          </div>
           <select value={carType} onChange={(e) => setCarType(e.target.value as WasteRecord["carType"])} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}>
             {CAR_TYPES.map((type) => (
               <option key={type} value={type}>{type}</option>
