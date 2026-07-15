@@ -90,7 +90,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const isDark = systemConfig.theme === "dark";
   const [entryDate, setEntryDate] = useState(getTodayDateInputValue);
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
-  const [companySearch, setCompanySearch] = useState("");
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [companySearchQuery, setCompanySearchQuery] = useState("");
   const [carType, setCarType] = useState<WasteRecord["carType"]>("Wastage & Garbage");
   const [garbageTrips, setGarbageTrips] = useState("0");
   const [wastageTrips, setWastageTrips] = useState("0");
@@ -141,7 +142,6 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   useEffect(() => {
     if (!selectedCompanyId && activeCompanies.length > 0) {
       setSelectedCompanyId(activeCompanies[0].id);
-      setCompanySearch(activeCompanies[0].name);
     }
   }, [activeCompanies, selectedCompanyId]);
 
@@ -163,15 +163,12 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     }
   };
 
-  const handleCompanySearchChange = (val: string) => {
-    setCompanySearch(val);
-    const company = companies.find((c) => c.name.toLowerCase() === val.trim().toLowerCase());
-    if (company) {
-      setSelectedCompanyId(company.id);
-    } else {
-      setSelectedCompanyId("");
-    }
-  };
+  const filteredCompaniesInDropdown = useMemo(() => {
+    const query = companySearchQuery.trim().toLowerCase();
+    return activeCompanies.filter((company) =>
+      company.name.toLowerCase().includes(query)
+    );
+  }, [activeCompanies, companySearchQuery]);
 
   const totals = useMemo(() => {
     const garbage = Math.max(0, Number(garbageTrips) || 0);
@@ -293,10 +290,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     setEntryDate(getTodayDateInputValue());
     if (activeCompanies.length > 0) {
       setSelectedCompanyId(activeCompanies[0].id);
-      setCompanySearch(activeCompanies[0].name);
     } else {
       setSelectedCompanyId("");
-      setCompanySearch("");
     }
     setCarType("Wastage & Garbage");
     setGarbageTrips("0");
@@ -363,7 +358,6 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       setEntryDate(local.toISOString().split("T")[0]);
     }
     setSelectedCompanyId(record.companyId);
-    setCompanySearch(record.companyName);
     setCarType(record.carType || "Wastage & Garbage");
     setGarbageTrips(String(record.garbageTrips || 0));
     setWastageTrips(String(record.wastageTrips || 0));
@@ -780,19 +774,79 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <div className="relative w-full">
-            <input
-              type="text"
-              placeholder="Search company..."
-              list="company-entry-options"
-              value={companySearch}
-              onChange={(e) => handleCompanySearchChange(e.target.value)}
-              className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
-            />
-            <datalist id="company-entry-options">
-              {activeCompanies.map((company) => (
-                <option key={company.id} value={company.name} />
-              ))}
-            </datalist>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCompanyDropdown(!showCompanyDropdown);
+                setCompanySearchQuery("");
+              }}
+              className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 font-bold outline-none text-left ${
+                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+              }`}
+            >
+              <span className="truncate">
+                {companies.find((c) => c.id === selectedCompanyId)?.name || "Select company"}
+              </span>
+              <svg className="w-4 h-4 ml-2 fill-current shrink-0 text-slate-400" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+              </svg>
+            </button>
+
+            {showCompanyDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-[80]"
+                  onClick={() => setShowCompanyDropdown(false)}
+                />
+                
+                <div
+                  className={`absolute left-0 right-0 mt-2 z-[85] max-h-60 rounded-xl border shadow-xl flex flex-col overflow-hidden ${
+                    isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"
+                  }`}
+                >
+                  <div className={`p-2 border-b ${isDark ? "border-slate-700" : "border-slate-100"}`}>
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Search company..."
+                      value={companySearchQuery}
+                      onChange={(e) => setCompanySearchQuery(e.target.value)}
+                      className={`w-full rounded-lg border px-3 py-2 text-xs font-bold outline-none ${
+                        isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                      }`}
+                    />
+                  </div>
+
+                  <div className="overflow-y-auto flex-1 max-h-48 text-xs font-semibold">
+                    {filteredCompaniesInDropdown.length > 0 ? (
+                      filteredCompaniesInDropdown.map((company) => (
+                        <button
+                          key={company.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCompanyId(company.id);
+                            setShowCompanyDropdown(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 hover:bg-blue-500 hover:text-white transition-all ${
+                            selectedCompanyId === company.id
+                              ? isDark
+                                ? "bg-blue-900/40 text-blue-400"
+                                : "bg-blue-50 text-blue-600"
+                              : isDark
+                                ? "text-slate-200 hover:bg-slate-800"
+                                : "text-slate-700 hover:bg-slate-100"
+                          }`}
+                        >
+                          {company.name}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-slate-400 text-center italic">No company found</div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <select value={carType} onChange={(e) => setCarType(e.target.value as WasteRecord["carType"])} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}>
             {CAR_TYPES.map((type) => (
