@@ -439,7 +439,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     const targetRecords = history.filter((r) => ids.includes(r.id));
     if (targetRecords.length === 0) return;
     setBulkSettlementIds(targetRecords.map((r) => r.id));
-    setBulkSettlementAmount("");
+    const totalAmount = targetRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
+    setBulkSettlementAmount(String(totalAmount));
     setBulkSettlementDate(getTodayDateInputValue());
     setBulkSettlementPaymentMethod(
       targetRecords[0]?.paymentMethod || systemConfig.paymentMethods[0] || "Cash"
@@ -461,13 +462,18 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     if (!supabase || bulkSettlementIds.length === 0) return;
 
     const amount = Math.max(0, Number(bulkSettlementAmount) || 0);
-    if (amount <= 0) {
-      setActionError("Settlement amount must be greater than 0.");
+    if (amount < 0) {
+      setActionError("Received amount cannot be negative.");
       return;
     }
 
     const targetRecords = history.filter((r) => bulkSettlementIds.includes(r.id));
-    const totalDue = targetRecords.reduce((sum, r) => sum + (r.due || 0), 0);
+    const totalAmount = targetRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
+
+    if (amount > totalAmount) {
+      setActionError("Received amount cannot be greater than total bill amount.");
+      return;
+    }
 
     const allocateByWeight = (
       records: WasteRecord[],
@@ -516,14 +522,13 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       return amountById;
     };
 
-    const receivedById = allocateByWeight(targetRecords, amount, (r) => r.due || 0);
+    const receivedById = allocateByWeight(targetRecords, amount, (r) => r.amount || 0);
 
     setActionError(null);
     try {
       const results = await Promise.all(
         targetRecords.map(async (rec) => {
-          const allocReceived = receivedById[rec.id] ?? 0;
-          const nextReceived = (rec.received || 0) + allocReceived;
+          const nextReceived = receivedById[rec.id] ?? 0;
           const nextDue = Math.max(0, (rec.amount || 0) - nextReceived);
           const nextStatus: WasteRecord["status"] =
             nextDue <= 0 && (nextReceived > 0 || (rec.amount || 0) > 0)
@@ -533,7 +538,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                 : "Unpaid";
 
           const noteAppend = `Settle Date: ${formatDisplayDate(bulkSettlementDate)}`;
-          const nextNotes = allocReceived > 0
+          const nextNotes = nextReceived > (rec.received || 0)
             ? (rec.notes ? `${rec.notes} | ${noteAppend}` : noteAppend)
             : rec.notes;
 
