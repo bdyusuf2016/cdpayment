@@ -48,6 +48,14 @@ const formatDisplayDate = (value: string): string => {
   return `${day}/${month}/${year}`;
 };
 
+const convertDisplayDateToInput = (displayDate: string): string => {
+  if (displayDate.includes("/")) {
+    const [day, month, year] = displayDate.split("/");
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  return displayDate;
+};
+
 const money = (value: number) => `Tk ${value.toLocaleString("en-BD")}`;
 
 const getCarTypeFromTrips = (
@@ -245,24 +253,18 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     return Array.from(grouped.values()).sort((a, b) => b.month.localeCompare(a.month));
   }, [filteredHistory]);
 
-  const companyDueSummary = useMemo(() => {
-    const grouped = new Map<string, { companyId: string; companyName: string; totalTrips: number; amount: number; received: number; due: number }>();
+  const dayWiseSummary = useMemo(() => {
+    const grouped = new Map<string, { date: string; trips: number; amount: number; received: number; due: number }>();
     filteredHistory.forEach((row) => {
-      const current = grouped.get(row.companyId) || {
-        companyId: row.companyId,
-        companyName: row.companyName,
-        totalTrips: 0,
-        amount: 0,
-        received: 0,
-        due: 0,
-      };
-      current.totalTrips += row.totalTrips || 0;
+      const key = row.date;
+      const current = grouped.get(key) || { date: key, trips: 0, amount: 0, received: 0, due: 0 };
+      current.trips += row.totalTrips || 0;
       current.amount += row.amount || 0;
       current.received += row.received || 0;
       current.due += row.due || 0;
-      grouped.set(row.companyId, current);
+      grouped.set(key, current);
     });
-    return Array.from(grouped.values()).sort((a, b) => b.due - a.due);
+    return Array.from(grouped.values()).sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
   }, [filteredHistory]);
 
   const reportRangeLabel = useMemo(() => {
@@ -577,9 +579,9 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     lines.push(`Received,${summary.received}`);
     lines.push(`Due,${summary.due}`);
     lines.push("");
-    lines.push("Company,Trips,Amount,Received,Due");
-    companyDueSummary.forEach((row) => {
-      lines.push([row.companyName, row.totalTrips, row.amount, row.received, row.due].map(toCsvValue).join(","));
+    lines.push("Date,Trips,Amount,Received,Due");
+    dayWiseSummary.forEach((row) => {
+      lines.push([row.date, row.trips, row.amount, row.received, row.due].map(toCsvValue).join(","));
     });
     lines.push("");
     lines.push("Date,Company,Car Type,Garbage,Wastage,Total Trips,Rate,Amount,Received,Due,Status,Payment Method,Notes");
@@ -614,32 +616,89 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   };
 
   const downloadPdf = () => {
-    const lines = [
-      `Date Range: ${reportRangeLabel}`,
-      `Company Filter: ${companyFilter === "all" ? "All Company" : companies.find((company) => company.id === companyFilter)?.name || "-"}`,
-      `Status Filter: ${statusFilter}`,
-      "",
-      `Total Trips: ${summary.totalTrips}`,
-      `Garbage Trips: ${summary.garbageTrips}`,
-      `Wastage Trips: ${summary.wastageTrips}`,
-      `Bill Amount: ${money(summary.amount)}`,
-      `Received: ${money(summary.received)}`,
-      `Due: ${money(summary.due)}`,
-      "",
-      "Company-wise Due Summary",
-      ...companyDueSummary.map((row) => `${row.companyName} | Trips ${row.totalTrips} | Due ${money(row.due)}`),
-      "",
-      "Detailed History",
-      ...filteredHistory.map(
-        (row) =>
-          `${row.date} | ${row.companyName} | ${row.carType} | G:${row.garbageTrips} W:${row.wastageTrips} | Amount ${money(row.amount)} | Due ${money(row.due)}`,
-      ),
-    ];
-    const blob = createSimplePdfBlob("Waste Management Report", lines, "Helvetica", 10, 36, 800, {
+    const padRight = (str: string, length: number) => {
+      const s = String(str);
+      return s + " ".repeat(Math.max(0, length - s.length));
+    };
+    const padLeft = (str: string, length: number) => {
+      const s = String(str);
+      return " ".repeat(Math.max(0, length - s.length)) + s;
+    };
+    const truncateStr = (str: string, len: number) => {
+      if (str.length <= len) return str;
+      return str.slice(0, len - 3) + "...";
+    };
+
+    const separator = "=".repeat(96);
+    const thinSeparator = "-".repeat(96);
+
+    const agencyText = systemConfig.agencyName ? `Agency: ${systemConfig.agencyName}` : "";
+    const addressText = systemConfig.agencyAddress || "";
+
+    const lines: string[] = [];
+
+    // Header block
+    lines.push(separator);
+    if (agencyText) {
+      lines.push(padLeft(agencyText, Math.floor((96 + agencyText.length) / 2)));
+    }
+    if (addressText) {
+      lines.push(padLeft(addressText, Math.floor((96 + addressText.length) / 2)));
+    }
+    lines.push(separator);
+
+    // Meta Block
+    lines.push(`Date Range: ${reportRangeLabel}`);
+    lines.push(`Company   : ${companyFilter === "all" ? "All Company" : companies.find((company) => company.id === companyFilter)?.name || "-"}`);
+    lines.push(`Status    : ${statusFilter}`);
+    lines.push(`Generated : ${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`);
+    lines.push("");
+
+    // Summary Section
+    lines.push("SUMMARY");
+    lines.push(thinSeparator);
+    lines.push(`${padRight(`Total Trips: ${summary.totalTrips} (Garbage: ${summary.garbageTrips}, Wastage: ${summary.wastageTrips})`, 48)}${padRight(`Bill Amount: ${money(summary.amount)}`, 48)}`);
+    lines.push(`${padRight(`Received   : ${money(summary.received)}`, 48)}${padRight(`Due Amount : ${money(summary.due)}`, 48)}`);
+    lines.push(thinSeparator);
+    lines.push("");
+
+    // Day-wise report Section
+    lines.push("DAY-WISE SUMMARY");
+    lines.push(thinSeparator);
+    lines.push(
+      `${padRight("Date", 12)}${padLeft("Trips", 10)}${padLeft("Amount", 18)}${padLeft("Received", 18)}${padLeft("Due", 18)}`
+    );
+    lines.push(thinSeparator);
+    dayWiseSummary.forEach((row) => {
+      lines.push(
+        `${padRight(row.date, 12)}${padLeft(String(row.trips), 10)}${padLeft(money(row.amount), 18)}${padLeft(money(row.received), 18)}${padLeft(money(row.due), 18)}`
+      );
+    });
+    lines.push(thinSeparator);
+    lines.push("");
+
+    // Detailed History Section
+    lines.push("DETAILED TRANSACTION HISTORY");
+    lines.push(thinSeparator);
+    lines.push(
+      `${padRight("Date", 11)}${padRight("Company", 22)}${padRight("Car Type", 18)}${padLeft("Trips", 6)}${padLeft("Amount", 13)}${padLeft("Received", 13)}${padLeft("Due", 13)}`
+    );
+    lines.push(thinSeparator);
+    filteredHistory.forEach((row) => {
+      const company = truncateStr(row.companyName, 22);
+      const carType = truncateStr(row.carType || "", 18);
+      const tripsText = `${row.totalTrips}`;
+      lines.push(
+        `${padRight(row.date, 11)}${padRight(company, 22)}${padRight(carType, 18)}${padLeft(tripsText, 6)}${padLeft(money(row.amount), 13)}${padLeft(money(row.received), 13)}${padLeft(money(row.due), 13)}`
+      );
+    });
+    lines.push(separator);
+
+    const blob = createSimplePdfBlob("WASTE MANAGEMENT REPORT", lines, "Courier", 8.5, 25, 800, {
       repeatTitle: true,
       showPageNumbers: true,
-      lineHeight: 14,
-      linesPerPage: 48,
+      lineHeight: 12,
+      linesPerPage: 56,
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -746,7 +805,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           <div className={`rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-blue-50 border-blue-100"}`}><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Filtered Bill</p><p className="mt-2 text-2xl font-black text-blue-600">{money(summary.amount)}</p><p className="mt-1 text-[11px] font-bold text-slate-400">{reportRangeLabel}</p></div>
           <div className={`rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-emerald-50 border-emerald-100"}`}><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Collected</p><p className="mt-2 text-2xl font-black text-emerald-600">{money(summary.received)}</p><p className="mt-1 text-[11px] font-bold text-slate-400">{filteredHistory.length} record(s)</p></div>
-          <div className={`rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-rose-50 border-rose-100"}`}><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Outstanding Due</p><p className="mt-2 text-2xl font-black text-rose-500">{money(summary.due)}</p><p className="mt-1 text-[11px] font-bold text-slate-400">{companyDueSummary.filter((row) => row.due > 0).length} company(s)</p></div>
+          <div className={`rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-rose-50 border-rose-100"}`}><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Outstanding Due</p><p className="mt-2 text-2xl font-black text-rose-500">{money(summary.due)}</p><p className="mt-1 text-[11px] font-bold text-slate-400">{dayWiseSummary.filter((row) => row.due > 0).length} day(s)</p></div>
           <div className={`rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-amber-50 border-amber-100"}`}><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Trips</p><p className="mt-2 text-2xl font-black text-amber-500">{summary.totalTrips.toLocaleString("en-BD")}</p><p className="mt-1 text-[11px] font-bold text-slate-400">G {summary.garbageTrips.toLocaleString("en-BD")} | W {summary.wastageTrips.toLocaleString("en-BD")}</p></div>
         </div>
 
@@ -760,16 +819,16 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
           <div className={`rounded-2xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
             <div className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Company-wise Due Summary</p>
-              <span className="text-[10px] font-bold text-slate-400">{companyDueSummary.length} company(s)</span>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Day-wise Report</p>
+              <span className="text-[10px] font-bold text-slate-400">{dayWiseSummary.length} day(s)</span>
             </div>
             <div className="max-h-[22rem] overflow-auto">
               <table className="w-full min-w-[620px] text-left text-xs">
-                <thead className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-white text-slate-500"}`}><tr><th className="px-4 py-3 font-black uppercase tracking-widest">Company</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Trips</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Amount</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Received</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Due</th></tr></thead>
+                <thead className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-white text-slate-500"}`}><tr><th className="px-4 py-3 font-black uppercase tracking-widest">Date</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Trips</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Amount</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Received</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Due</th></tr></thead>
                 <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                  {companyDueSummary.map((row) => (
-                    <tr key={row.companyId} onClick={() => setCompanyFilter(row.companyId)} className={`cursor-pointer ${isDark ? "hover:bg-slate-800/70" : "hover:bg-blue-50"}`}>
-                      <td className="px-4 py-3 font-bold">{row.companyName}</td><td className="px-4 py-3 text-right">{row.totalTrips}</td><td className="px-4 py-3 text-right text-blue-600 font-black">{money(row.amount)}</td><td className="px-4 py-3 text-right text-emerald-600 font-black">{money(row.received)}</td><td className="px-4 py-3 text-right text-rose-500 font-black">{money(row.due)}</td>
+                  {dayWiseSummary.map((row) => (
+                    <tr key={row.date} onClick={() => { const inputDate = convertDisplayDateToInput(row.date); setStartDate(inputDate); setEndDate(inputDate); }} className={`cursor-pointer ${isDark ? "hover:bg-slate-800/70" : "hover:bg-blue-50"}`}>
+                      <td className="px-4 py-3 font-bold">{row.date}</td><td className="px-4 py-3 text-right">{row.trips}</td><td className="px-4 py-3 text-right text-blue-600 font-black">{money(row.amount)}</td><td className="px-4 py-3 text-right text-emerald-600 font-black">{money(row.received)}</td><td className="px-4 py-3 text-right text-rose-500 font-black">{money(row.due)}</td>
                     </tr>
                   ))}
                 </tbody>
