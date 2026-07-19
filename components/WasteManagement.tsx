@@ -56,7 +56,22 @@ const convertDisplayDateToInput = (displayDate: string): string => {
   return displayDate;
 };
 
+const updateSettleDateInNotes = (existingNotes: string | null | undefined, newDateStr: string): string => {
+  const noteAppend = `Settle Date: ${formatDisplayDate(newDateStr)}`;
+  if (!existingNotes) return noteAppend;
+
+  let cleaned = existingNotes.replace(/Settle Date:\s*[^|]+/gi, "").trim();
+  cleaned = cleaned
+    .split("|")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(" | ");
+
+  return cleaned ? `${cleaned} | ${noteAppend}` : noteAppend;
+};
+
 const money = (value: number) => `Tk ${value.toLocaleString("en-BD")}`;
+const formatRate = (value: number) => (value > 0 ? money(value) : "Optional");
 
 const getCarTypeFromTrips = (
   garbageTripsValue: string,
@@ -105,8 +120,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const [showHistoryCompanyDropdown, setShowHistoryCompanyDropdown] = useState(false);
   const [historyCompanySearchQuery, setHistoryCompanySearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(getTodayDateInputValue);
+  const [endDate, setEndDate] = useState(getTodayDateInputValue);
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [settlementRecord, setSettlementRecord] = useState<WasteRecord | null>(null);
   const [settlementAmount, setSettlementAmount] = useState("");
@@ -224,6 +239,26 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
   }, [companyFilter, endDate, history, search, startDate, statusFilter]);
 
+  const historyForDayWiseReport = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return [...history]
+      .filter((record) => {
+        const matchesSearch =
+          !normalizedSearch ||
+          record.companyName.toLowerCase().includes(normalizedSearch) ||
+          String(record.notes || "").toLowerCase().includes(normalizedSearch) ||
+          String(record.carType || "").toLowerCase().includes(normalizedSearch);
+        const matchesCompany =
+          companyFilter === "all" || record.companyId === companyFilter;
+        const matchesStatus =
+          statusFilter === "all" || record.status.toLowerCase() === statusFilter;
+        const isDueOnly = (record.due || 0) > 0 || (record.received || 0) <= 0;
+
+        return matchesSearch && matchesCompany && matchesStatus && isDueOnly;
+      })
+      .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
+  }, [companyFilter, history, search, statusFilter]);
+
   useEffect(() => {
     onVisibleRowsChange(filteredHistory);
   }, [filteredHistory, onVisibleRowsChange]);
@@ -275,7 +310,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
 
   const dayWiseSummary = useMemo(() => {
     const grouped = new Map<string, { date: string; trips: number; amount: number; received: number; due: number }>();
-    filteredHistory.forEach((row) => {
+    historyForDayWiseReport.forEach((row) => {
       const key = row.date;
       const current = grouped.get(key) || { date: key, trips: 0, amount: 0, received: 0, due: 0 };
       current.trips += row.totalTrips || 0;
@@ -285,7 +320,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       grouped.set(key, current);
     });
     return Array.from(grouped.values()).sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
-  }, [filteredHistory]);
+  }, [historyForDayWiseReport]);
 
   const reportRangeLabel = useMemo(() => {
     if (startDate && endDate) return `${startDate} to ${endDate}`;
@@ -370,7 +405,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     setCarType(record.carType || "Wastage & Garbage");
     setGarbageTrips(String(record.garbageTrips || 0));
     setWastageTrips(String(record.wastageTrips || 0));
-    setRatePerTrip(String(record.ratePerTrip ?? 0));
+    setRatePerTrip(record.ratePerTrip ? String(record.ratePerTrip) : "");
     setReceived(String(record.received || 0));
     setPaymentMethod(record.paymentMethod || systemConfig.paymentMethods[0] || "");
     setNotes(record.notes || "");
@@ -401,7 +436,9 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
 
   const handleSettlementStart = (record: WasteRecord) => {
     setSettlementRecord(record);
-    setSettlementAmount(String(record.amount || 0));
+    const defaultSettlementAmount =
+      record.amount > 0 ? record.received || 0 : record.amount || record.received || 0;
+    setSettlementAmount(String(defaultSettlementAmount));
     setSettlementDate(getTodayDateInputValue());
     setSettlementPaymentMethod(
       record.paymentMethod || systemConfig.paymentMethods[0] || paymentMethod || "",
@@ -414,29 +451,27 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     if (!supabase || !settlementRecord) return;
 
     const amount = Math.max(0, Number(settlementAmount) || 0);
+    const hasFixedAmount = (settlementRecord.ratePerTrip || 0) > 0;
 
-    if (amount < 0) {
-      setActionError("Settlement amount cannot be negative.");
-      return;
-    }
-    if (amount > (settlementRecord.amount || 0)) {
+    if (hasFixedAmount && amount > (settlementRecord.amount || 0)) {
       setActionError("Settlement amount cannot be greater than bill amount.");
       return;
     }
 
+    const nextAmount = hasFixedAmount ? settlementRecord.amount || 0 : amount;
     const nextReceived = amount;
-    const nextDue = Math.max(0, (settlementRecord.amount || 0) - nextReceived);
+    const nextDue = Math.max(0, nextAmount - nextReceived);
     const nextStatus: WasteRecord["status"] =
-      nextDue <= 0 && (settlementRecord.amount || 0) > 0
+      nextDue <= 0 && nextAmount > 0
         ? "Paid"
         : nextReceived > 0
           ? "Partial"
           : "Unpaid";
 
-    const noteAppend = `Settle Date: ${formatDisplayDate(settlementDate)}`;
-    const nextNotes = settlementRecord.notes ? `${settlementRecord.notes} | ${noteAppend}` : noteAppend;
+    const nextNotes = updateSettleDateInNotes(settlementRecord.notes, settlementDate);
 
     const patch: Partial<WasteRecord> = {
+      amount: nextAmount,
       received: nextReceived,
       due: nextDue,
       status: nextStatus,
@@ -462,8 +497,9 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     const targetRecords = history.filter((r) => ids.includes(r.id));
     if (targetRecords.length === 0) return;
     setBulkSettlementIds(targetRecords.map((r) => r.id));
-    const totalAmount = targetRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
-    setBulkSettlementAmount(String(totalAmount));
+    const totalDue = targetRecords.reduce((sum, r) => sum + (r.due || 0), 0);
+    const hasFlexibleAmountRecord = targetRecords.some((r) => (r.ratePerTrip || 0) <= 0);
+    setBulkSettlementAmount(totalDue > 0 ? String(totalDue) : hasFlexibleAmountRecord ? "" : "0");
     setBulkSettlementDate(getTodayDateInputValue());
     setBulkSettlementPaymentMethod(
       targetRecords[0]?.paymentMethod || systemConfig.paymentMethods[0] || "Cash"
@@ -485,87 +521,149 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     if (!supabase || bulkSettlementIds.length === 0) return;
 
     const amount = Math.max(0, Number(bulkSettlementAmount) || 0);
-    if (amount < 0) {
-      setActionError("Received amount cannot be negative.");
-      return;
-    }
-
     const targetRecords = history.filter((r) => bulkSettlementIds.includes(r.id));
-    const totalAmount = targetRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
+    const totalFixedAmount = targetRecords.reduce(
+      (sum, r) => sum + ((r.ratePerTrip || 0) > 0 ? r.amount || 0 : 0),
+      0,
+    );
+    const flexibleRecords = targetRecords.filter((r) => (r.ratePerTrip || 0) <= 0);
 
-    if (amount > totalAmount) {
+    if (flexibleRecords.length === 0 && amount > totalFixedAmount) {
       setActionError("Received amount cannot be greater than total bill amount.");
       return;
     }
 
     const allocateByWeight = (
       records: WasteRecord[],
-      totalAmount: number,
-      getWeight: (r: WasteRecord) => number,
+      totalCents: number,
+      getWeight: (record: WasteRecord) => number,
     ) => {
-      const n = records.length;
-      if (n === 0) return {} as Record<string, number>;
-      const totalCents = Math.max(0, Math.round(totalAmount * 100));
-      const weights = records.map((r) => Math.max(0, getWeight(r)));
-      const weightSum = weights.reduce((a, b) => a + b, 0);
-
+      const weights = records.map((record) => Math.max(0, getWeight(record)));
+      const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
       const centsById: Record<string, number> = {};
-      if (weightSum <= 0) {
-        const base = Math.floor(totalCents / n);
-        let rem = totalCents - base * n;
-        records.forEach((r) => {
-          centsById[r.id] = base + (rem > 0 ? 1 : 0);
-          if (rem > 0) rem -= 1;
-        });
-      } else {
-        const raw = records.map((r, i) => {
-          const exact = (totalCents * weights[i]) / weightSum;
-          const floor = Math.floor(exact);
-          return { id: r.id, floor, frac: exact - floor };
-        });
-        let used = 0;
-        raw.forEach((x) => {
-          centsById[x.id] = x.floor;
-          used += x.floor;
-        });
-        let rem = totalCents - used;
-        raw
-          .sort((a, b) => b.frac - a.frac)
-          .forEach((x) => {
-            if (rem <= 0) return;
-            centsById[x.id] += 1;
-            rem -= 1;
-          });
+
+      if (records.length === 0 || totalCents <= 0) {
+        return centsById;
       }
 
-      const amountById: Record<string, number> = {};
-      Object.keys(centsById).forEach((id) => {
-        amountById[id] = centsById[id] / 100;
+      if (weightSum <= 0) {
+        const base = Math.floor(totalCents / records.length);
+        let rem = totalCents - base * records.length;
+        records.forEach((record) => {
+          centsById[record.id] = base + (rem > 0 ? 1 : 0);
+          if (rem > 0) rem -= 1;
+        });
+        return centsById;
+      }
+
+      const raw = records.map((record, index) => {
+        const exact = (totalCents * weights[index]) / weightSum;
+        const floor = Math.floor(exact);
+        return { id: record.id, floor, frac: exact - floor };
       });
+
+      let used = 0;
+      raw.forEach((item) => {
+        centsById[item.id] = item.floor;
+        used += item.floor;
+      });
+
+      let rem = totalCents - used;
+      raw
+        .sort((a, b) => b.frac - a.frac)
+        .forEach((item) => {
+          if (rem <= 0) return;
+          centsById[item.id] += 1;
+          rem -= 1;
+        });
+
+      return centsById;
+    };
+
+    const allocateBulkSettlement = (records: WasteRecord[], settleAmount: number) => {
+      const sorted = [...records].sort(
+        (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime(),
+      );
+      const amountById: Record<string, number> = {};
+      let remainingCents = Math.max(0, Math.round(settleAmount * 100));
+      let activeRecords = [...sorted];
+
+      sorted.forEach((record) => {
+        amountById[record.id] = 0;
+      });
+
+      while (remainingCents > 0 && activeRecords.length > 0) {
+        const weighted = allocateByWeight(
+          activeRecords,
+          remainingCents,
+          (record) => {
+            const tripCount =
+              (record.garbageTrips || 0) + (record.wastageTrips || 0);
+            const totalTrips = record.totalTrips || 0;
+            return Math.max(tripCount || totalTrips, 1);
+          },
+        );
+
+        let distributedThisRound = 0;
+        const stillActive: WasteRecord[] = [];
+
+        activeRecords.forEach((record) => {
+          const proposed = weighted[record.id] || 0;
+          const cap =
+            (record.ratePerTrip || 0) > 0
+              ? Math.max(0, Math.round((record.amount || 0) * 100)) -
+                Math.round((amountById[record.id] || 0) * 100)
+              : Number.POSITIVE_INFINITY;
+          const applied = Math.max(0, Math.min(proposed, cap));
+          amountById[record.id] = (Math.round((amountById[record.id] || 0) * 100) + applied) / 100;
+          distributedThisRound += applied;
+
+          const hasRemainingCapacity =
+            (record.ratePerTrip || 0) > 0
+              ? Math.round((record.amount || 0) * 100) >
+                Math.round((amountById[record.id] || 0) * 100)
+              : true;
+
+          if (hasRemainingCapacity) {
+            stillActive.push(record);
+          }
+        });
+
+        if (distributedThisRound <= 0) {
+          break;
+        }
+
+        remainingCents = Math.max(0, remainingCents - distributedThisRound);
+        activeRecords = stillActive;
+      }
+
       return amountById;
     };
 
-    const receivedById = allocateByWeight(targetRecords, amount, (r) => r.amount || 0);
+    const receivedById = allocateBulkSettlement(targetRecords, amount);
 
     setActionError(null);
     try {
       const results = await Promise.all(
         targetRecords.map(async (rec) => {
-          const nextReceived = receivedById[rec.id] ?? 0;
-          const nextDue = Math.max(0, (rec.amount || 0) - nextReceived);
+          const appliedAmount = receivedById[rec.id] ?? 0;
+          const hasFixedAmount = (rec.ratePerTrip || 0) > 0;
+          const nextAmount = hasFixedAmount ? rec.amount || 0 : appliedAmount;
+          const nextReceived = appliedAmount;
+          const nextDue = Math.max(0, nextAmount - nextReceived);
           const nextStatus: WasteRecord["status"] =
-            nextDue <= 0 && (nextReceived > 0 || (rec.amount || 0) > 0)
+            nextDue <= 0 && (nextReceived > 0 || nextAmount > 0)
               ? "Paid"
               : nextReceived > 0
                 ? "Partial"
                 : "Unpaid";
 
-          const noteAppend = `Settle Date: ${formatDisplayDate(bulkSettlementDate)}`;
-          const nextNotes = nextReceived > (rec.received || 0)
-            ? (rec.notes ? `${rec.notes} | ${noteAppend}` : noteAppend)
+          const nextNotes = appliedAmount > 0
+            ? updateSettleDateInNotes(rec.notes, bulkSettlementDate)
             : rec.notes;
 
           const patch: Partial<WasteRecord> = {
+            amount: nextAmount,
             received: nextReceived,
             due: nextDue,
             status: nextStatus,
@@ -864,7 +962,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
           </select>
           <input type="number" min="0" value={garbageTrips} onChange={(e) => handleGarbageTripsChange(e.target.value)} placeholder="Garbage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <input type="number" min="0" value={wastageTrips} onChange={(e) => handleWastageTripsChange(e.target.value)} placeholder="Wastage trips" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
-          <input type="number" min="0" value={ratePerTrip} onChange={(e) => setRatePerTrip(e.target.value)} placeholder="Rate per trip" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
+          <input type="number" min="0" value={ratePerTrip} onChange={(e) => setRatePerTrip(e.target.value)} placeholder="Rate per trip (optional)" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <input type="number" min="0" value={received} onChange={(e) => setReceived(e.target.value)} placeholder="Received amount" className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}>
             <option value="">Payment method</option>
@@ -881,6 +979,9 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
           <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Received</p><p className="mt-2 text-xl font-black text-emerald-600">{money(totals.receivedAmount)}</p></div>
           <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Due</p><p className="mt-2 text-xl font-black text-rose-500">{money(totals.due)}</p></div>
         </div>
+        <p className="mt-3 text-xs font-medium text-slate-400">
+          Rate empty রাখলেও entry save হবে। পরে settlement update করলে নতুন amount-টাই final হিসেবে save হবে।
+        </p>
 
         <div className="mt-5 flex justify-end">
           <button type="submit" className="rounded-xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg hover:bg-blue-700">
@@ -1071,7 +1172,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
           <div className={`rounded-2xl border overflow-hidden ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
             <div className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? "border-slate-700" : "border-slate-200"}`}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Day-wise Report</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Day-wise Due Report</p>
               <span className="text-[10px] font-bold text-slate-400">{dayWiseSummary.length} day(s)</span>
             </div>
             <div className="max-h-[22rem] overflow-auto">
@@ -1174,14 +1275,27 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                   <td className="px-4 py-3 text-right">{record.garbageTrips}</td>
                   <td className="px-4 py-3 text-right">{record.wastageTrips}</td>
                   <td className="px-4 py-3 text-right font-black">{record.totalTrips}</td>
-                  <td className="px-4 py-3 text-right">{money(record.ratePerTrip)}</td>
+                  <td className="px-4 py-3 text-right">{formatRate(record.ratePerTrip)}</td>
                   <td className="px-4 py-3 text-right text-blue-600 font-black">{money(record.amount)}</td>
                   <td className="px-4 py-3 text-right text-emerald-600 font-black">{money(record.received)}</td>
                   <td className="px-4 py-3 text-right text-rose-500 font-black">{money(record.due)}</td>
                   <td className="px-4 py-3 text-center"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${record.status === "Paid" ? "bg-emerald-50 text-emerald-600" : record.status === "Partial" ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"}`}>{record.status}</span></td>
-                  <td className="px-4 py-3"><div className="flex justify-end gap-2">{record.due > 0 ? <button type="button" onClick={() => handleSettlementStart(record)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">Settle</button> : null}<button type="button" onClick={() => handleRecordEdit(record)} className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600">Edit</button><button type="button" onClick={() => handleRecordDelete(record.id)} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600">Delete</button></div></td>
+                  <td className="px-4 py-3"><div className="flex justify-end gap-2">{record.due > 0 || record.amount <= 0 ? <button type="button" onClick={() => handleSettlementStart(record)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">Settle</button> : null}<button type="button" onClick={() => handleRecordEdit(record)} className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600">Edit</button><button type="button" onClick={() => handleRecordDelete(record.id)} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600">Delete</button></div></td>
                 </tr>
               ))}
+              <tr className={`${isDark ? "bg-slate-900 text-slate-100" : "bg-slate-100 text-slate-900"}`}>
+                <td className="px-4 py-3" />
+                <td className="px-4 py-3 font-black uppercase tracking-widest" colSpan={3}>Grand Total</td>
+                <td className="px-4 py-3 text-right font-black">{summary.garbageTrips}</td>
+                <td className="px-4 py-3 text-right font-black">{summary.wastageTrips}</td>
+                <td className="px-4 py-3 text-right font-black">{summary.totalTrips}</td>
+                <td className="px-4 py-3 text-right font-black">-</td>
+                <td className="px-4 py-3 text-right font-black text-blue-600">{money(summary.amount)}</td>
+                <td className="px-4 py-3 text-right font-black text-emerald-600">{money(summary.received)}</td>
+                <td className="px-4 py-3 text-right font-black text-rose-500">{money(summary.due)}</td>
+                <td className="px-4 py-3 text-center font-black">{filteredHistory.length} row(s)</td>
+                <td className="px-4 py-3" />
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1229,18 +1343,28 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
 
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  Settlement Amount
+                  {(settlementRecord.ratePerTrip || 0) > 0 ? "Settlement Amount" : "Final Amount"}
                 </label>
                 <input
                   type="number"
                   min="0"
-                  max={settlementRecord.due}
+                  max={(settlementRecord.ratePerTrip || 0) > 0 ? settlementRecord.due : undefined}
                   value={settlementAmount}
                   onChange={(e) => setSettlementAmount(e.target.value)}
-                  placeholder="Settlement amount"
+                  placeholder={(settlementRecord.ratePerTrip || 0) > 0 ? "Settlement amount" : "Final amount"}
                   className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                 />
               </div>
+
+              {(settlementRecord.ratePerTrip || 0) <= 0 ? (
+                <p className="text-xs font-medium text-slate-400">
+                  এই record-এ আগে amount set করা নেই। এখন যা receive করবেন, সেটাই final amount হিসেবে save হবে।
+                </p>
+              ) : (
+                <p className="text-xs font-medium text-slate-400">
+                  নতুন settlement দিলে আগের received বাদ যাবে, এই amount-টাই final settlement হিসেবে থাকবে।
+                </p>
+              )}
 
               <select
                 value={settlementPaymentMethod}
@@ -1348,6 +1472,12 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                   <p className="mt-2 text-sm font-black text-rose-500">{money(selectedDueAmount)}</p>
                 </div>
               </div>
+              <p className="text-xs font-medium text-slate-400">
+                Settlement amount selected record-গুলোর total car/trips অনুযায়ী distribute হবে।
+              </p>
+              <p className="text-xs font-medium text-slate-400">
+                আবার bulk settlement দিলে আগের settlement replace হয়ে নতুন distributed amount-ই final হিসেবে save হবে।
+              </p>
 
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">

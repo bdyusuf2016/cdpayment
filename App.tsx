@@ -109,7 +109,10 @@ const normalizeWasteRecord = (row: any): WasteRecord => ({
     (row.carType ?? row.car_type ?? "Wastage & Garbage") as WasteRecord["carType"],
   garbageTrips: Number(row.garbageTrips ?? row.garbage_trips ?? 0),
   wastageTrips: Number(row.wastageTrips ?? row.wastage_trips ?? 0),
-  totalTrips: Number(row.totalTrips ?? row.total_trips ?? 0),
+  totalTrips:
+    (Number(row.garbageTrips ?? row.garbage_trips ?? 0) +
+      Number(row.wastageTrips ?? row.wastage_trips ?? 0)) ||
+    Number(row.totalTrips ?? row.total_trips ?? 0),
   ratePerTrip: Number(row.ratePerTrip ?? row.rate_per_trip ?? 0),
   amount: Number(row.amount ?? 0),
   received: Number(row.received ?? 0),
