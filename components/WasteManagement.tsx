@@ -131,6 +131,10 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const [settlementDate, setSettlementDate] = useState(getTodayDateInputValue);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Sorting State
+  const [sortKey, setSortKey] = useState<"date" | "companyName" | "totalTrips" | "amount" | "received" | "due" | "status">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
   // Bulk Settlement & Selection State
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showBulkSettlementModal, setShowBulkSettlementModal] = useState(false);
@@ -269,9 +273,65 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
   }, [companyFilter, history, search, statusFilter]);
 
+  const sortedHistory = useMemo(() => {
+    const rows = [...filteredHistory];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "date") {
+        left = parseDate(a.date).getTime();
+        right = parseDate(b.date).getTime();
+      } else if (sortKey === "companyName") {
+        left = (a.companyName || "").toLowerCase();
+        right = (b.companyName || "").toLowerCase();
+      } else if (sortKey === "totalTrips") {
+        left = Number(a.totalTrips) || 0;
+        right = Number(b.totalTrips) || 0;
+      } else if (sortKey === "amount") {
+        left = Number(a.amount) || 0;
+        right = Number(b.amount) || 0;
+      } else if (sortKey === "received") {
+        left = Number(a.received) || 0;
+        right = Number(b.received) || 0;
+      } else if (sortKey === "due") {
+        left = Number(a.due) || 0;
+        right = Number(b.due) || 0;
+      } else if (sortKey === "status") {
+        left = (a.status || "").toLowerCase();
+        right = (b.status || "").toLowerCase();
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredHistory, sortKey, sortDir]);
+
+  const toggleSort = (
+    key: "date" | "companyName" | "totalTrips" | "amount" | "received" | "due" | "status",
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "date" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "date" | "companyName" | "totalTrips" | "amount" | "received" | "due" | "status",
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400 ml-1";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-600 ml-1"
+      : "fa-sort-down text-blue-600 ml-1";
+  };
+
   useEffect(() => {
-    onVisibleRowsChange(filteredHistory);
-  }, [filteredHistory, onVisibleRowsChange]);
+    onVisibleRowsChange(sortedHistory);
+  }, [sortedHistory, onVisibleRowsChange]);
 
   useEffect(() => {
     setSearch("");
@@ -1242,12 +1302,12 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                   <input
                     type="checkbox"
                     checked={
-                      filteredHistory.length > 0 &&
-                      selectedIds.length === filteredHistory.length
+                      sortedHistory.length > 0 &&
+                      selectedIds.length === sortedHistory.length
                     }
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedIds(filteredHistory.map((r) => r.id));
+                        setSelectedIds(sortedHistory.map((r) => r.id));
                       } else {
                         setSelectedIds([]);
                       }
@@ -1255,22 +1315,36 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                     className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                 </th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest">Date</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest">Company</th>
+                <th onClick={() => toggleSort("date")} className="px-4 py-3 font-black uppercase tracking-widest cursor-pointer select-none hover:text-blue-600">
+                  Date <i className={`fas ${getSortIcon("date")}`}></i>
+                </th>
+                <th onClick={() => toggleSort("companyName")} className="px-4 py-3 font-black uppercase tracking-widest cursor-pointer select-none hover:text-blue-600">
+                  Company <i className={`fas ${getSortIcon("companyName")}`}></i>
+                </th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest">Car Type</th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Garbage</th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Wastage</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Trips</th>
+                <th onClick={() => toggleSort("totalTrips")} className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer select-none hover:text-blue-600">
+                  Trips <i className={`fas ${getSortIcon("totalTrips")}`}></i>
+                </th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Rate</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Amount</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Received</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Due</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-center">Status</th>
+                <th onClick={() => toggleSort("amount")} className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer select-none hover:text-blue-600">
+                  Amount <i className={`fas ${getSortIcon("amount")}`}></i>
+                </th>
+                <th onClick={() => toggleSort("received")} className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer select-none hover:text-blue-600">
+                  Received <i className={`fas ${getSortIcon("received")}`}></i>
+                </th>
+                <th onClick={() => toggleSort("due")} className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer select-none hover:text-blue-600">
+                  Due <i className={`fas ${getSortIcon("due")}`}></i>
+                </th>
+                <th onClick={() => toggleSort("status")} className="px-4 py-3 font-black uppercase tracking-widest text-center cursor-pointer select-none hover:text-blue-600">
+                  Status <i className={`fas ${getSortIcon("status")}`}></i>
+                </th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Action</th>
               </tr>
             </thead>
             <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-              {filteredHistory.map((record) => (
+              {sortedHistory.map((record) => (
                 <tr
                   key={record.id}
                   className={`group transition-all ${
@@ -1315,7 +1389,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                 <td className="px-4 py-3 text-right font-black text-blue-600">{money(summary.amount)}</td>
                 <td className="px-4 py-3 text-right font-black text-emerald-600">{money(summary.received)}</td>
                 <td className="px-4 py-3 text-right font-black text-rose-500">{money(summary.due)}</td>
-                <td className="px-4 py-3 text-center font-black">{filteredHistory.length} row(s)</td>
+                <td className="px-4 py-3 text-center font-black">{sortedHistory.length} row(s)</td>
                 <td className="px-4 py-3" />
               </tr>
             </tbody>

@@ -47,23 +47,23 @@ const bnAnsiNumbers = [
 function numberToBengaliWords(num: number): string {
   if (num === 0) return "শূন্য";
   if (num < 0) return "ঋণাত্মক " + numberToBengaliWords(Math.abs(num));
-  
+
   let words = "";
-  
+
   const crore = Math.floor(num / 10000000);
   num %= 10000000;
-  
+
   const lakh = Math.floor(num / 100000);
   num %= 100000;
-  
+
   const thousand = Math.floor(num / 1000);
   num %= 1000;
-  
+
   const hundred = Math.floor(num / 100);
   num %= 100;
-  
+
   const rest = num;
-  
+
   if (crore > 0) {
     words += numberToBengaliWords(crore) + " কোটি ";
   }
@@ -79,30 +79,30 @@ function numberToBengaliWords(num: number): string {
   if (rest > 0) {
     words += bnNumbers[rest];
   }
-  
+
   return words.trim();
 }
 
 function numberToBengaliAnsiWords(num: number): string {
   if (num === 0) return "k~b¨";
   if (num < 0) return "FYvZ¥K " + numberToBengaliAnsiWords(Math.abs(num));
-  
+
   let words = "";
-  
+
   const crore = Math.floor(num / 10000000);
   num %= 10000000;
-  
+
   const lakh = Math.floor(num / 100000);
   num %= 100000;
-  
+
   const thousand = Math.floor(num / 1000);
   num %= 1000;
-  
+
   const hundred = Math.floor(num / 100);
   num %= 100;
-  
+
   const rest = num;
-  
+
   if (crore > 0) {
     words += numberToBengaliAnsiWords(crore) + " †KvwU ";
   }
@@ -118,7 +118,7 @@ function numberToBengaliAnsiWords(num: number): string {
   if (rest > 0) {
     words += bnAnsiNumbers[rest];
   }
-  
+
   return words.trim();
 }
 
@@ -157,7 +157,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   dashboardFilter = "all",
 }) => {
   const isDark = systemConfig.theme === "dark";
-  
+
   // State variables for form
   const [editingId, setEditingId] = useState<string | null>(null);
   const [slNo, setSlNo] = useState("");
@@ -200,6 +200,10 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   const [filterCircle, setFilterCircle] = useState<"All" | "East" | "West">("All");
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Sorting State
+  const [sortKey, setSortKey] = useState<"slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
   // Suggested Serial (slNo) auto-incrementing
   useEffect(() => {
     if (!editingId) {
@@ -217,7 +221,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
     const aitVal = Math.max(0, Number(ait) || 0);
     const atvAtVal = Math.max(0, Number(atvAt) || 0);
     const total = cdVal + rdVal + vatVal + aitVal + atvAtVal;
-    
+
     setDutyTax(String(total));
     if (inWordEncoding === "ANSI") {
       setInWord(numberToBengaliAnsiWords(total) + " UvKv gvÎ");
@@ -250,16 +254,16 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   // Parse Excel raw text input
   const handleExcelPaste = (text: string) => {
     if (!text) return;
-    
+
     let parts = text.trim().split(/\t/);
     if (parts.length < 6) {
       parts = text.trim().split(/\s+/);
     }
-    
+
     const numbers = parts
       .map((p) => p.replace(/[^\d.-]/g, "").trim())
       .filter((p) => p !== "");
-      
+
     if (numbers.length >= 6) {
       const assessable = Math.round(parseFloat(numbers[0]) || 0);
       const cdVal = Math.round(parseFloat(numbers[1]) || 0);
@@ -267,14 +271,14 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
       const vatVal = Math.round(parseFloat(numbers[3]) || 0);
       const aitVal = Math.round(parseFloat(numbers[4]) || 0);
       const atvAtVal = Math.round(parseFloat(numbers[5]) || 0);
-      
+
       setAssessableValue(String(assessable));
       setCd(String(cdVal));
       setRd(String(rdVal));
       setVat(String(vatVal));
       setAit(String(aitVal));
       setAtvAt(String(atvAtVal));
-      
+
       setExcelPasteInput(""); // Reset paste box
     }
   };
@@ -282,7 +286,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   const handleOpenPayModal = (record: ClearanceRecord) => {
     setPayRecord(record);
     setPayChallanNo(record.trnxId || "");
-    
+
     let initialDate = "";
     if (record.paymentDate) {
       const parsedPayDate = parseDate(record.paymentDate);
@@ -302,7 +306,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   const handleConfirmPay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase || !payRecord) return;
-    
+
     setActionError(null);
     try {
       const isPaid = payChallanNo.trim() !== "" && payDate.trim() !== "";
@@ -312,9 +316,9 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
         paymentDate: payDate ? formatDisplayDate(payDate) : "",
         paymentStatus: (isPaid ? "Paid" : "Unpaid") as "Paid" | "Unpaid",
       };
-      
+
       const { id, ...payload } = updatedRecord;
-      
+
       const updated = await updateClearanceRecord(supabase, payRecord.id, payload);
       if (updated) {
         setHistory((prev) =>
@@ -351,7 +355,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
     return [...history]
       .filter((row) => {
         const rowDate = parseDate(row.date);
-        
+
         // Search Filter
         const matchesSearch =
           !normalizedSearch ||
@@ -406,8 +410,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   }, [history, search, startDate, endDate, filterMonth, statusFilter, filterCircle, dashboardFilter]);
 
   useEffect(() => {
-    onVisibleRowsChange(filteredHistory);
-  }, [filteredHistory, onVisibleRowsChange]);
+    onVisibleRowsChange(sortedHistory);
+  }, [sortedHistory, onVisibleRowsChange]);
 
   useEffect(() => {
     setSearch("");
@@ -518,14 +522,14 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   const handleEdit = (record: ClearanceRecord) => {
     setEditingId(record.id);
     setSlNo(record.slNo || "");
-    
+
     const parsed = parseDate(record.date);
     if (parsed.getTime() > 0) {
       const offset = parsed.getTimezoneOffset();
       const local = new Date(parsed.getTime() - offset * 60000);
       setEntryDate(local.toISOString().split("T")[0]);
     }
-    
+
     setClientName(record.clientName || "");
     setAssessableValue(record.assessableValue ? String(record.assessableValue) : "");
     setCd(record.cd ? String(record.cd) : "");
@@ -535,7 +539,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
     setAtvAt(record.atvAt ? String(record.atvAt) : "");
     setDutyTax(record.dutyTax ? String(record.dutyTax) : "");
     setTrnxId(record.trnxId || "");
-    
+
     if (record.paymentDate) {
       const parsedPayDate = parseDate(record.paymentDate);
       if (parsedPayDate.getTime() > 0) {
@@ -548,7 +552,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
     } else {
       setPaymentDate("");
     }
-    
+
     setPaymentStatus(record.paymentStatus || "Unpaid");
     setCircle(record.circle || "East");
     setInWord(record.inWord || "");
@@ -575,27 +579,27 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
     if (formattedPayDate.includes("-")) {
       formattedPayDate = formatDisplayDate(formattedPayDate);
     }
-    
+
     const t = (record.trnxId || "").trim();
     const d = formattedPayDate.trim();
     const w = (record.inWord || "").trim();
-    
+
     // Plain text format (TSV with trailing newline)
     const textToCopy = `${t}\t${d}\t${w}\r\n`;
-    
+
     // HTML format represents a table row. MS Word uses this to overwrite cells natively instead of treating it as plain text.
     const htmlToCopy = `<table><tr><td>${t}</td><td>${d}</td><td>${w}</td></tr></table>`;
-    
+
     try {
       // Create Blobs for text and html types
       const textBlob = new Blob([textToCopy], { type: "text/plain" });
       const htmlBlob = new Blob([htmlToCopy], { type: "text/html" });
-      
+
       const clipboardItem = new ClipboardItem({
         "text/plain": textBlob,
         "text/html": htmlBlob
       });
-      
+
       navigator.clipboard.write([clipboardItem])
         .then(() => {
           setCopiedId(record.id);
@@ -670,6 +674,62 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
     const circleSuffix = activeCircle ? ` (${activeCircle})` : "";
     setPdfSubtitle2(`Month Name : ${currentMonthStr}${circleSuffix}`);
     setShowPdfModal(true);
+  };
+
+  const sortedHistory = useMemo(() => {
+    const rows = [...filteredHistory];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "date") {
+        left = parseDate(a.date).getTime();
+        right = parseDate(b.date).getTime();
+      } else if (sortKey === "slNo") {
+        left = Number(a.slNo) || 0;
+        right = Number(b.slNo) || 0;
+      } else if (sortKey === "clientName") {
+        left = (a.clientName || "").toLowerCase();
+        right = (b.clientName || "").toLowerCase();
+      } else if (sortKey === "assessableValue") {
+        left = Number(a.assessableValue) || 0;
+        right = Number(b.assessableValue) || 0;
+      } else if (sortKey === "dutyTax") {
+        left = Number(a.dutyTax) || 0;
+        right = Number(b.dutyTax) || 0;
+      } else if (sortKey === "paymentStatus") {
+        left = (a.paymentStatus || "").toLowerCase();
+        right = (b.paymentStatus || "").toLowerCase();
+      } else if (sortKey === "circle") {
+        left = (a.circle || "").toLowerCase();
+        right = (b.circle || "").toLowerCase();
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredHistory, sortKey, sortDir]);
+
+  const toggleSort = (
+    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle",
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "date" || key === "slNo" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle",
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400 ml-1.5";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-600 ml-1.5"
+      : "fa-sort-down text-blue-600 ml-1.5";
   };
 
   const handlePrintPdf = () => {
@@ -906,9 +966,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
       {/* Input / Editing Form */}
       <form
         onSubmit={handleSubmit}
-        className={`rounded-[2rem] border shadow-xl p-8 transition-all ${
-          isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
-        }`}
+        className={`rounded-[2rem] border shadow-xl p-8 transition-all ${isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
+          }`}
       >
         <div className="flex items-center justify-between gap-3 mb-6 border-b pb-4 border-slate-200 dark:border-slate-700">
           <div>
@@ -943,9 +1002,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               handleExcelPaste(e.target.value);
             }}
             placeholder="Excel থেকে কপি করা লাইন এখানে পেস্ট করুন (যেমন: শুল্কায়নযোগ্য মূল্য	CD	RD	VAT	AIT	ATV/AT)"
-            className={`w-full px-4 py-3 rounded-xl border text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-              isDark ? "bg-slate-900 border-slate-700 text-white placeholder-slate-500" : "bg-white border-slate-200 text-slate-900 placeholder-slate-400"
-            }`}
+            className={`w-full px-4 py-3 rounded-xl border text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white placeholder-slate-500" : "bg-white border-slate-200 text-slate-900 placeholder-slate-400"
+              }`}
           />
           <p className="text-[10px] text-slate-400 font-bold mt-1.5">
             * পেস্ট করলে ৬টি সংখ্যা সনাক্ত করে যথাক্রমে শুল্কায়নযোগ্য মূল্য, CD, RD, VAT, AIT এবং ATV/AT ফিল্ডগুলো পূরণ করবে।
@@ -962,9 +1020,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               type="date"
               value={entryDate}
               onChange={(e) => setEntryDate(e.target.value)}
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             />
           </div>
 
@@ -979,9 +1036,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               onChange={(e) => setClientName(e.target.value)}
               placeholder="প্রতিষ্ঠানের নাম খুঁজুন বা লিখুন..."
               list="client-options-list"
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             />
             <datalist id="client-options-list">
               {companies.map((c) => (
@@ -1001,9 +1057,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               value={assessableValue}
               onChange={(e) => setAssessableValue(e.target.value)}
               placeholder="মূল্য"
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             />
           </div>
 
@@ -1016,9 +1071,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               value={cd}
               onChange={(e) => setCd(e.target.value)}
               placeholder="CD"
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             />
           </div>
 
@@ -1031,9 +1085,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               value={rd}
               onChange={(e) => setRd(e.target.value)}
               placeholder="RD"
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             />
           </div>
 
@@ -1046,9 +1099,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               value={vat}
               onChange={(e) => setVat(e.target.value)}
               placeholder="VAT"
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             />
           </div>
 
@@ -1061,9 +1113,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               value={ait}
               onChange={(e) => setAit(e.target.value)}
               placeholder="AIT"
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             />
           </div>
 
@@ -1076,9 +1127,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               value={atvAt}
               onChange={(e) => setAtvAt(e.target.value)}
               placeholder="ATV/AT"
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             />
           </div>
 
@@ -1091,9 +1141,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               type="text"
               readOnly
               value={Number(dutyTax || 0).toLocaleString("en-BD")}
-              className={`w-full px-4 py-2.5 rounded-xl border font-extrabold text-sm outline-none ${
-                isDark ? "bg-slate-900/60 border-slate-700 text-blue-400" : "bg-slate-100 border-slate-200 text-blue-600"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-extrabold text-sm outline-none ${isDark ? "bg-slate-900/60 border-slate-700 text-blue-400" : "bg-slate-100 border-slate-200 text-blue-600"
+                }`}
             />
           </div>
 
@@ -1105,9 +1154,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
             <select
               value={circle}
               onChange={(e) => setCircle(e.target.value)}
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             >
               <option value="East">East</option>
               <option value="West">West</option>
@@ -1127,11 +1175,9 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               onChange={(e) => setInWord(e.target.value)}
               placeholder="টাকা কথায়..."
               style={inWordEncoding === "ANSI" ? { fontFamily: "SutonnyMJ, 'Sutonny MJ'" } : {}}
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold outline-none focus:border-blue-500 transition-all ${
-                inWordEncoding === "ANSI" ? "text-lg" : "text-sm"
-              } ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold outline-none focus:border-blue-500 transition-all ${inWordEncoding === "ANSI" ? "text-lg" : "text-sm"
+                } ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             />
           </div>
 
@@ -1143,9 +1189,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
             <select
               value={inWordEncoding}
               onChange={(e) => setInWordEncoding(e.target.value as "Unicode" | "ANSI")}
-              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-              }`}
+              className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
             >
               <option value="Unicode">Unicode (ইউনিকোড)</option>
               <option value="ANSI">ANSI (SutonnyMJ)</option>
@@ -1165,9 +1210,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
 
       {/* Filters & History List */}
       <div
-        className={`rounded-[2rem] border shadow-xl p-8 ${
-          isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
-        }`}
+        className={`rounded-[2rem] border shadow-xl p-8 ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
+          }`}
       >
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 border-b pb-4 border-slate-200 dark:border-slate-700">
           <div>
@@ -1205,18 +1249,16 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ক্রম, প্রতিষ্ঠানের নাম, চালান নম্বর খুঁজুন..."
-              className={`w-full rounded-xl border px-4 py-2.5 font-bold text-xs outline-none ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
-              }`}
+              className={`w-full rounded-xl border px-4 py-2.5 font-bold text-xs outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                }`}
             />
           </div>
           <div>
             <select
               value={filterCircle}
               onChange={(e) => setFilterCircle(e.target.value as "All" | "East" | "West")}
-              className={`w-full rounded-xl border px-4 py-2.5 font-bold text-xs outline-none ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
-              }`}
+              className={`w-full rounded-xl border px-4 py-2.5 font-bold text-xs outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                }`}
             >
               <option value="All">All Circles (সব সার্কেল)</option>
               <option value="East">East (ইস্ট)</option>
@@ -1227,9 +1269,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "All" | "Paid" | "Unpaid")}
-              className={`w-full rounded-xl border px-4 py-2.5 font-bold text-xs outline-none ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
-              }`}
+              className={`w-full rounded-xl border px-4 py-2.5 font-bold text-xs outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                }`}
             >
               <option value="All">All Status (সব অবস্থা)</option>
               <option value="Paid">Paid (পরিশোধিত)</option>
@@ -1240,9 +1281,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
             <select
               value={filterMonth}
               onChange={(e) => setFilterMonth(e.target.value)}
-              className={`w-full rounded-xl border px-4 py-2.5 font-bold text-xs outline-none ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
-              }`}
+              className={`w-full rounded-xl border px-4 py-2.5 font-bold text-xs outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                }`}
             >
               <option value="All">All Months (সব মাস)</option>
               {monthFilterOptions.map((opt) => (
@@ -1257,17 +1297,15 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className={`w-full rounded-xl border px-2 py-2.5 font-bold text-[10px] outline-none ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
-              }`}
+              className={`w-full rounded-xl border px-2 py-2.5 font-bold text-[10px] outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                }`}
             />
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className={`w-full rounded-xl border px-2 py-2.5 font-bold text-[10px] outline-none ${
-                isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
-              }`}
+              className={`w-full rounded-xl border px-2 py-2.5 font-bold text-[10px] outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                }`}
             />
           </div>
         </div>
@@ -1275,9 +1313,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
         {/* Dashboard Top Total Stats matching the screenshot */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div
-            className={`rounded-2xl border p-4 flex flex-col justify-between ${
-              isDark ? "bg-slate-900 border-slate-700" : "bg-emerald-50 border-emerald-100 text-emerald-800"
-            }`}
+            className={`rounded-2xl border p-4 flex flex-col justify-between ${isDark ? "bg-slate-900 border-slate-700" : "bg-emerald-50 border-emerald-100 text-emerald-800"
+              }`}
           >
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               Revenue Collected (আদায়কৃত শুল্ক)
@@ -1287,9 +1324,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
             </p>
           </div>
           <div
-            className={`rounded-2xl border p-4 flex flex-col justify-between ${
-              isDark ? "bg-slate-900 border-slate-700" : "bg-rose-50 border-rose-100 text-rose-800"
-            }`}
+            className={`rounded-2xl border p-4 flex flex-col justify-between ${isDark ? "bg-slate-900 border-slate-700" : "bg-rose-50 border-rose-100 text-rose-800"
+              }`}
           >
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               Pending Revenue (বকেয়া শুল্ক)
@@ -1309,9 +1345,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
             </p>
           </div>
           <div
-            className={`rounded-2xl border p-4 flex flex-col justify-between ${
-              isDark ? "bg-slate-900 border-slate-700" : "bg-blue-50 border-blue-100 text-blue-800"
-            }`}
+            className={`rounded-2xl border p-4 flex flex-col justify-between ${isDark ? "bg-slate-900 border-slate-700" : "bg-blue-50 border-blue-100 text-blue-800"
+              }`}
           >
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               Total Assessable (মোট শুল্কায়নযোগ্য)
@@ -1326,35 +1361,47 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
           <table className="w-full min-w-[1300px] text-left text-xs">
             <thead
-              className={`font-black uppercase tracking-widest ${
-                isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"
-              }`}
+              className={`font-black uppercase tracking-widest ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"
+                }`}
             >
               <tr>
-                <th className="px-4 py-3 text-center w-12">ক্রম</th>
-                <th className="px-4 py-3 w-28">তাং</th>
-                <th className="px-4 py-3 min-w-[200px]">প্রতিষ্ঠানের নাম</th>
-                <th className="px-4 py-3 text-right">শুল্কায়নযোগ্য মূল্য</th>
+                <th onClick={() => toggleSort("slNo")} className="px-4 py-3 text-center w-12 cursor-pointer select-none hover:text-blue-600">
+                  ক্রম <i className={`fas ${getSortIcon("slNo")}`}></i>
+                </th>
+                <th onClick={() => toggleSort("date")} className="px-4 py-3 w-28 cursor-pointer select-none hover:text-blue-600">
+                  তাং <i className={`fas ${getSortIcon("date")}`}></i>
+                </th>
+                <th onClick={() => toggleSort("clientName")} className="px-4 py-3 min-w-[200px] cursor-pointer select-none hover:text-blue-600">
+                  প্রতিষ্ঠানের নাম <i className={`fas ${getSortIcon("clientName")}`}></i>
+                </th>
+                <th onClick={() => toggleSort("assessableValue")} className="px-4 py-3 text-right cursor-pointer select-none hover:text-blue-600">
+                  শুল্কায়নযোগ্য মূল্য <i className={`fas ${getSortIcon("assessableValue")}`}></i>
+                </th>
                 <th className="px-3 py-3 text-right">CD</th>
                 <th className="px-3 py-3 text-right">RD</th>
                 <th className="px-3 py-3 text-right">VAT</th>
                 <th className="px-3 py-3 text-right">AIT</th>
                 <th className="px-3 py-3 text-right">ATV/AT</th>
-                <th className="px-4 py-3 text-right">শুল্ক কর</th>
+                <th onClick={() => toggleSort("dutyTax")} className="px-4 py-3 text-right cursor-pointer select-none hover:text-blue-600">
+                  শুল্ক কর <i className={`fas ${getSortIcon("dutyTax")}`}></i>
+                </th>
                 <th className="px-4 py-3 min-w-[160px]">চালান নং</th>
                 <th className="px-4 py-3">Payment_Date</th>
                 <th className="px-4 py-3 min-w-[250px]">In_Word</th>
-                <th className="px-4 py-3 text-center">Status</th>
-                <th className="px-4 py-3 text-center">Circle</th>
+                <th onClick={() => toggleSort("paymentStatus")} className="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600">
+                  Status <i className={`fas ${getSortIcon("paymentStatus")}`}></i>
+                </th>
+                <th onClick={() => toggleSort("circle")} className="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600">
+                  Circle <i className={`fas ${getSortIcon("circle")}`}></i>
+                </th>
                 <th className="px-4 py-3 text-center w-24 sticky right-0 bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">Action</th>
               </tr>
             </thead>
             <tbody
-              className={`${
-                isDark ? "divide-slate-700" : "divide-slate-200"
-              } divide-y`}
+              className={`${isDark ? "divide-slate-700" : "divide-slate-200"
+                } divide-y`}
             >
-              {filteredHistory.map((record) => (
+              {sortedHistory.map((record) => (
                 <tr
                   key={record.id}
                   onClick={(e) => {
@@ -1364,9 +1411,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                     }
                     handleEdit(record);
                   }}
-                  className={`group hover:bg-slate-50 dark:hover:bg-slate-900/40 cursor-pointer transition-colors font-medium ${
-                    record.paymentStatus === "Paid" ? "" : "bg-rose-50/20 dark:bg-rose-950/5"
-                  }`}
+                  className={`group hover:bg-slate-50 dark:hover:bg-slate-900/40 cursor-pointer transition-colors font-medium ${record.paymentStatus === "Paid" ? "" : "bg-rose-50/20 dark:bg-rose-950/5"
+                    }`}
                 >
                   <td className="px-4 py-3 text-center font-bold text-slate-500 dark:text-slate-400">
                     {record.slNo || "-"}
@@ -1410,11 +1456,10 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span
-                      className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        record.paymentStatus === "Paid"
+                      className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${record.paymentStatus === "Paid"
                           ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
                           : "bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400"
-                      }`}
+                        }`}
                     >
                       {record.paymentStatus || "Unpaid"}
                     </span>
@@ -1422,11 +1467,10 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   <td className="px-4 py-3 text-center font-bold text-slate-500 dark:text-slate-400">
                     {record.circle || "-"}
                   </td>
-                  <td className={`px-4 py-3 text-center sticky right-0 border-l border-slate-200 dark:border-slate-700 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] ${
-                    record.paymentStatus === "Paid"
+                  <td className={`px-4 py-3 text-center sticky right-0 border-l border-slate-200 dark:border-slate-700 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] ${record.paymentStatus === "Paid"
                       ? "bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/40"
                       : "bg-rose-50/40 dark:bg-rose-950/20 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/40"
-                  }`}>
+                    }`}>
                     <div className="flex justify-center items-center gap-1.5">
                       {record.paymentStatus !== "Paid" ? (
                         <button
@@ -1449,11 +1493,10 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                       <button
                         type="button"
                         onClick={() => handleCopyForWord(record)}
-                        className={`rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all ${
-                          copiedId === record.id
+                        className={`rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all ${copiedId === record.id
                             ? "bg-emerald-600 text-white animate-pulse"
                             : "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100"
-                        }`}
+                          }`}
                         title="Copy চালান নং, Payment Date, In Word for Word Table"
                       >
                         {copiedId === record.id ? "Copied" : "Copy"}
@@ -1476,7 +1519,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   </td>
                 </tr>
               ))}
-              {filteredHistory.length === 0 && (
+              {sortedHistory.length === 0 && (
                 <tr>
                   <td colSpan={16} className="px-4 py-12 text-center text-sm font-bold text-slate-400">
                     No assessment records found. (কোন অ্যাসেসমেন্ট ডাটা পাওয়া যায়নি)
@@ -1492,9 +1535,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
       {showPayModal && payRecord && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div
-            className={`w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95 transition-all border ${
-              isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
-            }`}
+            className={`w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95 transition-all border ${isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
+              }`}
           >
             <div className="flex justify-between items-center mb-6">
               <div>
@@ -1511,9 +1553,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   setShowPayModal(false);
                   setPayRecord(null);
                 }}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                  isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-500"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-500"
+                  }`}
               >
                 <i className="fas fa-times"></i>
               </button>
@@ -1521,9 +1562,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
 
             <form onSubmit={handleConfirmPay} className="space-y-5">
               <div
-                className={`p-4 rounded-xl border flex justify-between items-center ${
-                  isDark ? "bg-slate-900 border-slate-700" : "bg-blue-50 border-blue-100"
-                }`}
+                className={`p-4 rounded-xl border flex justify-between items-center ${isDark ? "bg-slate-900 border-slate-700" : "bg-blue-50 border-blue-100"
+                  }`}
               >
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
                   Total Duty (শুল্ক কর)
@@ -1543,9 +1583,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   value={payChallanNo}
                   onChange={(e) => setPayChallanNo(e.target.value)}
                   placeholder="e.g. 2627-00050184431, 2627-00050211371"
-                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                    isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
                 />
               </div>
 
@@ -1558,9 +1597,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   required
                   value={payDate}
                   onChange={(e) => setPayPayDate(e.target.value)}
-                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                    isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
                 />
               </div>
 
@@ -1571,9 +1609,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                     setShowPayModal(false);
                     setPayRecord(null);
                   }}
-                  className={`flex-grow py-3 rounded-xl font-black uppercase text-[11px] tracking-widest transition-all ${
-                    isDark ? "text-slate-400 hover:bg-slate-700" : "text-slate-500 hover:bg-slate-100"
-                  }`}
+                  className={`flex-grow py-3 rounded-xl font-black uppercase text-[11px] tracking-widest transition-all ${isDark ? "text-slate-400 hover:bg-slate-700" : "text-slate-500 hover:bg-slate-100"
+                    }`}
                 >
                   Discard
                 </button>
@@ -1593,9 +1630,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
       {showPdfModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div
-            className={`w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95 transition-all border ${
-              isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
-            }`}
+            className={`w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95 transition-all border ${isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
+              }`}
           >
             <div className="flex justify-between items-center mb-6">
               <div>
@@ -1609,9 +1645,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
               <button
                 type="button"
                 onClick={() => setShowPdfModal(false)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                  isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-500"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-500"
+                  }`}
               >
                 <i className="fas fa-times"></i>
               </button>
@@ -1626,9 +1661,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   type="text"
                   value={pdfTitle}
                   onChange={(e) => setPdfTitle(e.target.value)}
-                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                    isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
                 />
               </div>
 
@@ -1640,9 +1674,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   type="text"
                   value={pdfSubtitle1}
                   onChange={(e) => setPdfSubtitle1(e.target.value)}
-                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                    isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
                 />
               </div>
 
@@ -1654,9 +1687,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   type="text"
                   value={pdfSubtitle2}
                   onChange={(e) => setPdfSubtitle2(e.target.value)}
-                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${
-                    isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
                 />
               </div>
 
@@ -1664,9 +1696,8 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowPdfModal(false)}
-                  className={`flex-grow py-3 rounded-xl font-black uppercase text-[11px] tracking-widest transition-all ${
-                    isDark ? "text-slate-400 hover:bg-slate-700" : "text-slate-500 hover:bg-slate-100"
-                  }`}
+                  className={`flex-grow py-3 rounded-xl font-black uppercase text-[11px] tracking-widest transition-all ${isDark ? "text-slate-400 hover:bg-slate-700" : "text-slate-500 hover:bg-slate-100"
+                    }`}
                 >
                   Discard
                 </button>
