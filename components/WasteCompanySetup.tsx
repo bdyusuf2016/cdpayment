@@ -152,7 +152,13 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
         const created = await insertWasteCompany(supabase, {
           name,
           phone: String(row["Phone"] ?? row["phone"] ?? "").trim(),
-          address: String(row["Address"] ?? row["address"] ?? "").trim(),
+          address: String(
+            row["Circle"] ??
+              row["circle"] ??
+              row["Address"] ??
+              row["address"] ??
+              "",
+          ).trim(),
           active: normalizeBool(row["Active"] ?? row["active"] ?? true),
         });
         if (created) {
@@ -227,7 +233,7 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
         <div className={`mb-5 rounded-2xl border px-4 py-3 ${isDark ? "bg-slate-900 border-slate-700 text-slate-300" : "bg-blue-50 border-blue-100 text-blue-700"}`}>
           <p className="text-[11px] font-black uppercase tracking-widest">Excel Format</p>
           <p className="mt-1 text-xs font-bold">
-            Use columns: `Company Name`, `Phone`, `Address`, `Active`
+            Use columns: `Company Name`, `Phone`, `Circle`, `Active`
           </p>
         </div>
 
@@ -250,7 +256,7 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
             type="text"
             value={companyAddress}
             onChange={(e) => setCompanyAddress(e.target.value)}
-            placeholder="Address"
+            placeholder="Circle (সার্কেল)"
             className={`rounded-xl border px-4 py-3 font-bold outline-none md:col-span-2 ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
           />
         </div>
@@ -286,7 +292,7 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
               <tr>
                 <th className="px-4 py-3 font-black uppercase tracking-widest">Company</th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest">Phone</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest">Address</th>
+                <th className="px-4 py-3 font-black uppercase tracking-widest">Circle</th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest">Status</th>
                 <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Action</th>
               </tr>

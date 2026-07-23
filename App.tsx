@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import supabaseDefault, {
   SUPABASE_SITE_URL,
@@ -7,7 +7,7 @@ import supabaseDefault, {
 import StatsCards from "./components/StatsCards";
 import DutyPayment from "./components/DutyPayment";
 import AssessmentBilling from "./components/AssessmentBilling";
-import ClearanceTracker from "./components/ClearanceTracker";
+import AssessmentRecordTab from "./components/AssessmentRecordTab";
 import WasteCompanySetup from "./components/WasteCompanySetup";
 import WasteManagement from "./components/WasteManagement";
 import AinDatabase from "./components/AinDatabase";
@@ -93,11 +93,27 @@ const normalizeWasteCompany = (row: any): WasteCompany => ({
   active: Boolean(row.active),
 });
 
+
+
 const normalizeClearanceRecord = (row: any): ClearanceRecord => ({
   id: row.id,
   date: row.date ?? "",
   totalClearance: Number(row.totalClearance ?? row.total_clearance ?? 0),
   notes: row.notes ?? "",
+  slNo: row.sl_no ?? "",
+  clientName: row.client_name ?? "",
+  assessableValue: Number(row.assessable_value ?? 0),
+  cd: Number(row.cd ?? 0),
+  rd: Number(row.rd ?? 0),
+  vat: Number(row.vat ?? 0),
+  ait: Number(row.ait ?? 0),
+  atvAt: Number(row.atv_at ?? 0),
+  dutyTax: Number(row.duty_tax ?? 0),
+  trnxId: row.trnx_id ?? "",
+  paymentDate: row.payment_date ?? "",
+  paymentStatus: (row.payment_status ?? "Unpaid") as "Paid" | "Unpaid",
+  circle: row.circle ?? "",
+  inWord: row.in_word ?? "",
 });
 
 const normalizeWasteRecord = (row: any): WasteRecord => ({
@@ -151,6 +167,7 @@ const normalizeClient = (row: any): Client => {
     phone: phones[0] ?? "",
     phones,
     active: Boolean(row.active),
+    circle: row.circle ?? "",
   };
 };
 
@@ -611,7 +628,7 @@ const App: React.FC = () => {
     en: {
       duty: "Duty Payment",
       assessment: "Assessment",
-      clearance: "Clearance Tracker",
+      clearance: "Assesment Record",
       wasteCompanies: "Company Setup",
       waste: "Waste Management",
       ain: "AIN Database",
@@ -624,7 +641,7 @@ const App: React.FC = () => {
     bn: {
       duty: "ডিউটি পেমেন্ট",
       assessment: "অ্যাসেসমেন্ট",
-      clearance: "শুল্কায়ন ট্র্যাকার",
+      clearance: "অ্যাসেসমেন্ট রেকর্ড",
       wasteCompanies: "কোম্পানি সেটআপ",
       waste: "গারবেজ ও ওয়েস্টেজ",
       ain: "AIN ডাটাবেস",
@@ -916,14 +933,36 @@ const App: React.FC = () => {
       }
       case "clearance": {
         const rows = visibleClearanceRows;
-        const total = rows.reduce((acc, row) => acc + (row.totalClearance || 0), 0);
-        const days = rows.length;
-        const average = days > 0 ? Math.round(total / days) : 0;
+        const totalPaid = rows
+          .filter((r) => r.paymentStatus === "Paid")
+          .reduce((sum, r) => sum + (r.dutyTax || 0), 0);
+        const totalUnpaid = rows
+          .filter((r) => r.paymentStatus !== "Paid")
+          .reduce((sum, r) => sum + (r.dutyTax || 0), 0);
+        const unpaidCount = rows.filter((r) => r.paymentStatus !== "Paid").length;
+        const totalAssessable = rows.reduce((sum, r) => sum + (r.assessableValue || 0), 0);
+        
         return [
-          { label: "Total Clearance", value: total.toLocaleString("en-BD"), color: "#2563eb" },
-          { label: "Working Days", value: days.toLocaleString("en-BD"), color: "#10b981" },
-          { label: "Average/Day", value: average.toLocaleString("en-BD"), color: "#f59e0b" },
-          { label: "Latest Entry", value: rows[0]?.date || "-", color: "#ef4444" },
+          {
+            label: config.language === "en" ? "Revenue Collected" : "সংগৃহীত শুল্ক",
+            value: `Tk ${totalPaid.toLocaleString("en-BD")}`,
+            color: "#10b981",
+          },
+          {
+            label: config.language === "en" ? "Pending Revenue" : "বকেয়া শুল্ক",
+            value: `Tk ${totalUnpaid.toLocaleString("en-BD")}`,
+            color: "#ef4444",
+          },
+          {
+            label: config.language === "en" ? "Unpaid Count" : "অ পরিশোধিত এন্ট্রি",
+            value: unpaidCount.toString().padStart(2, "0"),
+            color: "#f59e0b",
+          },
+          {
+            label: config.language === "en" ? "Assessable Value" : "শুল্কায়নযোগ্য মূল্য",
+            value: `Tk ${totalAssessable.toLocaleString("en-BD")}`,
+            color: "#3b82f6",
+          },
         ];
       }
       case "wasteCompanies": {
@@ -1142,39 +1181,48 @@ const App: React.FC = () => {
       }
       case "clearance": {
         if (activeStatIndex === 0) {
+          const rows = visibleClearanceRows;
+          const paid = rows.filter((r) => r.paymentStatus === "Paid");
+          const totalPaid = paid.reduce((sum, r) => sum + (r.dutyTax || 0), 0);
           return {
-            title: "Clearance Details",
+            title: config.language === "en" ? "Revenue Collected Details" : "সংগৃহীত শুল্কের বিবরণ",
             items: [
-              `Visible Days: ${visibleClearanceRows.length}`,
-              `Total Clearance: ${visibleClearanceRows.reduce((sum, row) => sum + (row.totalClearance || 0), 0).toLocaleString("en-BD")}`,
+              `Paid Rows: ${paid.length}`,
+              `Total Collected: Tk ${totalPaid.toLocaleString("en-BD")}`,
             ],
           };
         }
         if (activeStatIndex === 1) {
+          const rows = visibleClearanceRows;
+          const unpaid = rows.filter((r) => r.paymentStatus !== "Paid");
+          const totalUnpaid = unpaid.reduce((sum, r) => sum + (r.dutyTax || 0), 0);
           return {
-            title: "Working Days Details",
+            title: config.language === "en" ? "Pending Revenue Details" : "বকেয়া শুল্কের বিবরণ",
             items: [
-              `Logged Days: ${visibleClearanceRows.length}`,
-              `Latest Day: ${visibleClearanceRows[0]?.date || "-"}`,
+              `Unpaid Rows: ${unpaid.length}`,
+              `Total Pending: Tk ${totalUnpaid.toLocaleString("en-BD")}`,
             ],
           };
         }
         if (activeStatIndex === 2) {
-          const total = visibleClearanceRows.reduce((sum, row) => sum + (row.totalClearance || 0), 0);
-          const avg = visibleClearanceRows.length > 0 ? Math.round(total / visibleClearanceRows.length) : 0;
+          const rows = visibleClearanceRows;
+          const unpaidCount = rows.filter((r) => r.paymentStatus !== "Paid").length;
           return {
-            title: "Average Details",
+            title: config.language === "en" ? "Unpaid Count Details" : "অ পরিশোধিত বিবরণ",
             items: [
-              `Average Per Day: ${avg.toLocaleString("en-BD")}`,
-              `Highest Entry: ${Math.max(0, ...visibleClearanceRows.map((row) => row.totalClearance || 0)).toLocaleString("en-BD")}`,
+              `Total Unpaid Entries: ${unpaidCount}`,
+              `Latest Pending: ${rows.find((r) => r.paymentStatus !== "Paid")?.clientName || "-"}`,
             ],
           };
         }
+        const rows = visibleClearanceRows;
+        const totalAssessable = rows.reduce((sum, r) => sum + (r.assessableValue || 0), 0);
         return {
-          title: "Latest Entry Details",
-          items: visibleClearanceRows.length > 0
-            ? visibleClearanceRows.slice(0, 5).map((row) => `${row.date} | ${row.totalClearance} clearance`)
-            : ["No clearance records available."],
+          title: config.language === "en" ? "Assessable Value Details" : "শুল্কায়নযোগ্য মূল্যের বিবরণ",
+          items: [
+            `Total Rows: ${rows.length}`,
+            `Total Value: Tk ${totalAssessable.toLocaleString("en-BD")}`,
+          ],
         };
       }
       case "waste": {
@@ -1603,12 +1651,13 @@ const App: React.FC = () => {
             />
           )}
           {activeTab === "clearance" && tabAccess.clearance && (
-            <ClearanceTracker
+            <AssessmentRecordTab
               history={clearanceHistory}
               setHistory={setClearanceHistory}
               onVisibleRowsChange={setVisibleClearanceRows}
               systemConfig={config}
               supabase={supabase}
+              companies={wasteCompanies}
             />
           )}
           {activeTab === "wasteCompanies" && tabAccess.wasteCompanies && (

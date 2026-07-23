@@ -99,6 +99,20 @@ const toClearanceDb = (record: Partial<ClearanceRecord>) => ({
   date: record.date,
   total_clearance: record.totalClearance,
   notes: record.notes,
+  sl_no: record.slNo,
+  client_name: record.clientName,
+  assessable_value: record.assessableValue,
+  cd: record.cd,
+  rd: record.rd,
+  vat: record.vat,
+  ait: record.ait,
+  atv_at: record.atvAt,
+  duty_tax: record.dutyTax,
+  trnx_id: record.trnxId,
+  payment_date: record.paymentDate,
+  payment_status: record.paymentStatus,
+  circle: record.circle,
+  in_word: record.inWord,
 });
 
 const fromClearanceDb = (row: any): ClearanceRecord => ({
@@ -106,6 +120,20 @@ const fromClearanceDb = (row: any): ClearanceRecord => ({
   date: row.date ?? "",
   totalClearance: Number(row.totalClearance ?? row.total_clearance ?? 0),
   notes: row.notes ?? "",
+  slNo: row.sl_no ?? "",
+  clientName: row.client_name ?? "",
+  assessableValue: Number(row.assessable_value ?? 0),
+  cd: Number(row.cd ?? 0),
+  rd: Number(row.rd ?? 0),
+  vat: Number(row.vat ?? 0),
+  ait: Number(row.ait ?? 0),
+  atvAt: Number(row.atv_at ?? 0),
+  dutyTax: Number(row.duty_tax ?? 0),
+  trnxId: row.trnx_id ?? "",
+  paymentDate: row.payment_date ?? "",
+  paymentStatus: (row.payment_status ?? "Unpaid") as "Paid" | "Unpaid",
+  circle: row.circle ?? "",
+  inWord: row.in_word ?? "",
 });
 
 const toWasteCompanyDb = (company: Partial<WasteCompany>) => ({
@@ -731,6 +759,7 @@ const toClientDb = (client: Partial<Client>) => ({
   name: client.name,
   phone: serializeClientPhones(getClientPhones(client)),
   active: client.active,
+  circle: client.circle,
 });
 
 const fromClientDb = (row: any): Client => {
@@ -742,5 +771,6 @@ const fromClientDb = (row: any): Client => {
     phone: phones[0] ?? "",
     phones,
     active: Boolean(row.active),
+    circle: row.circle ?? "",
   };
 };

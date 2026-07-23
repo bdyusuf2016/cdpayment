@@ -5,6 +5,7 @@ export interface Client {
   phone: string;
   phones?: string[];
   active: boolean;
+  circle?: string;
 }
 
 export interface DutyItem {

@@ -61,6 +61,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     "combined" | "duty" | "assessment"
   >("combined");
   const [statusFilter, setStatusFilter] = useState<"all" | "paid">("all");
+  const [circleFilter, setCircleFilter] = useState("All");
   const [dutyClientFilter, setDutyClientFilter] = useState("all");
   const [showDutyClientGroups, setShowDutyClientGroups] = useState(true);
   const dutyTableRef = useRef<HTMLDivElement | null>(null);
@@ -141,10 +142,15 @@ const DailyReport: React.FC<DailyReportProps> = ({
   );
   const dailyClearance = useMemo(
     () =>
-      clearanceHistory.filter((rec) =>
-        isWithinRange(rec.date, startDate, endDate),
-      ),
-    [clearanceHistory, endDate, startDate],
+      clearanceHistory.filter((rec) => {
+        const inRange = isWithinRange(rec.date, startDate, endDate);
+        if (!inRange) return false;
+        if (circleFilter !== "All") {
+          return String(rec.circle || "East").toLowerCase() === circleFilter.toLowerCase();
+        }
+        return true;
+      }),
+    [clearanceHistory, endDate, startDate, circleFilter],
   );
 
   const paidDuty = useMemo(
@@ -470,6 +476,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
     setEndDate(today);
     setAinFilter("");
     setGroupByStatus("all");
+    setCircleFilter("All");
   };
 
   const handleDutyDueItemClick = (ain: string) => {
@@ -1095,6 +1102,20 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   <option value="all">All</option>
                   <option value="paid">Paid</option>
                   <option value="due">Due</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Circle
+                </span>
+                <select
+                  value={circleFilter}
+                  onChange={(e) => setCircleFilter(e.target.value)}
+                  className={`px-4 py-2 rounded-lg border text-xs font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"}`}
+                >
+                  <option value="All">All Circles</option>
+                  <option value="East">East</option>
+                  <option value="West">West</option>
                 </select>
               </div>
             <button

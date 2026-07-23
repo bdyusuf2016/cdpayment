@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Client, SystemConfig } from "../types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
@@ -38,6 +38,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
   const [formAin, setFormAin] = useState("");
   const [formName, setFormName] = useState("");
   const [formPhonesText, setFormPhonesText] = useState("");
+  const [formCircle, setFormCircle] = useState("East");
   const [selectedAins, setSelectedAins] = useState<string[]>([]);
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const [pendingDeletedAins, setPendingDeletedAins] = useState<string[]>([]);
@@ -144,11 +145,13 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       setFormAin(client.ain);
       setFormName(client.name);
       setFormPhonesText(getClientPhones(client).join("\n"));
+      setFormCircle(client.circle || "East");
     } else {
       setEditingClient(null);
       setFormAin("");
       setFormName("");
       setFormPhonesText("");
+      setFormCircle("East");
     }
     setShowModal(true);
   };
@@ -174,6 +177,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       phone: serializeClientPhones(phones),
       phones,
       active: true,
+      circle: formCircle,
     };
 
     try {
@@ -293,9 +297,9 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       alert("You do not have permission to export AIN profiles.");
       return;
     }
-    const headers = "AIN,Name,Phone\n";
+    const headers = "AIN,Name,Phone,Circle\n";
     const rows = allClients
-      .map((c) => `${c.ain},${c.name},${serializeClientPhones(getClientPhones(c))}`)
+      .map((c) => `${c.ain},${c.name},${serializeClientPhones(getClientPhones(c))},${c.circle || "East"}`)
       .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -330,8 +334,8 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
       for (const line of lines) {
         const row = line.split(",");
-          if (row.length >= 2) {
-            const [ain, name, phone] = row;
+        if (row.length >= 2) {
+          const [ain, name, phone, circle] = row;
           if (ain && name && !allClients.some((c) => c.ain === ain.trim())) {
             newClients.push({
               ain: ain.trim(),
@@ -339,6 +343,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
               phone: serializeClientPhones(parseClientPhones(phone || "")),
               phones: parseClientPhones(phone || ""),
               active: true,
+              circle: circle ? circle.trim() : "East",
             });
           }
         }
@@ -537,6 +542,9 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                   </button>
                 </th>
                 <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  Circle
+                </th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => toggleSort("phone")}
@@ -555,7 +563,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
             >
               {sortedClients.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center">
+                  <td colSpan={6} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center opacity-30">
                       <i className="fas fa-database text-6xl mb-4"></i>
                       <p className="font-bold text-lg">No Client Data Found</p>
@@ -599,6 +607,21 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                       <div className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">
                         Verified Importer/Exporter
                       </div>
+                    </td>
+                    <td className="px-6 py-3">
+                      <span
+                        className={`text-xs font-black px-2.5 py-1 rounded-xl border shadow-sm ${
+                          client.circle === "West"
+                            ? "bg-purple-50 border-purple-100 text-purple-700 dark:bg-purple-950/20 dark:border-purple-800 dark:text-purple-400"
+                            : client.circle === "North"
+                              ? "bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-400"
+                              : client.circle === "South"
+                                ? "bg-rose-50 border-rose-100 text-rose-700 dark:bg-rose-950/20 dark:border-rose-800 dark:text-rose-400"
+                                : "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400"
+                        }`}
+                      >
+                        {client.circle || "East"}
+                      </span>
                     </td>
                     <td className="px-6 py-3">
                       {getClientPhones(client).length > 0 ? (
@@ -731,6 +754,21 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                   <p className="text-[10px] font-bold text-slate-400 ml-1">
                     এক লাইনে একটি নাম্বার লিখুন। কমা, সেমিকোলন, বা পাইপ দিয়েও আলাদা করা যাবে।
                   </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    সার্কেল (Circle)
+                  </label>
+                  <select
+                    className={`w-full px-6 py-3 rounded-2xl border-2 outline-none font-black text-base transition-all ${
+                      isDark ? "bg-slate-900 border-slate-700 text-slate-200 focus:border-blue-500" : "bg-slate-50 border-slate-50 focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5"
+                    }`}
+                    value={formCircle}
+                    onChange={(e) => setFormCircle(e.target.value)}
+                  >
+                    <option value="East">East</option>
+                    <option value="West">West</option>
+                  </select>
                 </div>
               </div>
 
