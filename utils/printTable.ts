@@ -56,7 +56,8 @@ export function printElement(
         hasCheckbox ||
         txt === "controls" ||
         txt === "actions" ||
-        txt === "control"
+        txt === "control" ||
+        txt === "action"
       ) {
         excluded.add(idx);
       }
