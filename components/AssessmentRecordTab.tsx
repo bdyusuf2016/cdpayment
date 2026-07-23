@@ -409,6 +409,62 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
       .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
   }, [history, search, startDate, endDate, filterMonth, statusFilter, filterCircle, dashboardFilter]);
 
+  const sortedHistory = useMemo(() => {
+    const rows = [...filteredHistory];
+    rows.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      if (sortKey === "date") {
+        left = parseDate(a.date).getTime();
+        right = parseDate(b.date).getTime();
+      } else if (sortKey === "slNo") {
+        left = Number(a.slNo) || 0;
+        right = Number(b.slNo) || 0;
+      } else if (sortKey === "clientName") {
+        left = (a.clientName || "").toLowerCase();
+        right = (b.clientName || "").toLowerCase();
+      } else if (sortKey === "assessableValue") {
+        left = Number(a.assessableValue) || 0;
+        right = Number(b.assessableValue) || 0;
+      } else if (sortKey === "dutyTax") {
+        left = Number(a.dutyTax) || 0;
+        right = Number(b.dutyTax) || 0;
+      } else if (sortKey === "paymentStatus") {
+        left = (a.paymentStatus || "").toLowerCase();
+        right = (b.paymentStatus || "").toLowerCase();
+      } else if (sortKey === "circle") {
+        left = (a.circle || "").toLowerCase();
+        right = (b.circle || "").toLowerCase();
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredHistory, sortKey, sortDir]);
+
+  const toggleSort = (
+    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle",
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "date" || key === "slNo" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle",
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400 ml-1.5";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-600 ml-1.5"
+      : "fa-sort-down text-blue-600 ml-1.5";
+  };
+
   useEffect(() => {
     onVisibleRowsChange(sortedHistory);
   }, [sortedHistory, onVisibleRowsChange]);
@@ -674,62 +730,6 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
     const circleSuffix = activeCircle ? ` (${activeCircle})` : "";
     setPdfSubtitle2(`Month Name : ${currentMonthStr}${circleSuffix}`);
     setShowPdfModal(true);
-  };
-
-  const sortedHistory = useMemo(() => {
-    const rows = [...filteredHistory];
-    rows.sort((a, b) => {
-      let left: string | number = "";
-      let right: string | number = "";
-
-      if (sortKey === "date") {
-        left = parseDate(a.date).getTime();
-        right = parseDate(b.date).getTime();
-      } else if (sortKey === "slNo") {
-        left = Number(a.slNo) || 0;
-        right = Number(b.slNo) || 0;
-      } else if (sortKey === "clientName") {
-        left = (a.clientName || "").toLowerCase();
-        right = (b.clientName || "").toLowerCase();
-      } else if (sortKey === "assessableValue") {
-        left = Number(a.assessableValue) || 0;
-        right = Number(b.assessableValue) || 0;
-      } else if (sortKey === "dutyTax") {
-        left = Number(a.dutyTax) || 0;
-        right = Number(b.dutyTax) || 0;
-      } else if (sortKey === "paymentStatus") {
-        left = (a.paymentStatus || "").toLowerCase();
-        right = (b.paymentStatus || "").toLowerCase();
-      } else if (sortKey === "circle") {
-        left = (a.circle || "").toLowerCase();
-        right = (b.circle || "").toLowerCase();
-      }
-
-      if (left < right) return sortDir === "asc" ? -1 : 1;
-      if (left > right) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-    return rows;
-  }, [filteredHistory, sortKey, sortDir]);
-
-  const toggleSort = (
-    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle",
-  ) => {
-    if (sortKey === key) {
-      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(key);
-    setSortDir(key === "date" || key === "slNo" ? "desc" : "asc");
-  };
-
-  const getSortIcon = (
-    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle",
-  ) => {
-    if (sortKey !== key) return "fa-sort text-slate-400 ml-1.5";
-    return sortDir === "asc"
-      ? "fa-sort-up text-blue-600 ml-1.5"
-      : "fa-sort-down text-blue-600 ml-1.5";
   };
 
   const handlePrintPdf = () => {
