@@ -336,8 +336,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   useEffect(() => {
     setSearch("");
     setCompanyFilter("all");
-    setStartDate("");
-    setEndDate("");
+    setStartDate(getTodayDateInputValue());
+    setEndDate(getTodayDateInputValue());
     if (dashboardFilter === "due") {
       setStatusFilter("unpaid");
     } else {
