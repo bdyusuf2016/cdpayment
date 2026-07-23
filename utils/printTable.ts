@@ -19,6 +19,10 @@ type PrintOptions = {
     valueColumnHeader?: string;
     additionalValuesByHeader?: Record<string, string | number>;
   };
+  dateRange?: {
+    startDate?: string;
+    endDate?: string;
+  };
 };
 
 export function printElement(
@@ -40,6 +44,16 @@ export function printElement(
       .replace(/\(bdt\)/g, "")
       .replace(/\s+/g, " ")
       .trim();
+
+  const formatDateDisplay = (dateStr?: string) => {
+    if (!dateStr) return "";
+    if (dateStr.includes("/")) return dateStr;
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
 
   table.querySelectorAll("button").forEach((button) => {
     const replacement = document.createElement("span");
@@ -337,6 +351,11 @@ export function printElement(
           ${options.header?.organization ? `<div class="brand">${options.header.organization}</div>` : ""}
           ${title ? `<div class="title">${title}</div>` : ""}
           ${options.header?.subtext ? `<div class="subtext">${options.header.subtext}</div>` : ""}
+          ${options.dateRange && (options.dateRange.startDate || options.dateRange.endDate) ? `
+            <div style="margin: 4px 0 10px; font-size: 11px; font-weight: 700; color: #1d4ed8; font-family: 'Segoe UI', Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.05em;">
+              Date Filter: ${options.dateRange.startDate ? formatDateDisplay(options.dateRange.startDate) : "Beginning"} to ${options.dateRange.endDate ? formatDateDisplay(options.dateRange.endDate) : "End"}
+            </div>
+          ` : ""}
           <div class="meta">Printed on ${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
           ${table.outerHTML}
         </div>

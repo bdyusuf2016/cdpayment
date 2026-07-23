@@ -1318,6 +1318,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                   subtext: systemConfig.agencyAddress || undefined,
                 },
                 autoExcludeControls: true,
+                dateRange: startDate || endDate ? { startDate, endDate } : undefined,
               })}
               className="rounded-xl bg-slate-600 hover:bg-slate-700 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-md active:scale-95 transition-all w-full md:w-auto"
             >
