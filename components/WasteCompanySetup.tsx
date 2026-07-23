@@ -125,10 +125,8 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
         return;
       }
 
-      const existingNames = new Set(
-        companies.map((company) => company.name.trim().toLowerCase()),
-      );
       const createdRows: WasteCompany[] = [];
+      const updatedMap = new Map<string, WasteCompany>();
       let skipped = 0;
 
       for (const row of rows) {
@@ -144,35 +142,60 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
           continue;
         }
         const key = name.toLowerCase();
-        if (existingNames.has(key)) {
-          skipped += 1;
+        const phone = String(row["Phone"] ?? row["phone"] ?? "").trim();
+        const address = String(
+          row["Circle"] ??
+            row["circle"] ??
+            row["Address"] ??
+            row["address"] ??
+            "",
+        ).trim();
+        const active = normalizeBool(row["Active"] ?? row["active"] ?? true);
+
+        // Find if this company already exists
+        const existingCompany = companies.find(
+          (c) => c.name.trim().toLowerCase() === key,
+        );
+
+        if (existingCompany) {
+          const hasChanges =
+            existingCompany.phone !== phone ||
+            existingCompany.address !== address ||
+            existingCompany.active !== active;
+
+          if (hasChanges) {
+            const updated = await updateWasteCompany(supabase, existingCompany.id, {
+              phone,
+              address,
+              active,
+            });
+            if (updated) {
+              updatedMap.set(existingCompany.id, updated);
+            }
+          }
           continue;
         }
 
         const created = await insertWasteCompany(supabase, {
           name,
-          phone: String(row["Phone"] ?? row["phone"] ?? "").trim(),
-          address: String(
-            row["Circle"] ??
-              row["circle"] ??
-              row["Address"] ??
-              row["address"] ??
-              "",
-          ).trim(),
-          active: normalizeBool(row["Active"] ?? row["active"] ?? true),
+          phone,
+          address,
+          active,
         });
         if (created) {
           createdRows.push(created);
-          existingNames.add(key);
         }
       }
 
-      if (createdRows.length > 0) {
-        setCompanies((prev) => [...createdRows, ...prev]);
+      if (createdRows.length > 0 || updatedMap.size > 0) {
+        setCompanies((prev) => {
+          const next = prev.map((c) => updatedMap.get(c.id) || c);
+          return [...createdRows, ...next];
+        });
       }
       setActionError(null);
       window.alert(
-        `Company import completed. Imported: ${createdRows.length}, Skipped: ${skipped}.`,
+        `Company import completed. Imported: ${createdRows.length}, Updated: ${updatedMap.size}, Skipped: ${skipped}.`,
       );
     } catch (error: any) {
       setActionError(error?.message || "Failed to import Excel file.");
