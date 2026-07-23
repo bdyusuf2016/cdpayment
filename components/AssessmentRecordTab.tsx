@@ -15,6 +15,7 @@ interface AssessmentRecordTabProps {
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
   companies: WasteCompany[];
+  dashboardFilter?: "all" | "collected" | "due";
 }
 
 const bnNumbers = [
@@ -153,6 +154,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   systemConfig,
   supabase,
   companies,
+  dashboardFilter = "all",
 }) => {
   const isDark = systemConfig.theme === "dark";
   
@@ -390,14 +392,37 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
           matchesCircle = row.circle === filterCircle;
         }
 
-        return matchesSearch && matchesDateRange && matchesMonth && matchesStatus && matchesCircle;
+        // Dashboard Filter
+        let matchesDashboard = true;
+        if (dashboardFilter === "collected") {
+          matchesDashboard = row.paymentStatus === "Paid";
+        } else if (dashboardFilter === "due") {
+          matchesDashboard = row.paymentStatus !== "Paid";
+        }
+
+        return matchesSearch && matchesDateRange && matchesMonth && matchesStatus && matchesCircle && matchesDashboard;
       })
       .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
-  }, [history, search, startDate, endDate, filterMonth, statusFilter, filterCircle]);
+  }, [history, search, startDate, endDate, filterMonth, statusFilter, filterCircle, dashboardFilter]);
 
   useEffect(() => {
     onVisibleRowsChange(filteredHistory);
   }, [filteredHistory, onVisibleRowsChange]);
+
+  useEffect(() => {
+    setSearch("");
+    setStartDate("");
+    setEndDate("");
+    setFilterMonth("All");
+    setFilterCircle("All");
+    if (dashboardFilter === "due") {
+      setStatusFilter("Unpaid");
+    } else if (dashboardFilter === "collected") {
+      setStatusFilter("Paid");
+    } else {
+      setStatusFilter("All");
+    }
+  }, [dashboardFilter]);
 
   // Summary Metrics
   const summary = useMemo(() => {

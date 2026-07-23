@@ -210,6 +210,12 @@ const App: React.FC = () => {
   const [dutyCardFilter, setDutyCardFilter] = useState<
     "all" | "collection" | "profit" | "due"
   >("all");
+  const [clearanceCardFilter, setClearanceCardFilter] = useState<
+    "all" | "collected" | "due"
+  >("all");
+  const [wasteCardFilter, setWasteCardFilter] = useState<
+    "all" | "received" | "due"
+  >("all");
   const [session, setSession] = useState<any>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
@@ -1098,6 +1104,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     setActiveStatIndex(null);
+    setDutyCardFilter("all");
+    setClearanceCardFilter("all");
+    setWasteCardFilter("all");
   }, [activeTab]);
 
   const statDetail = useMemo<StatDetailView | null>(() => {
@@ -1558,6 +1567,42 @@ const App: React.FC = () => {
               });
               return;
             }
+            if (activeTab === "clearance") {
+              setActiveStatIndex((prev) => {
+                const isSame = prev === index;
+                if (isSame) {
+                  setClearanceCardFilter("all");
+                  return null;
+                }
+                const mapped: "all" | "collected" | "due" =
+                  index === 0
+                    ? "collected"
+                    : index === 1 || index === 2
+                      ? "due"
+                      : "all";
+                setClearanceCardFilter(mapped);
+                return index;
+              });
+              return;
+            }
+            if (activeTab === "waste") {
+              setActiveStatIndex((prev) => {
+                const isSame = prev === index;
+                if (isSame) {
+                  setWasteCardFilter("all");
+                  return null;
+                }
+                const mapped: "all" | "received" | "due" =
+                  index === 1
+                    ? "received"
+                    : index === 2
+                      ? "due"
+                      : "all";
+                setWasteCardFilter(mapped);
+                return index;
+              });
+              return;
+            }
             if (activeTab === "assessment" && index === 2) {
               setActiveStatIndex(null);
               return;
@@ -1658,6 +1703,7 @@ const App: React.FC = () => {
               systemConfig={config}
               supabase={supabase}
               companies={wasteCompanies}
+              dashboardFilter={clearanceCardFilter}
             />
           )}
           {activeTab === "wasteCompanies" && tabAccess.wasteCompanies && (
@@ -1676,6 +1722,7 @@ const App: React.FC = () => {
               onVisibleRowsChange={setVisibleWasteRows}
               systemConfig={config}
               supabase={supabase}
+              dashboardFilter={wasteCardFilter}
             />
           )}
           {activeTab === "ain" && tabAccess.ain && (

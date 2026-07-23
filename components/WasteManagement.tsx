@@ -15,6 +15,7 @@ interface WasteManagementProps {
   onVisibleRowsChange: (rows: WasteRecord[]) => void;
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
+  dashboardFilter?: "all" | "received" | "due";
 }
 
 const CAR_TYPES: WasteRecord["carType"][] = [
@@ -101,6 +102,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   onVisibleRowsChange,
   systemConfig,
   supabase,
+  dashboardFilter = "all",
 }) => {
   const isDark = systemConfig.theme === "dark";
   const [entryDate, setEntryDate] = useState(getTodayDateInputValue);
@@ -234,10 +236,18 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
           matchesDate = matchesDate && recordDate <= end;
         }
 
-        return matchesSearch && matchesCompany && matchesStatus && matchesDate;
+        // Dashboard Filter
+        let matchesDashboard = true;
+        if (dashboardFilter === "received") {
+          matchesDashboard = (record.received || 0) > 0;
+        } else if (dashboardFilter === "due") {
+          matchesDashboard = (record.due || 0) > 0;
+        }
+
+        return matchesSearch && matchesCompany && matchesStatus && matchesDate && matchesDashboard;
       })
       .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
-  }, [companyFilter, endDate, history, search, startDate, statusFilter]);
+  }, [companyFilter, endDate, history, search, startDate, statusFilter, dashboardFilter]);
 
   const historyForDayWiseReport = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -262,6 +272,18 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   useEffect(() => {
     onVisibleRowsChange(filteredHistory);
   }, [filteredHistory, onVisibleRowsChange]);
+
+  useEffect(() => {
+    setSearch("");
+    setCompanyFilter("all");
+    setStartDate("");
+    setEndDate("");
+    if (dashboardFilter === "due") {
+      setStatusFilter("unpaid");
+    } else {
+      setStatusFilter("all");
+    }
+  }, [dashboardFilter]);
 
   const selectedRecords = useMemo(() => {
     return filteredHistory.filter((r) => selectedIds.includes(r.id));
