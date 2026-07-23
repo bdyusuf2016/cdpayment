@@ -840,11 +840,11 @@ ${tableStr}
   const handlePrintPdf = () => {
     setShowPdfModal(false);
 
-    // Filter only paid records and sort in ascending order chronologically
+    // Filter only paid records and sort in ascending order chronologically by payment date
     const sortedRecordsForPrint = filteredHistory
       .filter((r) => r.paymentStatus === "Paid")
       .sort((a, b) => {
-        return parseDate(a.date).getTime() - parseDate(b.date).getTime();
+        return parseDate(a.paymentDate || "").getTime() - parseDate(b.paymentDate || "").getTime();
       });
 
     const formatBDNumber = (num: number): string => {
@@ -904,7 +904,7 @@ ${tableStr}
       return `
         <tr>
           <td class="text-center">${index + 1}</td>
-          <td class="text-center nowrap">${formatReportDate(record.date)}</td>
+          <td class="text-center nowrap">${formatReportDate(record.paymentDate || "")}</td>
           <td class="text-left font-bold uppercase">${record.clientName || "-"}</td>
           <td class="text-right nowrap">${formatBDNumber(assessableVal)}</td>
           <td class="text-right nowrap">${formatBDNumber(totalVal)}</td>
