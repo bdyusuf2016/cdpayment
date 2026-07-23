@@ -776,23 +776,31 @@ ${tableStr}
   };
 
   const handleExportExcel = () => {
-    const exportData = filteredHistory.map((row, idx) => ({
-      "ক্রম": row.slNo || (idx + 1).toString(),
-      "তারিখ": row.date,
-      "প্রতিষ্ঠানের নাম": row.clientName || "",
-      "শুল্কায়নযোগ্য মূল্য": row.assessableValue || 0,
-      "CD": row.cd || 0,
-      "RD": row.rd || 0,
-      "VAT": row.vat || 0,
-      "AIT": row.ait || 0,
-      "ATV/AT": row.atvAt || 0,
-      "শুল্ক কর": row.dutyTax || 0,
-      "Challan No. (চালান নং)": row.trnxId || "",
-      "Payment Date (তারিখ)": row.paymentDate || "",
-      "Payment Status (অবস্থা)": row.paymentStatus || "Unpaid",
-      "Circle (সার্কেল)": row.circle || "",
-      "In Word (কথায়)": row.inWord || "",
-    }));
+    const exportData = filteredHistory.map((row, idx) => {
+      let displayInWord = row.inWord || "";
+      const isAnsi = /[a-zA-Z]/.test(displayInWord);
+      if (isAnsi && row.dutyTax) {
+        displayInWord = numberToBengaliWords(row.dutyTax) + " টাকা মাত্র";
+      }
+
+      return {
+        "ক্রম": row.slNo || (idx + 1).toString(),
+        "তারিখ": row.date,
+        "প্রতিষ্ঠানের নাম": row.clientName || "",
+        "শুল্কায়নযোগ্য মূল্য": row.assessableValue || 0,
+        "CD": row.cd || 0,
+        "RD": row.rd || 0,
+        "VAT": row.vat || 0,
+        "AIT": row.ait || 0,
+        "ATV/AT": row.atvAt || 0,
+        "শুল্ক কর": row.dutyTax || 0,
+        "Challan No. (চালান নং)": row.trnxId || "",
+        "Payment Date (তারিখ)": row.paymentDate || "",
+        "Payment Status (অবস্থা)": row.paymentStatus || "Unpaid",
+        "Circle (সার্কেল)": row.circle || "",
+        "In Word (কথায়)": displayInWord,
+      };
+    });
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
