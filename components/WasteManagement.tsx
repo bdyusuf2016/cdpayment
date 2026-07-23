@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SystemConfig, WasteCompany, WasteRecord } from "../types";
 import { createSimplePdfBlob } from "../utils/simplePdf";
+import { PdfSettingsModal, PdfSettings } from "./PdfSettingsModal";
 import {
   deleteWasteRecord,
   insertWasteRecord,
@@ -128,6 +129,77 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const [settlementRecord, setSettlementRecord] = useState<WasteRecord | null>(null);
   const [settlementAmount, setSettlementAmount] = useState("");
   const [settlementPaymentMethod, setSettlementPaymentMethod] = useState("");
+
+  // PDF Layout Settings States
+  const [pdfSettingsModalOpen, setPdfSettingsModalOpen] = useState(false);
+  const [pdfSettingsPendingAction, setPdfSettingsPendingAction] = useState<{
+    title: string;
+    lines: string[];
+    fontName: "Helvetica" | "Courier";
+    fontSize: number;
+    startX: number;
+    startY: number;
+    filename: string;
+    options: any;
+  } | null>(null);
+
+  const triggerPdfExport = (
+    title: string,
+    lines: string[],
+    defaultFont: "Helvetica" | "Courier",
+    defaultFontSize: number,
+    defaultStartX: number,
+    defaultStartY: number,
+    filename: string,
+    baseOptions: any
+  ) => {
+    setPdfSettingsPendingAction({
+      title,
+      lines,
+      fontName: defaultFont,
+      fontSize: defaultFontSize,
+      startX: defaultStartX,
+      startY: defaultStartY,
+      filename,
+      options: baseOptions,
+    });
+    setPdfSettingsModalOpen(true);
+  };
+
+  const handlePdfConfirm = (settings: PdfSettings) => {
+    if (!pdfSettingsPendingAction) return;
+    const { title, lines, fontSize, startX, startY, filename, options } = pdfSettingsPendingAction;
+    
+    const finalOptions = {
+      ...options,
+      pageSize: settings.pageSize,
+      orientation: settings.orientation,
+      scale: settings.scale,
+      showPageNumbers: settings.showPageNumbers,
+    };
+
+    const pdfBlob = createSimplePdfBlob(
+      title,
+      lines,
+      settings.fontName,
+      fontSize,
+      startX,
+      startY,
+      finalOptions
+    );
+
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setPdfSettingsModalOpen(false);
+    setPdfSettingsPendingAction(null);
+  };
   const [settlementDate, setSettlementDate] = useState(getTodayDateInputValue);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -914,20 +986,16 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     });
     lines.push(separator);
 
-    const blob = createSimplePdfBlob("WASTE MANAGEMENT REPORT", lines, "Courier", 8.5, 25, 800, {
-      repeatTitle: true,
-      showPageNumbers: true,
-      lineHeight: 12,
-      linesPerPage: 56,
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `waste_report_${new Date().toISOString().split("T")[0]}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    triggerPdfExport(
+      "WASTE MANAGEMENT REPORT",
+      lines,
+      "Courier",
+      8.5,
+      25,
+      800,
+      `waste_report_${new Date().toISOString().split("T")[0]}.pdf`,
+      { repeatTitle: true, linesPerPage: 56, lineHeight: 12 }
+    );
   };
 
   return (
@@ -1628,6 +1696,15 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
           </div>
         </div>
       )}
+      <PdfSettingsModal
+        isOpen={pdfSettingsModalOpen}
+        onClose={() => {
+          setPdfSettingsModalOpen(false);
+          setPdfSettingsPendingAction(null);
+        }}
+        onConfirm={handlePdfConfirm}
+        isDark={isDark}
+      />
     </div>
   );
 };

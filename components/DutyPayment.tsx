@@ -4,6 +4,7 @@ import { insertDuty, updateDuty, deleteDuty } from "../utils/supabaseApi";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createSimplePdfBlob } from "../utils/simplePdf";
 import { getClientPhones, getPrimaryClientPhone } from "../utils/clientPhones";
+import { PdfSettingsModal, PdfSettings } from "./PdfSettingsModal";
 import * as XLSX from "xlsx";
 
 interface DutyPaymentProps {
@@ -299,6 +300,23 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   // Payment Modal State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+
+  // PDF Layout Settings States
+  const [pdfSettingsModalOpen, setPdfSettingsModalOpen] = useState(false);
+  const [pdfSettingsCallback, setPdfSettingsCallback] = useState<((settings: PdfSettings) => void) | null>(null);
+
+  const triggerPdfExport = (onConfirm: (settings: PdfSettings) => void) => {
+    setPdfSettingsCallback(() => onConfirm);
+    setPdfSettingsModalOpen(true);
+  };
+
+  const handlePdfConfirm = (settings: PdfSettings) => {
+    if (pdfSettingsCallback) {
+      pdfSettingsCallback(settings);
+    }
+    setPdfSettingsModalOpen(false);
+    setPdfSettingsCallback(null);
+  };
   const [completionTargetId, setCompletionTargetId] = useState<string | null>(null);
   const [completionRNo, setCompletionRNo] = useState("");
   const [paymentIds, setPaymentIds] = useState<string[]>([]);
@@ -1107,73 +1125,90 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     lines.push(`Grand Total: Tk ${settlementValue.toLocaleString("en-BD")}`);
     lines.push(`Status: ${settlementLabel}`);
 
-    const pdfBlob = createSimplePdfBlob("DUTY PAYMENT INVOICE", lines);
-    const filename = `duty-invoice-${Date.now()}.pdf`;
-    const pdfFile = new File([pdfBlob], filename, { type: "application/pdf" });
+    triggerPdfExport(async (settings) => {
+      const finalOptions = {
+        pageSize: settings.pageSize,
+        orientation: settings.orientation,
+        scale: settings.scale,
+        showPageNumbers: settings.showPageNumbers,
+      };
 
-    try {
-      if (
-        navigator.share &&
-        navigator.canShare &&
-        navigator.canShare({ files: [pdfFile] })
-      ) {
-        await navigator.share({
-          title: "Duty Invoice",
-          text: "Invoice PDF attached.",
-          files: [pdfFile],
-        });
+      const pdfBlob = createSimplePdfBlob(
+        "DUTY PAYMENT INVOICE",
+        lines,
+        settings.fontName,
+        11,
+        40,
+        810,
+        finalOptions
+      );
+      const filename = `duty-invoice-${Date.now()}.pdf`;
+      const pdfFile = new File([pdfBlob], filename, { type: "application/pdf" });
+
+      try {
+        if (
+          navigator.share &&
+          navigator.canShare &&
+          navigator.canShare({ files: [pdfFile] })
+        ) {
+          await navigator.share({
+            title: "Duty Invoice",
+            text: "Invoice PDF attached.",
+            files: [pdfFile],
+          });
+          return;
+        }
+      } catch {
         return;
       }
-    } catch {
-      return;
-    }
 
-    const url = URL.createObjectURL(pdfBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
 
-    const summaryLines: string[] = ["INVOICE SUMMARY", ""];
-    groupedByAin.forEach(([ainValue, ainRecords]) => {
-      const ainName = ainRecords[0]?.clientName || "Unknown";
-      summaryLines.push(`AIN: ${ainValue} | Name: ${ainName}`);
-      ainRecords.forEach((r, idx) => {
-        summaryLines.push(
-          `${idx + 1}. B/E ${r.beYear} | Date ${r.date || "-"} | Payment Receive Tk ${(r.received || 0).toLocaleString("en-BD")} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
-        );
+      const summaryLines: string[] = ["INVOICE SUMMARY", ""];
+      groupedByAin.forEach(([ainValue, ainRecords]) => {
+        const ainName = ainRecords[0]?.clientName || "Unknown";
+        summaryLines.push(`AIN: ${ainValue} | Name: ${ainName}`);
+        ainRecords.forEach((r, idx) => {
+          summaryLines.push(
+            `${idx + 1}. B/E ${r.beYear} | Date ${r.date || "-"} | Payment Receive Tk ${(r.received || 0).toLocaleString("en-BD")} | Amount Tk ${r.duty.toLocaleString("en-BD")} | Status ${r.status}`,
+          );
+        });
+        const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
+        summaryLines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+        summaryLines.push("");
       });
-      const ainSubtotal = ainRecords.reduce((acc, r) => acc + (r.duty || 0), 0);
-      summaryLines.push(`Subtotal (${ainValue} - ${ainName}): Tk ${ainSubtotal.toLocaleString("en-BD")}`);
+      summaryLines.push(`Grand B/E Count: ${grandBeCount}`);
+      summaryLines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
+      summaryLines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
+      if (showReceivedLine) {
+        summaryLines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
+      }
+      summaryLines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
+      summaryLines.push(`Grand Total: Tk ${settlementValue.toLocaleString("en-BD")}`);
+      summaryLines.push(`Status: ${settlementLabel}`);
       summaryLines.push("");
+      summaryLines.push(
+        "Invoice PDF downloaded. Please attach the downloaded file and send it.",
+      );
+      const waSummaryText = summaryLines.join("\n");
+      const waText = encodeURIComponent(waSummaryText);
+      const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
+      const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
+
+      window.location.href = desktopUrl;
+      setTimeout(() => {
+        window.open(webUrl, "_blank");
+      }, 700);
+
+      alert(
+        "PDF download হয়েছে। WhatsApp খুলে গেলে downloaded PDF টি attach করে Send করুন।",
+      );
     });
-    summaryLines.push(`Grand B/E Count: ${grandBeCount}`);
-    summaryLines.push(`Grand Subtotal: Tk ${subtotal.toLocaleString("en-BD")}`);
-    summaryLines.push(`Service Charge: Tk ${serviceCharge.toLocaleString("en-BD")}`);
-    if (showReceivedLine) {
-      summaryLines.push(`Received Amount: Tk ${totalReceived.toLocaleString("en-BD")}`);
-    }
-    summaryLines.push(`Due: Tk ${due.toLocaleString("en-BD")}`);
-    summaryLines.push(`Grand Total: Tk ${settlementValue.toLocaleString("en-BD")}`);
-    summaryLines.push(`Status: ${settlementLabel}`);
-    summaryLines.push("");
-    summaryLines.push(
-      "Invoice PDF downloaded. Please attach the downloaded file and send it.",
-    );
-    const waSummaryText = summaryLines.join("\n");
-    const waText = encodeURIComponent(waSummaryText);
-    const desktopUrl = `whatsapp://send?phone=${waPhone}&text=${waText}`;
-    const webUrl = `https://web.whatsapp.com/send?phone=${waPhone}&text=${waText}`;
-
-    window.location.href = desktopUrl;
-    setTimeout(() => {
-      window.open(webUrl, "_blank");
-    }, 700);
-
-    alert(
-      "PDF download হয়েছে। WhatsApp খুলে গেলে downloaded PDF টি attach করে Send করুন।",
-    );
   };
 
   const copyToClipboard = (text: string) => {
@@ -3045,6 +3080,15 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           </div>
         </div>
       )}
+      <PdfSettingsModal
+        isOpen={pdfSettingsModalOpen}
+        onClose={() => {
+          setPdfSettingsModalOpen(false);
+          setPdfSettingsCallback(null);
+        }}
+        onConfirm={handlePdfConfirm}
+        isDark={isDark}
+      />
     </div>
   );
 };

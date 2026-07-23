@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
-import { ClearanceRecord, SystemConfig, WasteCompany } from "../types";
+import { ClearanceRecord, SystemConfig, WasteCompany, Client } from "../types";
 import {
   deleteClearanceRecord,
   insertClearanceRecord,
@@ -16,6 +16,7 @@ interface AssessmentRecordTabProps {
   supabase: SupabaseClient | null;
   companies: WasteCompany[];
   dashboardFilter?: "all" | "collected" | "due";
+  clients?: Client[];
 }
 
 const bnNumbers = [
@@ -155,6 +156,7 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   supabase,
   companies,
   dashboardFilter = "all",
+  clients,
 }) => {
   const isDark = systemConfig.theme === "dark";
 
@@ -183,6 +185,100 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   const [payRecord, setPayRecord] = useState<ClearanceRecord | null>(null);
   const [payChallanNo, setPayChallanNo] = useState("");
   const [payDate, setPayPayDate] = useState("");
+
+  // WhatsApp Share Modal States
+  const [whatsappRecord, setWhatsappRecord] = useState<ClearanceRecord | null>(null);
+  const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [whatsappMessage, setWhatsappMessage] = useState("");
+
+  const handleOpenWhatsappModal = (record: ClearanceRecord) => {
+    let matchedPhone = "";
+    if (clients) {
+      const client = clients.find(
+        (c) => (c.name || "").trim().toLowerCase() === (record.clientName || "").trim().toLowerCase()
+      );
+      if (client && client.phone) {
+        matchedPhone = client.phone;
+      }
+    }
+    
+    if (!matchedPhone) {
+      matchedPhone = localStorage.getItem("last_whatsapp_phone") || "";
+    }
+
+    setWhatsappRecord(record);
+    setWhatsappPhone(matchedPhone);
+
+    let displayInWord = record.inWord || "-";
+    const isAnsi = /[a-zA-Z]/.test(displayInWord);
+    if (isAnsi && record.dutyTax) {
+      displayInWord = numberToBengaliWords(record.dutyTax) + " টাকা মাত্র";
+    }
+
+    const pad = (str: string, len: number) => {
+      const s = String(str);
+      return s + " ".repeat(Math.max(0, len - s.length));
+    };
+
+    const cdVal = record.cd ? record.cd.toLocaleString("en-BD") : "0";
+    const rdVal = record.rd ? record.rd.toLocaleString("en-BD") : "0";
+    const vatVal = record.vat ? record.vat.toLocaleString("en-BD") : "0";
+    const aitVal = record.ait ? record.ait.toLocaleString("en-BD") : "0";
+    const atvAtVal = record.atvAt ? record.atvAt.toLocaleString("en-BD") : "0";
+
+    const tableStr = [
+      "```",
+      `${pad("- CD:", 10)} ${cdVal}`,
+      `${pad("- RD:", 10)} ${rdVal}`,
+      `${pad("- VAT:", 10)} ${vatVal}`,
+      `${pad("- AIT:", 10)} ${aitVal}`,
+      `${pad("- ATV/AT:", 10)} ${atvAtVal}`,
+      "```"
+    ].join("\n");
+
+    const msg = `*কাস্টমস শুল্কায়ন বিবরণী (Customs Assessment Details)*
+--------------------------------------
+*প্রতিষ্ঠানের নাম:* ${record.clientName || "-"}
+*তারিখ:* ${record.date || "-"}
+*শুল্কায়নযোগ্য মূল্য (Assessable Value):* ${record.assessableValue ? record.assessableValue.toLocaleString("en-BD") : "0"}
+
+*কর ও শুল্ক বিবরণী:*
+${tableStr}
+--------------------------------------
+*মোট শুল্ক কর (Total Duty Tax):* ${record.dutyTax ? record.dutyTax.toLocaleString("en-BD") : "0"}
+*কথায় (In Word):* ${displayInWord}
+*Status:* ${record.paymentStatus || "-"}`;
+
+    setWhatsappMessage(msg);
+  };
+
+  const handleSendWhatsapp = () => {
+    if (!whatsappPhone) {
+      alert("দয়া করে একটি সচল হোয়াটসঅ্যাপ নম্বর দিন (Please enter a valid WhatsApp number)");
+      return;
+    }
+
+    let cleanPhone = whatsappPhone.replace(/\D/g, "");
+    
+    if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
+      cleanPhone = "88" + cleanPhone;
+    } else if (cleanPhone.length === 10 && !cleanPhone.startsWith("0")) {
+      cleanPhone = "880" + cleanPhone;
+    }
+
+    localStorage.setItem("last_whatsapp_phone", whatsappPhone);
+
+    const waText = encodeURIComponent(whatsappMessage);
+    const desktopUrl = `whatsapp://send?phone=${cleanPhone}&text=${waText}`;
+    const webUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${waText}`;
+
+    window.location.href = desktopUrl;
+    setTimeout(() => {
+      window.open(webUrl, "_blank");
+    }, 700);
+
+    setWhatsappRecord(null);
+  };
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // PDF Report Modal States
@@ -1505,6 +1601,14 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                       </button>
                       <button
                         type="button"
+                        onClick={() => handleOpenWhatsappModal(record)}
+                        className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 active:scale-95 transition-all"
+                        title="Send via WhatsApp (হোয়াটসঅ্যাপে তথ্য পাঠান)"
+                      >
+                        <i className="fab fa-whatsapp text-[12px] mr-1"></i> Send
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleEdit(record)}
                         className="rounded-lg bg-amber-50 dark:bg-amber-950/30 px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 hover:bg-amber-100"
                       >
@@ -1714,6 +1818,92 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
                   Generate & Print
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* WhatsApp Share Modal */}
+      {whatsappRecord && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div
+            className={`w-full max-w-lg rounded-[2rem] shadow-2xl p-6 sm:p-8 animate-in zoom-in-95 border transition-all ${
+              isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
+            }`}
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className={`text-lg font-black uppercase tracking-wider ${isDark ? "text-white" : "text-slate-900"}`}>
+                  <i className="fab fa-whatsapp mr-2 text-emerald-500 text-xl align-middle"></i>
+                  হোয়াটসঅ্যাপে তথ্য পাঠান (Share via WhatsApp)
+                </h3>
+                <p className="text-xs font-semibold text-slate-400 mt-1">
+                  Send assessment details for {whatsappRecord.clientName} directly to a WhatsApp number.
+                </p>
+              </div>
+              <button
+                onClick={() => setWhatsappRecord(null)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                  isDark
+                    ? "bg-slate-700 text-slate-200 hover:bg-red-900/40 hover:text-red-300"
+                    : "bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500"
+                }`}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Phone Input */}
+              <div className="space-y-1">
+                <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  WhatsApp Number (হোয়াটসঅ্যাপ নম্বর)
+                </label>
+                <input
+                  type="text"
+                  value={whatsappPhone}
+                  onChange={(e) => setWhatsappPhone(e.target.value)}
+                  placeholder="e.g. 017XXXXXXXX"
+                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold outline-none focus:border-emerald-500 transition-all ${
+                    isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-900"
+                  }`}
+                />
+              </div>
+
+              {/* Message Preview (Customizable/Editable textarea!) */}
+              <div className="space-y-1">
+                <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  Message Content Preview (বার্তাটির খসড়া)
+                </label>
+                <textarea
+                  rows={10}
+                  value={whatsappMessage}
+                  onChange={(e) => setWhatsappMessage(e.target.value)}
+                  className={`w-full px-4 py-3 rounded-xl border-2 font-medium text-xs font-mono outline-none focus:border-emerald-500 transition-all ${
+                    isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-900"
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-100 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setWhatsappRecord(null)}
+                className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                  isDark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendWhatsapp}
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all flex items-center gap-2"
+              >
+                <i className="fab fa-whatsapp"></i>
+                Send (পাঠান)
+              </button>
             </div>
           </div>
         </div>

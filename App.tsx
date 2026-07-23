@@ -1703,6 +1703,7 @@ const App: React.FC = () => {
               supabase={supabase}
               companies={wasteCompanies}
               dashboardFilter={clearanceCardFilter}
+              clients={clients}
             />
           )}
           {activeTab === "wasteCompanies" && tabAccess.wasteCompanies && (

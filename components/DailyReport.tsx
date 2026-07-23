@@ -6,6 +6,7 @@ import {
   SystemConfig,
 } from "../types";
 import { createSimplePdfBlob } from "../utils/simplePdf";
+import { PdfSettingsModal, PdfSettings } from "./PdfSettingsModal";
 
 interface DailyReportProps {
   dutyHistory: PaymentRecord[];
@@ -67,6 +68,77 @@ const DailyReport: React.FC<DailyReportProps> = ({
   const dutyTableRef = useRef<HTMLDivElement | null>(null);
   const assessmentTableRef = useRef<HTMLDivElement | null>(null);
   const isDark = systemConfig.theme === "dark";
+
+  // PDF Layout Settings States
+  const [pdfSettingsModalOpen, setPdfSettingsModalOpen] = useState(false);
+  const [pdfSettingsPendingAction, setPdfSettingsPendingAction] = useState<{
+    title: string;
+    lines: string[];
+    fontName: "Helvetica" | "Courier";
+    fontSize: number;
+    startX: number;
+    startY: number;
+    filename: string;
+    options: any;
+  } | null>(null);
+
+  const triggerPdfExport = (
+    title: string,
+    lines: string[],
+    defaultFont: "Helvetica" | "Courier",
+    defaultFontSize: number,
+    defaultStartX: number,
+    defaultStartY: number,
+    filename: string,
+    baseOptions: any
+  ) => {
+    setPdfSettingsPendingAction({
+      title,
+      lines,
+      fontName: defaultFont,
+      fontSize: defaultFontSize,
+      startX: defaultStartX,
+      startY: defaultStartY,
+      filename,
+      options: baseOptions,
+    });
+    setPdfSettingsModalOpen(true);
+  };
+
+  const handlePdfConfirm = (settings: PdfSettings) => {
+    if (!pdfSettingsPendingAction) return;
+    const { title, lines, fontSize, startX, startY, filename, options } = pdfSettingsPendingAction;
+    
+    const finalOptions = {
+      ...options,
+      pageSize: settings.pageSize,
+      orientation: settings.orientation,
+      scale: settings.scale,
+      showPageNumbers: settings.showPageNumbers,
+    };
+
+    const pdfBlob = createSimplePdfBlob(
+      title,
+      lines,
+      settings.fontName,
+      fontSize,
+      startX,
+      startY,
+      finalOptions
+    );
+
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setPdfSettingsModalOpen(false);
+    setPdfSettingsPendingAction(null);
+  };
 
   const t =
     systemConfig.language === "en"
@@ -759,23 +831,16 @@ const DailyReport: React.FC<DailyReportProps> = ({
         Math.floor((pageWidth - tableWidth) / 2),
       );
 
-      const pdfBlob = createSimplePdfBlob(
+      triggerPdfExport(
         "DUTY CLIENT REPORT",
         lines,
         "Courier",
         fontSize,
         marginX,
         820,
-        { showPageNumbers: true, bottomMargin: 20, lineHeight: Math.max(10, Math.round(fontSize * 1.1)) },
+        `duty-client-report-${startDate}_to_${endDate}.pdf`,
+        { bottomMargin: 20, lineHeight: Math.max(10, Math.round(fontSize * 1.1)) }
       );
-      const url = URL.createObjectURL(pdfBlob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `duty-client-report-${startDate}_to_${endDate}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
       return;
     }
     const combinedEntries = [
@@ -1010,23 +1075,16 @@ const DailyReport: React.FC<DailyReportProps> = ({
       Math.floor((pageWidth - tableWidth) / 2),
     );
 
-    const pdfBlob = createSimplePdfBlob(
+    triggerPdfExport(
       "TRANSACTION STATEMENT",
       lines,
       "Courier",
       fontSize,
       marginX,
       820,
-      { showPageNumbers: true, bottomMargin: 20, lineHeight: Math.max(10, Math.round(fontSize * 1.1)) },
+      `transaction-report-${startDate}_to_${endDate}.pdf`,
+      { bottomMargin: 20, lineHeight: Math.max(10, Math.round(fontSize * 1.1)) }
     );
-    const url = URL.createObjectURL(pdfBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `transaction-report-${startDate}_to_${endDate}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -2039,6 +2097,15 @@ const DailyReport: React.FC<DailyReportProps> = ({
           )}
         </div>
       </div>
+      <PdfSettingsModal
+        isOpen={pdfSettingsModalOpen}
+        onClose={() => {
+          setPdfSettingsModalOpen(false);
+          setPdfSettingsPendingAction(null);
+        }}
+        onConfirm={handlePdfConfirm}
+        isDark={isDark}
+      />
     </div>
   );
 };
