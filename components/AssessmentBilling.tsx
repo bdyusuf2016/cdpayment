@@ -14,6 +14,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { createSimplePdfBlob } from "../utils/simplePdf";
 import { getClientPhones, getPrimaryClientPhone } from "../utils/clientPhones";
 import { PdfSettingsModal, PdfSettings } from "./PdfSettingsModal";
+import { printElement } from "../utils/printTable";
 
 interface AssessmentBillingProps {
   clients: Client[];
@@ -1474,6 +1475,18 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               className="bg-slate-100 text-slate-900 px-4 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-200"
             >
               Clear
+            </button>
+            <button
+              onClick={() => printElement(document.getElementById("assessment-table"), "Assessment Billing Records", {
+                header: {
+                  organization: systemConfig.agencyName || undefined,
+                  subtext: systemConfig.agencyAddress || undefined,
+                },
+                autoExcludeControls: true,
+              })}
+              className="bg-slate-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-700 shadow-sm"
+            >
+              <i className="fas fa-print mr-1"></i> Print Table
             </button>
             {selectedIds.length > 0 && (
               <button

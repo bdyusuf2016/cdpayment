@@ -3,6 +3,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { SystemConfig, WasteCompany, WasteRecord } from "../types";
 import { createSimplePdfBlob } from "../utils/simplePdf";
 import { PdfSettingsModal, PdfSettings } from "./PdfSettingsModal";
+import { printElement } from "../utils/printTable";
 import {
   deleteWasteRecord,
   insertWasteRecord,
@@ -1309,6 +1310,19 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
             >
               Reset
             </button>
+            <button
+              type="button"
+              onClick={() => printElement(document.getElementById("waste-table"), "Waste Management Records", {
+                header: {
+                  organization: systemConfig.agencyName || undefined,
+                  subtext: systemConfig.agencyAddress || undefined,
+                },
+                autoExcludeControls: true,
+              })}
+              className="rounded-xl bg-slate-600 hover:bg-slate-700 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-md active:scale-95 transition-all w-full md:w-auto"
+            >
+              <i className="fas fa-print mr-1"></i> Print Table
+            </button>
           </div>
         </div>
 
@@ -1363,7 +1377,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1200px] text-left text-xs">
+          <table id="waste-table" className="w-full min-w-[1200px] text-left text-xs">
             <thead className={`${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
               <tr>
                 <th className="px-4 py-3 w-10 text-center">

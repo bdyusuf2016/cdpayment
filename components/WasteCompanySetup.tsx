@@ -3,6 +3,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { SystemConfig, WasteCompany } from "../types";
 import { insertWasteCompany, updateWasteCompany } from "../utils/supabaseApi";
+import { printElement } from "../utils/printTable";
 
 interface WasteCompanySetupProps {
   companies: WasteCompany[];
@@ -304,13 +305,27 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
               All registered waste collection companies.
             </p>
           </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-slate-600">
-            {companies.length} company(s)
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => printElement(document.getElementById("waste-companies-table"), "Waste Collection Companies Directory", {
+                header: {
+                  organization: systemConfig.agencyName || undefined,
+                  subtext: systemConfig.agencyAddress || undefined,
+                },
+                autoExcludeControls: true,
+              })}
+              className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase shadow-md transition-all active:scale-95 flex items-center gap-2"
+            >
+              <i className="fas fa-print"></i> Print Directory
+            </button>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-slate-600">
+              {companies.length} company(s)
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left text-xs">
+          <table id="waste-companies-table" className="w-full min-w-[680px] text-left text-xs">
             <thead className={`${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
               <tr>
                 <th className="px-4 py-3 font-black uppercase tracking-widest">Company</th>

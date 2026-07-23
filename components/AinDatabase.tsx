@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Client, SystemConfig } from "../types";
+import { printElement } from "../utils/printTable";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
 import {
@@ -496,16 +497,30 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-            <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">
-              {sortedClients.length} Profiles
-            </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => printElement(document.getElementById("ain-table"), "AIN Database Profiles", {
+                header: {
+                  organization: systemConfig.agencyName || undefined,
+                  subtext: systemConfig.agencyAddress || undefined,
+                },
+                autoExcludeControls: true,
+              })}
+              className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase shadow-md transition-all active:scale-95 flex items-center gap-2"
+            >
+              <i className="fas fa-print"></i> Print Database
+            </button>
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+              <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">
+                {sortedClients.length} Profiles
+              </span>
+            </div>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table id="ain-table" className="w-full text-left border-collapse">
             <thead>
               <tr
                 className={`${isDark ? "bg-slate-900/50 border-slate-700" : "bg-slate-50 border-slate-300"} border-b`}

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { ClearanceRecord, SystemConfig, WasteCompany, Client } from "../types";
+import { printElement } from "../utils/printTable";
 import {
   deleteClearanceRecord,
   insertClearanceRecord,
@@ -1344,6 +1345,20 @@ ${tableStr}
               <i className="fas fa-file-pdf"></i>
               Monthly PDF
             </button>
+            <button
+              type="button"
+              onClick={() => printElement(document.getElementById("clearance-table"), "Assessment Clearance Records", {
+                header: {
+                  organization: systemConfig.agencyName || undefined,
+                  subtext: systemConfig.agencyAddress || undefined,
+                },
+                autoExcludeControls: true,
+              })}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-slate-600 text-white shadow-md hover:bg-slate-700 transition-all"
+            >
+              <i className="fas fa-print"></i>
+              Print Table
+            </button>
           </div>
         </div>
 
@@ -1465,7 +1480,7 @@ ${tableStr}
 
         {/* Data Table */}
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-          <table className="w-full min-w-[1300px] text-left text-xs">
+          <table id="clearance-table" className="w-full min-w-[1300px] text-left text-xs">
             <thead
               className={`font-black uppercase tracking-widest ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"
                 }`}
