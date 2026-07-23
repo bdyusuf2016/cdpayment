@@ -87,6 +87,20 @@ export interface ClearanceRecord {
   date: string;
   totalClearance: number;
   notes?: string;
+  slNo?: string;
+  clientName?: string;
+  assessableValue?: number;
+  cd?: number;
+  rd?: number;
+  vat?: number;
+  ait?: number;
+  atvAt?: number;
+  dutyTax?: number;
+  trnxId?: string;
+  paymentDate?: string;
+  paymentStatus?: "Paid" | "Unpaid";
+  circle?: string;
+  inWord?: string;
 }
 
 export interface LogEntry {

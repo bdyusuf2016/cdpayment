@@ -1111,7 +1111,6 @@ const App: React.FC = () => {
 
   const statDetail = useMemo<StatDetailView | null>(() => {
     if (activeStatIndex === null || !stats[activeStatIndex]) return null;
-    if (activeTab === "duty" || activeTab === "assessment") return null;
     const money = (n: number) => `Tk ${n.toLocaleString("en-BD")}`;
 
     switch (activeTab) {

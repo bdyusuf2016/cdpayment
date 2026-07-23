@@ -722,23 +722,25 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
       return "";
     })();
 
-    const currentMonthStr =
-      filterMonth === "All"
-        ? new Date().toLocaleString("en-US", { month: "long", year: "numeric" })
-        : filterMonth;
-
-    const circleSuffix = activeCircle ? ` (${activeCircle})` : "";
-    setPdfSubtitle2(`Month Name : ${currentMonthStr}${circleSuffix}`);
+    if (activeCircle === "East") {
+      setPdfSubtitle2("Circle: East");
+    } else if (activeCircle === "West") {
+      setPdfSubtitle2("Circle: West");
+    } else {
+      setPdfSubtitle2("");
+    }
     setShowPdfModal(true);
   };
 
   const handlePrintPdf = () => {
     setShowPdfModal(false);
 
-    // Sort in ascending order chronologically
-    const sortedRecordsForPrint = [...filteredHistory].sort((a, b) => {
-      return parseDate(a.date).getTime() - parseDate(b.date).getTime();
-    });
+    // Filter only paid records and sort in ascending order chronologically
+    const sortedRecordsForPrint = filteredHistory
+      .filter((r) => r.paymentStatus === "Paid")
+      .sort((a, b) => {
+        return parseDate(a.date).getTime() - parseDate(b.date).getTime();
+      });
 
     const formatBDNumber = (num: number): string => {
       if (num === 0) return "-";
@@ -1681,15 +1683,18 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Subtitle 2 (উপশিরোনাম ২ - Month & Circle)
+                  Subtitle 2 (Circle)
                 </label>
-                <input
-                  type="text"
+                <select
                   value={pdfSubtitle2}
                   onChange={(e) => setPdfSubtitle2(e.target.value)}
                   className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
                     }`}
-                />
+                >
+                  <option value="">All Circles</option>
+                  <option value="Circle: East">Circle: East</option>
+                  <option value="Circle: West">Circle: West</option>
+                </select>
               </div>
 
               <div className="flex gap-3 pt-4">
