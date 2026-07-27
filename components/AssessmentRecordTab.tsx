@@ -928,6 +928,32 @@ ${tableStr}
         });
     }
   };
+  const hasActiveFilters = useMemo(() => {
+    const isDefaultStatus = statusFilter === (dashboardFilter === "due" ? "Unpaid" : dashboardFilter === "collected" ? "Paid" : "All");
+    return (
+      search.trim() !== "" ||
+      filterCircle !== "All" ||
+      !isDefaultStatus ||
+      filterMonth !== "All" ||
+      startDate !== "" ||
+      endDate !== ""
+    );
+  }, [search, filterCircle, statusFilter, filterMonth, startDate, endDate, dashboardFilter]);
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setStartDate("");
+    setEndDate("");
+    setFilterMonth("All");
+    setFilterCircle("All");
+    if (dashboardFilter === "due") {
+      setStatusFilter("Unpaid");
+    } else if (dashboardFilter === "collected") {
+      setStatusFilter("Paid");
+    } else {
+      setStatusFilter("All");
+    }
+  };
 
   const handleExportExcel = () => {
     const exportData = filteredHistory.map((row, idx) => {
@@ -1563,8 +1589,8 @@ ${tableStr}
         </div>
 
         {/* Filter Toolbar */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6">
+          <div className="md:col-span-3">
             <input
               type="text"
               value={search}
@@ -1574,7 +1600,7 @@ ${tableStr}
                 }`}
             />
           </div>
-          <div>
+          <div className="md:col-span-2">
             <select
               value={filterCircle}
               onChange={(e) => setFilterCircle(e.target.value as "All" | "East" | "West")}
@@ -1586,7 +1612,7 @@ ${tableStr}
               <option value="West">West (ওয়েস্ট)</option>
             </select>
           </div>
-          <div>
+          <div className="md:col-span-2">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "All" | "Paid" | "Unpaid")}
@@ -1598,7 +1624,7 @@ ${tableStr}
               <option value="Unpaid">Unpaid (অ-পরিশোধিত)</option>
             </select>
           </div>
-          <div>
+          <div className="md:col-span-2">
             <select
               value={filterMonth}
               onChange={(e) => setFilterMonth(e.target.value)}
@@ -1613,7 +1639,7 @@ ${tableStr}
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="md:col-span-2 grid grid-cols-2 gap-2">
             <input
               type="date"
               value={startDate}
@@ -1628,6 +1654,23 @@ ${tableStr}
               className={`w-full rounded-xl border px-2 py-2.5 font-bold text-[10px] outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
                 }`}
             />
+          </div>
+          <div className="md:col-span-1 flex items-center">
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              disabled={!hasActiveFilters}
+              className={`w-full py-2.5 rounded-xl border font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-sm ${
+                !hasActiveFilters
+                  ? "opacity-50 cursor-not-allowed " + (isDark ? "bg-slate-800 border-slate-700 text-slate-500" : "bg-slate-50 border-slate-200 text-slate-400")
+                  : (isDark
+                    ? "bg-red-950/30 border-red-900/50 text-red-400 hover:bg-red-900/40 cursor-pointer"
+                    : "bg-red-50 border-red-200 text-red-600 hover:bg-red-100 cursor-pointer")
+              }`}
+            >
+              <i className="fas fa-filter-slash"></i>
+              Clear
+            </button>
           </div>
         </div>
 
