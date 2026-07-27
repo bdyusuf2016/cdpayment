@@ -297,6 +297,78 @@ ${tableStr}
   const [filterCircle, setFilterCircle] = useState<"All" | "East" | "West">("All");
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Helper to split comma-separated challans
+  const getIndividualChallans = (challanStr: string): string[] => {
+    return challanStr
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  };
+
+  // Find all duplicate challan numbers across all history records
+  const duplicateChallanDetails = useMemo(() => {
+    const challanToRecords = new Map<string, { id: string; slNo?: string; clientName?: string; date: string }[]>();
+    history.forEach((rec) => {
+      const trnx = (rec.trnxId || "").trim();
+      if (!trnx) return;
+      const parts = getIndividualChallans(trnx);
+      parts.forEach((part) => {
+        const existing = challanToRecords.get(part) || [];
+        existing.push({
+          id: rec.id,
+          slNo: rec.slNo,
+          clientName: rec.clientName,
+          date: rec.date,
+        });
+        challanToRecords.set(part, existing);
+      });
+    });
+
+    const duplicates = new Map<string, { id: string; slNo?: string; clientName?: string; date: string }[]>();
+    challanToRecords.forEach((recs, part) => {
+      if (recs.length > 1) {
+        duplicates.set(part, recs);
+      }
+    });
+    return duplicates;
+  }, [history]);
+
+  // Check if current payChallanNo has any duplicates
+  const payChallanDuplicates = useMemo(() => {
+    if (!payRecord || !payChallanNo.trim()) return [];
+    const enteredParts = getIndividualChallans(payChallanNo);
+    const duplicatesList: { challan: string; matchedRecords: { slNo?: string; clientName?: string; date: string }[] }[] = [];
+
+    enteredParts.forEach((part) => {
+      const matches = duplicateChallanDetails.get(part);
+      if (matches) {
+        const otherMatches = matches.filter((m) => m.id !== payRecord.id);
+        if (otherMatches.length > 0) {
+          duplicatesList.push({
+            challan: part,
+            matchedRecords: otherMatches,
+          });
+        }
+      }
+    });
+    return duplicatesList;
+  }, [payChallanNo, payRecord, duplicateChallanDetails]);
+
+  // Helper to get duplicate challan list for a record in the table
+  const getRecordChallanDuplicates = (rec: ClearanceRecord) => {
+    const trnx = (rec.trnxId || "").trim();
+    if (!trnx) return [];
+    const parts = getIndividualChallans(trnx);
+    const duplicatesList: string[] = [];
+    parts.forEach((part) => {
+      const matches = duplicateChallanDetails.get(part);
+      if (matches && matches.length > 1) {
+        duplicatesList.push(part);
+      }
+    });
+    return duplicatesList;
+  };
+
   // Sorting State
   const [sortKey, setSortKey] = useState<"slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -404,6 +476,15 @@ ${tableStr}
     e.preventDefault();
     if (!supabase || !payRecord) return;
 
+    if (payChallanDuplicates.length > 0) {
+      const dupChallansList = payChallanDuplicates.map((d) => d.challan).join(", ");
+      const confirmSave = window.confirm(
+        `সতর্কতা: আপনার প্রবেশ করানো চালান নম্বরটি (${dupChallansList}) ইতিমধ্যে অন্য এন্ট্রিতে ব্যবহৃত হয়েছে।\n` +
+        `আপনি কি নিশ্চিতভাবে এই ডুপ্লিকেট চালান নম্বরটি সংরক্ষণ করতে চান?`
+      );
+      if (!confirmSave) return;
+    }
+
     setActionError(null);
     try {
       const isPaid = payChallanNo.trim() !== "" && payDate.trim() !== "";
@@ -458,6 +539,7 @@ ${tableStr}
           !normalizedSearch ||
           String(row.clientName || "").toLowerCase().includes(normalizedSearch) ||
           String(row.trnxId || "").toLowerCase().includes(normalizedSearch) ||
+          String(row.notes || "").toLowerCase().includes(normalizedSearch) ||
           String(row.circle || "").toLowerCase().includes(normalizedSearch) ||
           String(row.slNo || "").includes(normalizedSearch);
 
@@ -650,6 +732,29 @@ ${tableStr}
       totalClearance: 0, // Fallback/Compat
       notes: trnxId.trim(), // Storing Challan No as notes for fallback compatibility
     } satisfies Omit<ClearanceRecord, "id">;
+
+    const trimmedTrnxId = trnxId.trim();
+    if (trimmedTrnxId) {
+      const enteredParts = getIndividualChallans(trimmedTrnxId);
+      const duplicatesList: string[] = [];
+      enteredParts.forEach((part) => {
+        const matches = duplicateChallanDetails.get(part);
+        if (matches) {
+          const otherMatches = matches.filter((m) => m.id !== editingId);
+          if (otherMatches.length > 0) {
+            duplicatesList.push(part);
+          }
+        }
+      });
+
+      if (duplicatesList.length > 0) {
+        const confirmSave = window.confirm(
+          `সতর্কতা: আপনার প্রবেশ করানো চালান নম্বরটি (${duplicatesList.join(", ")}) ইতিমধ্যে অন্য এন্ট্রিতে ব্যবহৃত হয়েছে।\n` +
+          `আপনি কি নিশ্চিতভাবে এটি সংরক্ষণ করতে চান?`
+        );
+        if (!confirmSave) return;
+      }
+    }
 
     setActionError(null);
     try {
@@ -1508,7 +1613,6 @@ ${tableStr}
                   শুল্ক কর <i className={`fas ${getSortIcon("dutyTax")}`}></i>
                 </th>
                 <th className="px-4 py-3 min-w-[160px]">চালান নং</th>
-                <th className="px-4 py-3">Payment_Date</th>
                 <th className="px-4 py-3 min-w-[250px]">In_Word</th>
                 <th onClick={() => toggleSort("paymentStatus")} className="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600">
                   Status <i className={`fas ${getSortIcon("paymentStatus")}`}></i>
@@ -1528,10 +1632,10 @@ ${tableStr}
                   key={record.id}
                   onClick={(e) => {
                     const target = e.target as HTMLElement;
-                    if (target.closest("button") || target.closest("a") || target.closest("input")) {
+                    if (target.closest("button") || target.closest("a") || target.closest("input") || target.closest("select")) {
                       return;
                     }
-                    handleEdit(record);
+                    handleOpenPayModal(record);
                   }}
                   className={`group hover:bg-slate-50 dark:hover:bg-slate-900/40 cursor-pointer transition-colors font-medium ${record.paymentStatus === "Paid" ? "" : "bg-rose-50/20 dark:bg-rose-950/5"
                     }`}
@@ -1564,11 +1668,81 @@ ${tableStr}
                   <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400 font-extrabold text-sm">
                     {record.dutyTax ? record.dutyTax.toLocaleString("en-BD") : "-"}
                   </td>
-                  <td className="px-4 py-3 break-all font-mono text-[10px] text-slate-600 dark:text-slate-300">
-                    {record.trnxId || "-"}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400">
-                    {record.paymentDate || "-"}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {record.trnxId ? (
+                      <div className="flex flex-col gap-1.5 items-start">
+                        <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+                          {getIndividualChallans(record.trnxId).map((challan, index, array) => {
+                            const isDup = (duplicateChallanDetails.get(challan)?.filter(c => c.id !== record.id).length ?? 0) > 0;
+                            return (
+                              <React.Fragment key={index}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPayModal(record)}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black transition-all font-mono active:scale-95 shadow-sm ${
+                                    isDup
+                                      ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-100"
+                                      : "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-900/50 hover:bg-sky-100"
+                                  }`}
+                                  title={isDup ? `Duplicate detected! Click to view/edit` : `Click to view/edit details`}
+                                >
+                                  <i className={`fas ${isDup ? "fa-exclamation-triangle text-rose-500" : "fa-file-invoice text-sky-500"}`}></i>
+                                  {challan}
+                                </button>
+                                {index < array.length - 1 && <span className="text-slate-400 dark:text-slate-600 font-bold mr-1">,</span>}
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
+                        {record.paymentDate && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                            <i className="fas fa-calendar-alt text-slate-400"></i>
+                            তাং: {record.paymentDate}
+                          </span>
+                        )}
+                        {(() => {
+                          const dups = getRecordChallanDuplicates(record);
+                          if (dups.length > 0) {
+                            const conflictingSlNos: string[] = [];
+                            const conflictDetails: string[] = [];
+                            
+                            dups.forEach((d) => {
+                              const confs = duplicateChallanDetails.get(d) || [];
+                              const otherConfs = confs.filter((c) => c.id !== record.id);
+                              otherConfs.forEach((c) => {
+                                const refLabel = c.slNo ? `Sl ${c.slNo}` : (c.clientName || "Unknown");
+                                if (!conflictingSlNos.includes(refLabel)) {
+                                  conflictingSlNos.push(refLabel);
+                                }
+                                conflictDetails.push(`${d} ➜ ${c.clientName} (Sl ${c.slNo || "-"})`);
+                              });
+                            });
+
+                            const tooltipText = conflictDetails.join("\n");
+                            const refText = conflictingSlNos.join(", ");
+                            const dupChallansText = dups.join(", ");
+
+                            return (
+                              <span
+                                title={tooltipText}
+                                className="inline-flex flex-col gap-0.5 mt-1 px-2 py-1 rounded text-[9px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50"
+                              >
+                                <span className="flex items-center gap-1">
+                                  <i className="fas fa-exclamation-triangle text-rose-500"></i>
+                                  ডুপ্লিকেট (Duplicate)
+                                </span>
+                                <span className="text-[8px] font-bold text-rose-600 dark:text-rose-300">
+                                  Ref: {refText} ({dupChallansText})
+                                </span>
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 font-bold">-</span>
+                    )}
                   </td>
                   <td
                     className="px-4 py-3 text-slate-600 dark:text-slate-300 italic text-sm"
@@ -1589,61 +1763,56 @@ ${tableStr}
                   <td className="px-4 py-3 text-center font-bold text-slate-500 dark:text-slate-400">
                     {record.circle || "-"}
                   </td>
-                  <td className={`px-4 py-3 text-center sticky right-0 border-l border-slate-200 dark:border-slate-700 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] ${record.paymentStatus === "Paid"
+                  <td className={`px-4 py-3 text-center min-w-[150px] sticky right-0 border-l border-slate-200 dark:border-slate-700 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] ${record.paymentStatus === "Paid"
                       ? "bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/40"
                       : "bg-rose-50/40 dark:bg-rose-950/20 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/40"
                     }`}>
-                    <div className="flex justify-center items-center gap-1.5">
-                      {record.paymentStatus !== "Paid" ? (
+                    <div className="flex justify-center items-center gap-1">
+                      {record.paymentStatus !== "Paid" && (
                         <button
                           type="button"
                           onClick={() => handleOpenPayModal(record)}
-                          className="rounded-lg bg-emerald-600 px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-emerald-700 shadow-md transition-all active:scale-95"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow transition-all active:scale-95"
+                          title="Pay (পরিশোধ করুন)"
                         >
-                          Pay
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPayModal(record)}
-                          className="rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all"
-                          title={`Challan: ${record.trnxId || "-"} | Date: ${record.paymentDate || "-"}`}
-                        >
-                          Details
+                          <i className="fas fa-credit-card text-[11px]"></i>
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => handleCopyForWord(record)}
-                        className={`rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all ${copiedId === record.id
+                        className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${
+                          copiedId === record.id
                             ? "bg-emerald-600 text-white animate-pulse"
                             : "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100"
-                          }`}
+                        }`}
                         title="Copy চালান নং, Payment Date, In Word for Word Table"
                       >
-                        {copiedId === record.id ? "Copied" : "Copy"}
+                        <i className={`fas ${copiedId === record.id ? "fa-check" : "fa-copy"} text-[11px]`}></i>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleOpenWhatsappModal(record)}
-                        className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 active:scale-95 transition-all"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 active:scale-95 transition-all"
                         title="Send via WhatsApp (হোয়াটসঅ্যাপে তথ্য পাঠান)"
                       >
-                        <i className="fab fa-whatsapp text-[12px] mr-1"></i> Send
+                        <i className="fab fa-whatsapp text-[13px]"></i>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleEdit(record)}
-                        className="rounded-lg bg-amber-50 dark:bg-amber-950/30 px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 hover:bg-amber-100"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 transition-all"
+                        title="Edit (সম্পাদনা করুন)"
                       >
-                        Edit
+                        <i className="fas fa-edit text-[11px]"></i>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDelete(record.id)}
-                        className="rounded-lg bg-rose-50 dark:bg-rose-950/30 px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400 hover:bg-rose-100"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-all"
+                        title="Delete (মুছে ফেলুন)"
                       >
-                        Del
+                        <i className="fas fa-trash-alt text-[11px]"></i>
                       </button>
                     </div>
                   </td>
@@ -1651,7 +1820,7 @@ ${tableStr}
               ))}
               {sortedHistory.length === 0 && (
                 <tr>
-                  <td colSpan={16} className="px-4 py-12 text-center text-sm font-bold text-slate-400">
+                  <td colSpan={15} className="px-4 py-12 text-center text-sm font-bold text-slate-400">
                     No assessment records found. (কোন অ্যাসেসমেন্ট ডাটা পাওয়া যায়নি)
                   </td>
                 </tr>
@@ -1671,7 +1840,7 @@ ${tableStr}
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className={`text-lg font-black ${isDark ? "text-white" : "text-slate-900"}`}>
-                  Settle Challan Payment (চালান পরিশোধ)
+                  {payRecord.paymentStatus === "Paid" ? "Assessment Details (অ্যাসেসমেন্ট বিবরণী)" : "Settle Challan Payment (চালান পরিশোধ)"}
                 </h3>
                 <p className="text-xs font-semibold text-slate-400 mt-1">
                   Importer: {payRecord.clientName}
@@ -1688,6 +1857,41 @@ ${tableStr}
               >
                 <i className="fas fa-times"></i>
               </button>
+            </div>
+
+            {/* Detailed Assessment Breakdown */}
+            <div className={`p-4 rounded-2xl border text-xs space-y-2 mb-4 ${isDark ? "bg-slate-900/40 border-slate-700" : "bg-slate-50 border-slate-100"}`}>
+              <div className="font-extrabold uppercase tracking-widest text-[10px] text-slate-400 mb-1 border-b pb-1 dark:border-slate-800">
+                Assessment Details (শুল্কায়ন বিবরণী)
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-300">
+                <div>তাং (Date): <strong>{payRecord.date}</strong></div>
+                <div>সার্কেল (Circle): <strong>{payRecord.circle || "-"}</strong></div>
+                <div>ক্রম (Sl No): <strong>{payRecord.slNo || "-"}</strong></div>
+                <div>মূল্য (Assessable): <strong>৳ {payRecord.assessableValue?.toLocaleString("en-BD") || "0"}</strong></div>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5 pt-1.5 border-t dark:border-slate-800 text-center">
+                <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded">
+                  <div className="text-[8px] font-bold text-slate-400">CD</div>
+                  <div className="font-extrabold">{payRecord.cd?.toLocaleString("en-BD") || "0"}</div>
+                </div>
+                <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded">
+                  <div className="text-[8px] font-bold text-slate-400">RD</div>
+                  <div className="font-extrabold">{payRecord.rd?.toLocaleString("en-BD") || "0"}</div>
+                </div>
+                <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded">
+                  <div className="text-[8px] font-bold text-slate-400">VAT</div>
+                  <div className="font-extrabold">{payRecord.vat?.toLocaleString("en-BD") || "0"}</div>
+                </div>
+                <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded">
+                  <div className="text-[8px] font-bold text-slate-400">AIT</div>
+                  <div className="font-extrabold">{payRecord.ait?.toLocaleString("en-BD") || "0"}</div>
+                </div>
+                <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded">
+                  <div className="text-[8px] font-bold text-slate-400">AT</div>
+                  <div className="font-extrabold">{payRecord.atvAt?.toLocaleString("en-BD") || "0"}</div>
+                </div>
+              </div>
             </div>
 
             <form onSubmit={handleConfirmPay} className="space-y-5">
@@ -1717,6 +1921,29 @@ ${tableStr}
                     }`}
                 />
               </div>
+
+              {payChallanDuplicates.length > 0 && (
+                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <i className="fas fa-exclamation-triangle text-amber-500"></i>
+                    সতর্কতা: একই চালান নম্বর অন্য এন্ট্রিতে পাওয়া গেছে!
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 mt-1 font-semibold">
+                    {payChallanDuplicates.map((dup, i) => (
+                      <li key={i}>
+                        চালান <span className="font-mono bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded text-[11px]">{dup.challan}</span> - ইতিমধ্যে{" "}
+                        {dup.matchedRecords.map((r, ri) => (
+                          <span key={ri}>
+                            {ri > 0 ? ", " : ""}
+                            <strong>{r.clientName}</strong> (তাং: {r.date}, क्रम: {r.slNo || "-"})
+                          </span>
+                        ))}
+                        -এ ব্যবহৃত হয়েছে।
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
