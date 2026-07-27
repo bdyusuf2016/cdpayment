@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { ClearanceRecord, SystemConfig, WasteCompany, Client } from "../types";
@@ -296,6 +296,53 @@ ${tableStr}
   const [statusFilter, setStatusFilter] = useState<"All" | "Paid" | "Unpaid">("All");
   const [filterCircle, setFilterCircle] = useState<"All" | "East" | "West">("All");
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Sticky Bottom Scrollbar Sync Logic
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const scrollbarContainerRef = useRef<HTMLDivElement>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
+  const [showScrollbar, setShowScrollbar] = useState(false);
+  const isSyncingScroll = useRef(false);
+
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      const container = tableContainerRef.current;
+      const updateScrollInfo = () => {
+        setTableScrollWidth(container.scrollWidth);
+        setShowScrollbar(container.scrollWidth > container.clientWidth);
+      };
+      
+      updateScrollInfo();
+
+      const resizeObserver = new ResizeObserver(() => {
+        updateScrollInfo();
+      });
+      resizeObserver.observe(container);
+      return () => resizeObserver.disconnect();
+    }
+  }, [history]);
+
+  const handleTableScroll = () => {
+    if (isSyncingScroll.current) {
+      isSyncingScroll.current = false;
+      return;
+    }
+    if (tableContainerRef.current && scrollbarContainerRef.current) {
+      isSyncingScroll.current = true;
+      scrollbarContainerRef.current.scrollLeft = tableContainerRef.current.scrollLeft;
+    }
+  };
+
+  const handleCustomScrollbarScroll = () => {
+    if (isSyncingScroll.current) {
+      isSyncingScroll.current = false;
+      return;
+    }
+    if (tableContainerRef.current && scrollbarContainerRef.current) {
+      isSyncingScroll.current = true;
+      tableContainerRef.current.scrollLeft = scrollbarContainerRef.current.scrollLeft;
+    }
+  };
 
   // Helper to split comma-separated challans
   const getIndividualChallans = (challanStr: string): string[] => {
@@ -1585,7 +1632,11 @@ ${tableStr}
         </div>
 
         {/* Data Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+        <div 
+          ref={tableContainerRef}
+          onScroll={handleTableScroll}
+          className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700"
+        >
           <table id="clearance-table" className="w-full min-w-[1300px] text-left text-xs">
             <thead
               className={`font-black uppercase tracking-widest ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"
@@ -1828,6 +1879,17 @@ ${tableStr}
             </tbody>
           </table>
         </div>
+
+        {/* Sticky Horizontal Scrollbar */}
+        {showScrollbar && (
+          <div
+            ref={scrollbarContainerRef}
+            onScroll={handleCustomScrollbarScroll}
+            className="overflow-x-auto sticky bottom-0 z-[50] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 h-3 rounded-lg mt-2 shadow-inner"
+          >
+            <div style={{ width: `${tableScrollWidth}px`, height: '1px' }} />
+          </div>
+        )}
       </div>
 
       {/* Settle Payment Modal */}
