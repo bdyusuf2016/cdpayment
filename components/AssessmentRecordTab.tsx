@@ -287,6 +287,7 @@ ${tableStr}
   const [pdfTitle, setPdfTitle] = useState("Monthly Revenue Report");
   const [pdfSubtitle1, setPdfSubtitle1] = useState("");
   const [pdfSubtitle2, setPdfSubtitle2] = useState("");
+  const [pdfMonth, setPdfMonth] = useState<string>("All");
 
   // Filters State
   const [search, setSearch] = useState("");
@@ -967,6 +968,7 @@ ${tableStr}
   const handleOpenPdfModal = () => {
     setPdfTitle("Monthly Revenue Report");
     setPdfSubtitle1("Customs Bond Commissionerate Dhaka (South), DEPZ, Savar, Dhaka.");
+    setPdfMonth(filterMonth);
 
     // Determine circle dynamically from filters or filtered history
     const activeCircle = (() => {
@@ -992,9 +994,54 @@ ${tableStr}
   const handlePrintPdf = () => {
     setShowPdfModal(false);
 
-    // Filter only paid records and sort in ascending order chronologically by payment date
-    const sortedRecordsForPrint = filteredHistory
-      .filter((r) => r.paymentStatus === "Paid")
+    // Filter paid records from history using the modal's selected month (pdfMonth), circle (pdfSubtitle2), and other UI filters
+    const sortedRecordsForPrint = history
+      .filter((row) => {
+        // Only Paid records are printed in the revenue report
+        if (row.paymentStatus !== "Paid") return false;
+
+        const rowDate = parseDate(row.date);
+        const normalizedSearch = search.trim().toLowerCase();
+
+        // Search Filter
+        const matchesSearch =
+          !normalizedSearch ||
+          String(row.clientName || "").toLowerCase().includes(normalizedSearch) ||
+          String(row.trnxId || "").toLowerCase().includes(normalizedSearch) ||
+          String(row.notes || "").toLowerCase().includes(normalizedSearch) ||
+          String(row.circle || "").toLowerCase().includes(normalizedSearch) ||
+          String(row.slNo || "").includes(normalizedSearch);
+
+        // Date Picker Range Filter
+        let matchesDateRange = true;
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          matchesDateRange = matchesDateRange && rowDate >= start;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          matchesDateRange = matchesDateRange && rowDate <= end;
+        }
+
+        // Dropdown Month Filter
+        let matchesMonth = true;
+        if (pdfMonth !== "All" && rowDate.getTime() > 0) {
+          const rowMonthKey = rowDate.toLocaleString("en-US", { month: "long", year: "numeric" });
+          matchesMonth = rowMonthKey === pdfMonth;
+        }
+
+        // Circle Filter (using pdfSubtitle2 from the modal)
+        let matchesCircle = true;
+        if (pdfSubtitle2 === "Circle: East") {
+          matchesCircle = row.circle === "East";
+        } else if (pdfSubtitle2 === "Circle: West") {
+          matchesCircle = row.circle === "West";
+        }
+
+        return matchesSearch && matchesDateRange && matchesMonth && matchesCircle;
+      })
       .sort((a, b) => {
         return parseDate(a.paymentDate || "").getTime() - parseDate(b.paymentDate || "").getTime();
       });
@@ -1166,7 +1213,7 @@ ${tableStr}
         <div class="header-container">
           <div class="report-title">${pdfTitle}</div>
           <div class="report-subtitle1">${pdfSubtitle1}</div>
-          <div class="report-subtitle2">${pdfSubtitle2}</div>
+          <div class="report-subtitle2">${pdfSubtitle2 || "All Circles"}${pdfMonth !== "All" ? ` | Month: ${pdfMonth}` : ""}</div>
         </div>
         <table>
           <thead>
@@ -2111,6 +2158,25 @@ ${tableStr}
                   <option value="">All Circles</option>
                   <option value="Circle: East">Circle: East</option>
                   <option value="Circle: West">Circle: West</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Report Month (রিপোর্ট মাস)
+                </label>
+                <select
+                  value={pdfMonth}
+                  onChange={(e) => setPdfMonth(e.target.value)}
+                  className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
+                >
+                  <option value="All">All Months (সব মাস)</option>
+                  {monthFilterOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </div>
 
