@@ -7,6 +7,10 @@ import {
   deleteClearanceRecord,
   insertClearanceRecord,
   updateClearanceRecord,
+  fetchCustomContacts,
+  insertCustomContact,
+  deleteCustomContact,
+  CustomContactItem,
 } from "../utils/supabaseApi";
 
 interface AssessmentRecordTabProps {
@@ -212,12 +216,143 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   const [payChallanNo, setPayChallanNo] = useState("");
   const [payDate, setPayPayDate] = useState("");
 
-  // WhatsApp Share Modal States
+  // WhatsApp Share Modal States & Contact List
   const [whatsappRecord, setWhatsappRecord] = useState<ClearanceRecord | null>(null);
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappMessage, setWhatsappMessage] = useState("");
 
+  const [customContacts, setCustomContacts] = useState<CustomContactItem[]>(() => {
+    try {
+      const saved = localStorage.getItem("custom_whatsapp_contacts");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [contactSearch, setContactSearch] = useState("");
+  const [showAddContactForm, setShowAddContactForm] = useState(false);
+  const [newContactName, setNewContactName] = useState("");
+  const [newContactPhone, setNewContactPhone] = useState("");
+
+  // Fetch Custom Contacts from Supabase on mount/supabase load
+  useEffect(() => {
+    if (!supabase) return;
+    fetchCustomContacts(supabase).then((remoteContacts) => {
+      if (remoteContacts && remoteContacts.length > 0) {
+        setCustomContacts((prev) => {
+          const map = new Map<string, CustomContactItem>();
+          prev.forEach((c) => map.set(c.id || c.phone, c));
+          remoteContacts.forEach((c) => map.set(c.id || c.phone, c));
+          const merged = Array.from(map.values());
+          localStorage.setItem("custom_whatsapp_contacts", JSON.stringify(merged));
+          return merged;
+        });
+      }
+    });
+  }, [supabase]);
+
+  // Aggregate Contact List (Saved Custom Contacts, Clients, Waste Companies)
+  const allContacts = useMemo(() => {
+    const list: { id: string; name: string; phone: string; type: "custom" | "client" | "company"; isCustom?: boolean }[] = [];
+    const seen = new Set<string>();
+
+    // 1. Saved Custom Contacts
+    customContacts.forEach((c) => {
+      if (c.phone) {
+        const key = `${(c.name || "").toLowerCase()}_${c.phone.trim()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          list.push({ id: c.id, name: c.name, phone: c.phone, type: "custom", isCustom: true });
+        }
+      }
+    });
+
+    // 2. Clients from Props
+    if (clients) {
+      clients.forEach((c) => {
+        if (c.phone) {
+          const key = `${(c.name || "").toLowerCase()}_${c.phone.trim()}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            list.push({ id: `client-${c.ain || c.name}-${c.phone}`, name: c.name || "Client", phone: c.phone, type: "client" });
+          }
+        }
+        if (c.phones && Array.isArray(c.phones)) {
+          c.phones.forEach((p) => {
+            if (p) {
+              const key = `${(c.name || "").toLowerCase()}_${p.trim()}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                list.push({ id: `client-${c.ain || c.name}-${p}`, name: c.name || "Client", phone: p, type: "client" });
+              }
+            }
+          });
+        }
+      });
+    }
+
+    // 3. Waste Companies from Props
+    if (companies) {
+      companies.forEach((comp) => {
+        if (comp.phone) {
+          const key = `${(comp.name || "").toLowerCase()}_${comp.phone.trim()}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            list.push({ id: `company-${comp.id}`, name: comp.name || "Company", phone: comp.phone, type: "company" });
+          }
+        }
+      });
+    }
+
+    return list;
+  }, [clients, companies, customContacts]);
+
+  const filteredContacts = useMemo(() => {
+    if (!contactSearch.trim()) return allContacts;
+    const q = contactSearch.toLowerCase().trim();
+    return allContacts.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q)
+    );
+  }, [allContacts, contactSearch]);
+
+  const handleAddCustomContact = async () => {
+    if (!newContactName.trim() || !newContactPhone.trim()) {
+      alert("দয়া করে নাম এবং নম্বর দুটিই প্রদান করুন (Please enter both name and number)");
+      return;
+    }
+    const newContact: CustomContactItem = {
+      id: "custom-" + Date.now(),
+      name: newContactName.trim(),
+      phone: newContactPhone.trim(),
+    };
+    const updated = [newContact, ...customContacts];
+    setCustomContacts(updated);
+    localStorage.setItem("custom_whatsapp_contacts", JSON.stringify(updated));
+    setWhatsappPhone(newContact.phone);
+    setNewContactName("");
+    setNewContactPhone("");
+    setShowAddContactForm(false);
+
+    if (supabase) {
+      await insertCustomContact(supabase, newContact);
+    }
+  };
+
+  const handleDeleteCustomContact = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("আপনি কি এই কনট্যাক্টটি তালিকা থেকে মুছে ফেলতে চান?")) return;
+    const updated = customContacts.filter((c) => c.id !== id);
+    setCustomContacts(updated);
+    localStorage.setItem("custom_whatsapp_contacts", JSON.stringify(updated));
+
+    if (supabase) {
+      await deleteCustomContact(supabase, id);
+    }
+  };
+
   const handleOpenWhatsappModal = (record: ClearanceRecord) => {
+    setContactSearch("");
+    setShowAddContactForm(false);
     let matchedPhone = "";
     if (clients) {
       const client = clients.find(
@@ -2293,11 +2428,11 @@ ${tableStr}
       {whatsappRecord && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div
-            className={`w-full max-w-lg rounded-[2rem] shadow-2xl p-6 sm:p-8 animate-in zoom-in-95 border transition-all ${
+            className={`w-full max-w-2xl rounded-[2rem] shadow-2xl p-6 sm:p-8 animate-in zoom-in-95 border transition-all max-h-[90vh] overflow-y-auto ${
               isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
             }`}
           >
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-5">
               <div>
                 <h3 className={`text-lg font-black uppercase tracking-wider ${isDark ? "text-white" : "text-slate-900"}`}>
                   <i className="fab fa-whatsapp mr-2 text-emerald-500 text-xl align-middle"></i>
@@ -2319,21 +2454,186 @@ ${tableStr}
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Contact List Section */}
+              <div className={`p-4 rounded-2xl border ${isDark ? "bg-slate-900/60 border-slate-700" : "bg-slate-50 border-slate-200"} space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <label className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${isDark ? "text-emerald-400" : "text-emerald-700"}`}>
+                    <i className="fas fa-address-book"></i>
+                    কনট্যাক্ট লিস্ট (Contact List - নাম ও নম্বর)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddContactForm(!showAddContactForm)}
+                    className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                  >
+                    <i className={`fas ${showAddContactForm ? "fa-minus-circle" : "fa-plus-circle"}`}></i>
+                    {showAddContactForm ? "ফর্ম বন্ধ করুন" : "+ নতুন কনট্যাক্ট যোগ করুন"}
+                  </button>
+                </div>
+
+                {/* Add Contact Inline Form */}
+                {showAddContactForm && (
+                  <div className={`p-3 rounded-xl border space-y-2 ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-300"}`}>
+                    <p className="text-[11px] font-bold text-slate-400">নতুন নাম ও নম্বর যোগ করুন (Save New Contact)</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="নাম (Name)"
+                        value={newContactName}
+                        onChange={(e) => setNewContactName(e.target.value)}
+                        className={`px-3 py-2 rounded-lg border text-xs font-semibold outline-none focus:border-emerald-500 ${
+                          isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
+                        }`}
+                      />
+                      <input
+                        type="text"
+                        placeholder="মোবাইল নম্বর (Phone)"
+                        value={newContactPhone}
+                        onChange={(e) => setNewContactPhone(e.target.value)}
+                        className={`px-3 py-2 rounded-lg border text-xs font-semibold outline-none focus:border-emerald-500 ${
+                          isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
+                        }`}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddContactForm(false)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+                      >
+                        বাতিল
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddCustomContact}
+                        className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow"
+                      >
+                        সংরক্ষণ করুন
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dropdown Select for Contact List */}
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) setWhatsappPhone(e.target.value);
+                  }}
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs font-bold outline-none focus:border-emerald-500 ${
+                    isDark ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"
+                  }`}
+                  value={whatsappPhone}
+                >
+                  <option value="">-- কনট্যাক্ট লিস্ট থেকে নির্বাচন করুন (Select Contact) --</option>
+                  {allContacts.map((c) => (
+                    <option key={c.id} value={c.phone}>
+                      {c.name} ({c.phone}) - [{c.type === "custom" ? "Saved" : c.type === "client" ? "Client" : "Company"}]
+                    </option>
+                  ))}
+                </select>
+
+                {/* Quick Search & Contact Cards */}
+                <div className="space-y-2 pt-1">
+                  <div className="relative">
+                    <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input
+                      type="text"
+                      placeholder="নাম বা নম্বর দিয়ে খুঁজুন (Search by name or number)..."
+                      value={contactSearch}
+                      onChange={(e) => setContactSearch(e.target.value)}
+                      className={`w-full pl-9 pr-3 py-1.5 rounded-lg border text-xs font-medium outline-none focus:border-emerald-500 ${
+                        isDark ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-800"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Scrollable list of contact badges */}
+                  <div className="max-h-36 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin">
+                    {filteredContacts.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic text-center py-2">কোনো কনট্যাক্ট পাওয়া যায়নি (No contacts found)</p>
+                    ) : (
+                      filteredContacts.map((c) => {
+                        const isSelected = whatsappPhone === c.phone;
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => setWhatsappPhone(c.phone)}
+                            className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
+                              isSelected
+                                ? isDark
+                                  ? "bg-emerald-950/60 border-emerald-500/80 text-emerald-200"
+                                  : "bg-emerald-50 border-emerald-500 text-emerald-900"
+                                : isDark
+                                ? "bg-slate-800/80 border-slate-700/80 hover:border-slate-600 text-slate-300"
+                                : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 overflow-hidden">
+                              <div
+                                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
+                                  c.type === "custom"
+                                    ? "bg-emerald-500/20 text-emerald-500"
+                                    : c.type === "client"
+                                    ? "bg-blue-500/20 text-blue-500"
+                                    : "bg-purple-500/20 text-purple-500"
+                                }`}
+                              >
+                                {c.name ? c.name.charAt(0).toUpperCase() : "?"}
+                              </div>
+                              <div className="truncate">
+                                <p className="text-xs font-bold truncate leading-tight">{c.name}</p>
+                                <p className="text-[11px] font-mono text-slate-400">{c.phone}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span
+                                className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                  c.type === "custom"
+                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                    : c.type === "client"
+                                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                    : "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                                }`}
+                              >
+                                {c.type === "custom" ? "Saved" : c.type === "client" ? "Client" : "Company"}
+                              </span>
+                              {c.isCustom && (
+                                <button
+                                  type="button"
+                                  title="Remove Contact"
+                                  onClick={(e) => handleDeleteCustomContact(c.id, e)}
+                                  className="text-slate-400 hover:text-red-500 p-1 transition-colors"
+                                >
+                                  <i className="fas fa-trash-alt text-xs"></i>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Phone Input */}
               <div className="space-y-1">
                 <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
                   WhatsApp Number (হোয়াটসঅ্যাপ নম্বর)
                 </label>
-                <input
-                  type="text"
-                  value={whatsappPhone}
-                  onChange={(e) => setWhatsappPhone(e.target.value)}
-                  placeholder="e.g. 017XXXXXXXX"
-                  className={`w-full px-5 py-3 rounded-xl border-2 font-bold outline-none focus:border-emerald-500 transition-all ${
-                    isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-900"
-                  }`}
-                />
+                <div className="relative">
+                  <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 text-lg"></i>
+                  <input
+                    type="text"
+                    value={whatsappPhone}
+                    onChange={(e) => setWhatsappPhone(e.target.value)}
+                    placeholder="e.g. 017XXXXXXXX"
+                    className={`w-full pl-11 pr-5 py-3 rounded-xl border-2 font-bold outline-none focus:border-emerald-500 transition-all ${
+                      isDark ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-300 text-slate-900"
+                    }`}
+                  />
+                </div>
               </div>
 
               {/* Message Preview (Customizable/Editable textarea!) */}
@@ -2342,7 +2642,7 @@ ${tableStr}
                   Message Content Preview (বার্তাটির খসড়া)
                 </label>
                 <textarea
-                  rows={10}
+                  rows={8}
                   value={whatsappMessage}
                   onChange={(e) => setWhatsappMessage(e.target.value)}
                   className={`w-full px-4 py-3 rounded-xl border-2 font-medium text-xs font-mono outline-none focus:border-emerald-500 transition-all ${

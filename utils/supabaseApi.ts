@@ -774,3 +774,76 @@ const fromClientDb = (row: any): Client => {
     circle: row.circle ?? "",
   };
 };
+
+export interface CustomContactItem {
+  id: string;
+  name: string;
+  phone: string;
+}
+
+export async function fetchCustomContacts(supabase: SupabaseClient): Promise<CustomContactItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from("whatsapp_contacts")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.warn("fetchCustomContacts warning (table might not exist yet):", error.message);
+      return [];
+    }
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name ?? "",
+      phone: row.phone ?? "",
+    }));
+  } catch (err) {
+    console.error("fetchCustomContacts error", err);
+    return [];
+  }
+}
+
+export async function insertCustomContact(
+  supabase: SupabaseClient,
+  contact: CustomContactItem
+): Promise<CustomContactItem | null> {
+  try {
+    const { data, error } = await supabase
+      .from("whatsapp_contacts")
+      .insert({ id: contact.id, name: contact.name, phone: contact.phone })
+      .select()
+      .single();
+    if (error) {
+      console.warn("insertCustomContact error:", error.message);
+      return null;
+    }
+    return {
+      id: data.id,
+      name: data.name ?? contact.name,
+      phone: data.phone ?? contact.phone,
+    };
+  } catch (err) {
+    console.error("insertCustomContact error", err);
+    return null;
+  }
+}
+
+export async function deleteCustomContact(
+  supabase: SupabaseClient,
+  id: string
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("whatsapp_contacts")
+      .delete()
+      .eq("id", id);
+    if (error) {
+      console.warn("deleteCustomContact error:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("deleteCustomContact error", err);
+    return false;
+  }
+}
+
