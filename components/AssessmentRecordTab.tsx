@@ -562,10 +562,12 @@ ${tableStr}
   const monthFilterOptions = useMemo(() => {
     const months = new Set<string>();
     history.forEach((h) => {
-      const parsed = parseDate(h.date);
-      if (parsed.getTime() > 0) {
-        const key = parsed.toLocaleString("en-US", { month: "long", year: "numeric" });
-        months.add(key);
+      if (h.paymentDate) {
+        const parsed = parseDate(h.paymentDate);
+        if (parsed.getTime() > 0) {
+          const key = parsed.toLocaleString("en-US", { month: "long", year: "numeric" });
+          months.add(key);
+        }
       }
     });
     return Array.from(months).sort((a, b) => {
@@ -604,11 +606,20 @@ ${tableStr}
           matchesDateRange = matchesDateRange && rowDate <= end;
         }
 
-        // Dropdown Month Filter
+        // Dropdown Month Filter (Challan Date)
         let matchesMonth = true;
-        if (filterMonth !== "All" && rowDate.getTime() > 0) {
-          const rowMonthKey = rowDate.toLocaleString("en-US", { month: "long", year: "numeric" });
-          matchesMonth = rowMonthKey === filterMonth;
+        if (filterMonth !== "All") {
+          if (!row.paymentDate) {
+            matchesMonth = false;
+          } else {
+            const challanDate = parseDate(row.paymentDate);
+            if (challanDate.getTime() > 0) {
+              const rowMonthKey = challanDate.toLocaleString("en-US", { month: "long", year: "numeric" });
+              matchesMonth = rowMonthKey === filterMonth;
+            } else {
+              matchesMonth = false;
+            }
+          }
         }
 
         // Status Filter
