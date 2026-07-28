@@ -558,12 +558,19 @@ ${tableStr}
     }
   };
 
-  // Pre-defined Month Filter Lists
+  // Pre-defined Month Filter Lists (Challan Date & Entry Date)
   const monthFilterOptions = useMemo(() => {
     const months = new Set<string>();
     history.forEach((h) => {
       if (h.paymentDate) {
         const parsed = parseDate(h.paymentDate);
+        if (parsed.getTime() > 0) {
+          const key = parsed.toLocaleString("en-US", { month: "long", year: "numeric" });
+          months.add(key);
+        }
+      }
+      if (h.date) {
+        const parsed = parseDate(h.date);
         if (parsed.getTime() > 0) {
           const key = parsed.toLocaleString("en-US", { month: "long", year: "numeric" });
           months.add(key);
@@ -606,20 +613,25 @@ ${tableStr}
           matchesDateRange = matchesDateRange && rowDate <= end;
         }
 
-        // Dropdown Month Filter (Challan Date)
+        // Dropdown Month Filter (Challan Date OR Entry Date)
         let matchesMonth = true;
         if (filterMonth !== "All") {
-          if (!row.paymentDate) {
-            matchesMonth = false;
-          } else {
+          let paymentMatch = false;
+          if (row.paymentDate) {
             const challanDate = parseDate(row.paymentDate);
             if (challanDate.getTime() > 0) {
               const rowMonthKey = challanDate.toLocaleString("en-US", { month: "long", year: "numeric" });
-              matchesMonth = rowMonthKey === filterMonth;
-            } else {
-              matchesMonth = false;
+              paymentMatch = rowMonthKey === filterMonth;
             }
           }
+          
+          let entryMatch = false;
+          if (rowDate.getTime() > 0) {
+            const entryMonthKey = rowDate.toLocaleString("en-US", { month: "long", year: "numeric" });
+            entryMatch = entryMonthKey === filterMonth;
+          }
+          
+          matchesMonth = paymentMatch || entryMatch;
         }
 
         // Status Filter
@@ -1062,20 +1074,25 @@ ${tableStr}
           matchesDateRange = matchesDateRange && rowDate <= end;
         }
 
-        // Dropdown Month Filter (Challan Date)
+        // Dropdown Month Filter (Challan Date OR Entry Date)
         let matchesMonth = true;
         if (pdfMonth !== "All") {
-          if (!row.paymentDate) {
-            matchesMonth = false;
-          } else {
+          let paymentMatch = false;
+          if (row.paymentDate) {
             const challanDate = parseDate(row.paymentDate);
             if (challanDate.getTime() > 0) {
               const rowMonthKey = challanDate.toLocaleString("en-US", { month: "long", year: "numeric" });
-              matchesMonth = rowMonthKey === pdfMonth;
-            } else {
-              matchesMonth = false;
+              paymentMatch = rowMonthKey === pdfMonth;
             }
           }
+          
+          let entryMatch = false;
+          if (rowDate.getTime() > 0) {
+            const entryMonthKey = rowDate.toLocaleString("en-US", { month: "long", year: "numeric" });
+            entryMatch = entryMonthKey === pdfMonth;
+          }
+          
+          matchesMonth = paymentMatch || entryMatch;
         }
 
         // Circle Filter (using pdfSubtitle2 from the modal)
