@@ -1062,11 +1062,20 @@ ${tableStr}
           matchesDateRange = matchesDateRange && rowDate <= end;
         }
 
-        // Dropdown Month Filter
+        // Dropdown Month Filter (Challan Date)
         let matchesMonth = true;
-        if (pdfMonth !== "All" && rowDate.getTime() > 0) {
-          const rowMonthKey = rowDate.toLocaleString("en-US", { month: "long", year: "numeric" });
-          matchesMonth = rowMonthKey === pdfMonth;
+        if (pdfMonth !== "All") {
+          if (!row.paymentDate) {
+            matchesMonth = false;
+          } else {
+            const challanDate = parseDate(row.paymentDate);
+            if (challanDate.getTime() > 0) {
+              const rowMonthKey = challanDate.toLocaleString("en-US", { month: "long", year: "numeric" });
+              matchesMonth = rowMonthKey === pdfMonth;
+            } else {
+              matchesMonth = false;
+            }
+          }
         }
 
         // Circle Filter (using pdfSubtitle2 from the modal)
