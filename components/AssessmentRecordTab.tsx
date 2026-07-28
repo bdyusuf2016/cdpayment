@@ -140,13 +140,38 @@ const formatDisplayDate = (value: string): string => {
 
 const parseDate = (dateStr: string): Date => {
   if (!dateStr) return new Date(0);
-  if (dateStr.includes("/")) {
-    const [day, month, year] = dateStr.split("/");
-    const parsed = new Date(`${year}-${month}-${day}`);
-    return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+  let year = 0, month = 0, day = 0;
+  const str = dateStr.trim();
+
+  if (str.includes("/")) {
+    const parts = str.split("/");
+    if (parts.length === 3) {
+      day = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      year = parseInt(parts[2], 10);
+    }
+  } else if (str.includes("-")) {
+    const parts = str.split("-");
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+        day = parseInt(parts[2], 10);
+      } else {
+        day = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+        year = parseInt(parts[2], 10);
+      }
+    }
   }
-  const parsed = new Date(dateStr);
-  return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+
+  if (year > 0 && month > 0 && day > 0 && !Number.isNaN(year) && !Number.isNaN(month) && !Number.isNaN(day)) {
+    const d = new Date(year, month - 1, day, 12, 0, 0);
+    return Number.isNaN(d.getTime()) ? new Date(0) : d;
+  }
+
+  const fallback = new Date(str);
+  return Number.isNaN(fallback.getTime()) ? new Date(0) : fallback;
 };
 
 const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
