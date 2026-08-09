@@ -3,6 +3,8 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { ClearanceRecord, SystemConfig, WasteCompany, Client } from "../types";
 import { printElement } from "../utils/printTable";
+import { useResizableColumns } from "../utils/useResizableColumns";
+import ColumnVisibilityToggle from "./ColumnVisibilityToggle";
 import {
   deleteClearanceRecord,
   insertClearanceRecord,
@@ -220,6 +222,58 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   const [whatsappRecord, setWhatsappRecord] = useState<ClearanceRecord | null>(null);
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappMessage, setWhatsappMessage] = useState("");
+
+  // Table Column Resizing & Visibility
+  const initialColumnWidths = useMemo(
+    () => ({
+      slNo: 60,
+      date: 100,
+      clientName: 200,
+      assessableValue: 130,
+      cd: 70,
+      rd: 70,
+      vat: 70,
+      ait: 70,
+      atv: 70,
+      dutyTax: 120,
+      chalan: 140,
+      inWord: 200,
+      paymentStatus: 100,
+      circle: 80,
+      action: 90,
+    }),
+    []
+  );
+
+  const {
+    columnWidths,
+    startResizing,
+    toggleColumnVisibility,
+    isColumnVisible,
+    showAllColumns,
+    resetColumns,
+  } = useResizableColumns(initialColumnWidths, 50, "assessment_records_table");
+
+  const tableColumns = useMemo(
+    () => [
+      { key: "slNo", label: "ক্রম (SL)" },
+      { key: "date", label: "তারিখ (Date)" },
+      { key: "clientName", label: "প্রতিষ্ঠানের নাম (Client)" },
+      { key: "assessableValue", label: "শুল্কায়নযোগ্য মূল্য" },
+      { key: "cd", label: "CD" },
+      { key: "rd", label: "RD" },
+      { key: "vat", label: "VAT" },
+      { key: "ait", label: "AIT" },
+      { key: "atv", label: "ATV/AT" },
+      { key: "dutyTax", label: "শুল্ক কর (Duty Tax)" },
+      { key: "chalan", label: "চালান নং (Challan)" },
+      { key: "inWord", label: "In Word" },
+      { key: "paymentStatus", label: "Status" },
+      { key: "circle", label: "Circle" },
+      { key: "action", label: "Action" },
+    ],
+    []
+  );
 
   const [customContacts, setCustomContacts] = useState<CustomContactItem[]>(() => {
     try {
@@ -1735,6 +1789,16 @@ ${tableStr}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <ColumnVisibilityToggle
+              columns={tableColumns}
+              isColumnVisible={isColumnVisible}
+              toggleColumnVisibility={toggleColumnVisibility}
+              showAllColumns={showAllColumns}
+              resetColumns={resetColumns}
+              isDark={isDark}
+              isBn={true}
+            />
+
             <button
               onClick={handleExportExcel}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-md hover:bg-emerald-700 transition-all"
@@ -1909,39 +1973,202 @@ ${tableStr}
         >
           <table id="clearance-table" className="w-full min-w-[1300px] text-left text-xs">
             <thead
-              className={`font-black uppercase tracking-widest ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"
+              className={`font-black uppercase tracking-widest relative select-none ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"
                 }`}
             >
               <tr>
-                <th onClick={() => toggleSort("slNo")} className="px-4 py-3 text-center w-12 cursor-pointer select-none hover:text-blue-600">
-                  ক্রম <i className={`fas ${getSortIcon("slNo")}`}></i>
-                </th>
-                <th onClick={() => toggleSort("date")} className="px-4 py-3 w-28 cursor-pointer select-none hover:text-blue-600">
-                  তাং <i className={`fas ${getSortIcon("date")}`}></i>
-                </th>
-                <th onClick={() => toggleSort("clientName")} className="px-4 py-3 min-w-[200px] cursor-pointer select-none hover:text-blue-600">
-                  প্রতিষ্ঠানের নাম <i className={`fas ${getSortIcon("clientName")}`}></i>
-                </th>
-                <th onClick={() => toggleSort("assessableValue")} className="px-4 py-3 text-right cursor-pointer select-none hover:text-blue-600">
-                  শুল্কায়নযোগ্য মূল্য <i className={`fas ${getSortIcon("assessableValue")}`}></i>
-                </th>
-                <th className="px-3 py-3 text-right">CD</th>
-                <th className="px-3 py-3 text-right">RD</th>
-                <th className="px-3 py-3 text-right">VAT</th>
-                <th className="px-3 py-3 text-right">AIT</th>
-                <th className="px-3 py-3 text-right">ATV/AT</th>
-                <th onClick={() => toggleSort("dutyTax")} className="px-4 py-3 text-right cursor-pointer select-none hover:text-blue-600">
-                  শুল্ক কর <i className={`fas ${getSortIcon("dutyTax")}`}></i>
-                </th>
-                <th className="px-4 py-3 min-w-[160px]">চালান নং</th>
-                <th className="px-4 py-3 min-w-[250px]">In_Word</th>
-                <th onClick={() => toggleSort("paymentStatus")} className="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600">
-                  Status <i className={`fas ${getSortIcon("paymentStatus")}`}></i>
-                </th>
-                <th onClick={() => toggleSort("circle")} className="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600">
-                  Circle <i className={`fas ${getSortIcon("circle")}`}></i>
-                </th>
-                <th className="px-4 py-3 text-center w-24 sticky right-0 bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">Action</th>
+                {isColumnVisible("slNo") && (
+                  <th
+                    style={{ width: columnWidths.slNo, minWidth: columnWidths.slNo }}
+                    onClick={() => toggleSort("slNo")}
+                    className="px-4 py-3 text-center cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    ক্রম <i className={`fas ${getSortIcon("slNo")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("slNo", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("date") && (
+                  <th
+                    style={{ width: columnWidths.date, minWidth: columnWidths.date }}
+                    onClick={() => toggleSort("date")}
+                    className="px-4 py-3 cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    তাং <i className={`fas ${getSortIcon("date")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("date", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("clientName") && (
+                  <th
+                    style={{ width: columnWidths.clientName, minWidth: columnWidths.clientName }}
+                    onClick={() => toggleSort("clientName")}
+                    className="px-4 py-3 cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    প্রতিষ্ঠানের নাম <i className={`fas ${getSortIcon("clientName")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("clientName", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("assessableValue") && (
+                  <th
+                    style={{ width: columnWidths.assessableValue, minWidth: columnWidths.assessableValue }}
+                    onClick={() => toggleSort("assessableValue")}
+                    className="px-4 py-3 text-right cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    শুল্কায়নযোগ্য মূল্য <i className={`fas ${getSortIcon("assessableValue")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("assessableValue", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("cd") && (
+                  <th
+                    style={{ width: columnWidths.cd, minWidth: columnWidths.cd }}
+                    className="px-3 py-3 text-right relative group"
+                  >
+                    CD
+                    <div
+                      onMouseDown={(e) => startResizing("cd", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("rd") && (
+                  <th
+                    style={{ width: columnWidths.rd, minWidth: columnWidths.rd }}
+                    className="px-3 py-3 text-right relative group"
+                  >
+                    RD
+                    <div
+                      onMouseDown={(e) => startResizing("rd", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("vat") && (
+                  <th
+                    style={{ width: columnWidths.vat, minWidth: columnWidths.vat }}
+                    className="px-3 py-3 text-right relative group"
+                  >
+                    VAT
+                    <div
+                      onMouseDown={(e) => startResizing("vat", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("ait") && (
+                  <th
+                    style={{ width: columnWidths.ait, minWidth: columnWidths.ait }}
+                    className="px-3 py-3 text-right relative group"
+                  >
+                    AIT
+                    <div
+                      onMouseDown={(e) => startResizing("ait", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("atv") && (
+                  <th
+                    style={{ width: columnWidths.atv, minWidth: columnWidths.atv }}
+                    className="px-3 py-3 text-right relative group"
+                  >
+                    ATV/AT
+                    <div
+                      onMouseDown={(e) => startResizing("atv", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("dutyTax") && (
+                  <th
+                    style={{ width: columnWidths.dutyTax, minWidth: columnWidths.dutyTax }}
+                    onClick={() => toggleSort("dutyTax")}
+                    className="px-4 py-3 text-right cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    শুল্ক কর <i className={`fas ${getSortIcon("dutyTax")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("dutyTax", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("chalan") && (
+                  <th
+                    style={{ width: columnWidths.chalan, minWidth: columnWidths.chalan }}
+                    className="px-4 py-3 relative group"
+                  >
+                    চালান নং
+                    <div
+                      onMouseDown={(e) => startResizing("chalan", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("inWord") && (
+                  <th
+                    style={{ width: columnWidths.inWord, minWidth: columnWidths.inWord }}
+                    className="px-4 py-3 relative group"
+                  >
+                    In_Word
+                    <div
+                      onMouseDown={(e) => startResizing("inWord", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("paymentStatus") && (
+                  <th
+                    style={{ width: columnWidths.paymentStatus, minWidth: columnWidths.paymentStatus }}
+                    onClick={() => toggleSort("paymentStatus")}
+                    className="px-4 py-3 text-center cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    Status <i className={`fas ${getSortIcon("paymentStatus")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("paymentStatus", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("circle") && (
+                  <th
+                    style={{ width: columnWidths.circle, minWidth: columnWidths.circle }}
+                    onClick={() => toggleSort("circle")}
+                    className="px-4 py-3 text-center cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    Circle <i className={`fas ${getSortIcon("circle")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("circle", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("action") && (
+                  <th className="px-4 py-3 text-center w-24 sticky right-0 bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">Action</th>
+                )}
               </tr>
             </thead>
             <tbody
@@ -1961,182 +2188,212 @@ ${tableStr}
                   className={`group hover:bg-slate-50 dark:hover:bg-slate-900/40 cursor-pointer transition-colors font-medium ${record.paymentStatus === "Paid" ? "" : "bg-rose-50/20 dark:bg-rose-950/5"
                     }`}
                 >
-                  <td className="px-4 py-3 text-center font-bold text-slate-500 dark:text-slate-400">
-                    {record.slNo || "-"}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">{record.date}</td>
-                  <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
-                    {record.clientName || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold">
-                    {record.assessableValue ? record.assessableValue.toLocaleString("en-BD") : "-"}
-                  </td>
-                  <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
-                    {record.cd ? record.cd.toLocaleString("en-BD") : "-"}
-                  </td>
-                  <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
-                    {record.rd ? record.rd.toLocaleString("en-BD") : "-"}
-                  </td>
-                  <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
-                    {record.vat ? record.vat.toLocaleString("en-BD") : "-"}
-                  </td>
-                  <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
-                    {record.ait ? record.ait.toLocaleString("en-BD") : "-"}
-                  </td>
-                  <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
-                    {record.atvAt ? record.atvAt.toLocaleString("en-BD") : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400 font-extrabold text-sm">
-                    {record.dutyTax ? record.dutyTax.toLocaleString("en-BD") : "-"}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {record.trnxId ? (
-                      <div className="flex flex-col gap-1.5 items-start">
-                        <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
-                          {getIndividualChallans(record.trnxId).map((challan, index, array) => {
-                            const isDup = (duplicateChallanDetails.get(challan)?.filter(c => c.id !== record.id).length ?? 0) > 0;
-                            return (
-                              <React.Fragment key={index}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenPayModal(record)}
-                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black transition-all font-mono active:scale-95 shadow-sm ${
-                                    isDup
-                                      ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-100"
-                                      : "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-900/50 hover:bg-sky-100"
-                                  }`}
-                                  title={isDup ? `Duplicate detected! Click to view/edit` : `Click to view/edit details`}
-                                >
-                                  <i className={`fas ${isDup ? "fa-exclamation-triangle text-rose-500" : "fa-file-invoice text-sky-500"}`}></i>
-                                  {challan}
-                                </button>
-                                {index < array.length - 1 && <span className="text-slate-400 dark:text-slate-600 font-bold mr-1">,</span>}
-                              </React.Fragment>
-                            );
-                          })}
-                        </div>
-                        {record.paymentDate && (
-                          <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                            <i className="fas fa-calendar-alt text-slate-400"></i>
-                            তাং: {record.paymentDate}
-                          </span>
-                        )}
-                        {(() => {
-                          const dups = getRecordChallanDuplicates(record);
-                          if (dups.length > 0) {
-                            const conflictingSlNos: string[] = [];
-                            const conflictDetails: string[] = [];
-                            
-                            dups.forEach((d) => {
-                              const confs = duplicateChallanDetails.get(d) || [];
-                              const otherConfs = confs.filter((c) => c.id !== record.id);
-                              otherConfs.forEach((c) => {
-                                const refLabel = c.slNo ? `Sl ${c.slNo}` : (c.clientName || "Unknown");
-                                if (!conflictingSlNos.includes(refLabel)) {
-                                  conflictingSlNos.push(refLabel);
-                                }
-                                conflictDetails.push(`${d} ➜ ${c.clientName} (Sl ${c.slNo || "-"})`);
+                  {isColumnVisible("slNo") && (
+                    <td className="px-4 py-3 text-center font-bold text-slate-500 dark:text-slate-400">
+                      {record.slNo || "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("date") && (
+                    <td className="px-4 py-3 whitespace-nowrap">{record.date}</td>
+                  )}
+                  {isColumnVisible("clientName") && (
+                    <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
+                      {record.clientName || "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("assessableValue") && (
+                    <td className="px-4 py-3 text-right font-bold">
+                      {record.assessableValue ? record.assessableValue.toLocaleString("en-BD") : "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("cd") && (
+                    <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
+                      {record.cd ? record.cd.toLocaleString("en-BD") : "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("rd") && (
+                    <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
+                      {record.rd ? record.rd.toLocaleString("en-BD") : "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("vat") && (
+                    <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
+                      {record.vat ? record.vat.toLocaleString("en-BD") : "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("ait") && (
+                    <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
+                      {record.ait ? record.ait.toLocaleString("en-BD") : "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("atv") && (
+                    <td className="px-3 py-3 text-right text-slate-500 dark:text-slate-400">
+                      {record.atvAt ? record.atvAt.toLocaleString("en-BD") : "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("dutyTax") && (
+                    <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400 font-extrabold text-sm">
+                      {record.dutyTax ? record.dutyTax.toLocaleString("en-BD") : "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("chalan") && (
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {record.trnxId ? (
+                        <div className="flex flex-col gap-1.5 items-start">
+                          <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+                            {getIndividualChallans(record.trnxId).map((challan, index, array) => {
+                              const isDup = (duplicateChallanDetails.get(challan)?.filter(c => c.id !== record.id).length ?? 0) > 0;
+                              return (
+                                <React.Fragment key={index}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPayModal(record)}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black transition-all font-mono active:scale-95 shadow-sm ${
+                                      isDup
+                                        ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-100"
+                                        : "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-900/50 hover:bg-sky-100"
+                                    }`}
+                                    title={isDup ? `Duplicate detected! Click to view/edit` : `Click to view/edit details`}
+                                  >
+                                    <i className={`fas ${isDup ? "fa-exclamation-triangle text-rose-500" : "fa-file-invoice text-sky-500"}`}></i>
+                                    {challan}
+                                  </button>
+                                  {index < array.length - 1 && <span className="text-slate-400 dark:text-slate-600 font-bold mr-1">,</span>}
+                                </React.Fragment>
+                              );
+                            })}
+                          </div>
+                          {record.paymentDate && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                              <i className="fas fa-calendar-alt text-slate-400"></i>
+                              তাং: {record.paymentDate}
+                            </span>
+                          )}
+                          {(() => {
+                            const dups = getRecordChallanDuplicates(record);
+                            if (dups.length > 0) {
+                              const conflictingSlNos: string[] = [];
+                              const conflictDetails: string[] = [];
+                              
+                              dups.forEach((d) => {
+                                const confs = duplicateChallanDetails.get(d) || [];
+                                const otherConfs = confs.filter((c) => c.id !== record.id);
+                                otherConfs.forEach((c) => {
+                                  const refLabel = c.slNo ? `Sl ${c.slNo}` : (c.clientName || "Unknown");
+                                  if (!conflictingSlNos.includes(refLabel)) {
+                                    conflictingSlNos.push(refLabel);
+                                  }
+                                  conflictDetails.push(`${d} ➜ ${c.clientName} (Sl ${c.slNo || "-"})`);
+                                });
                               });
-                            });
 
-                            const tooltipText = conflictDetails.join("\n");
-                            const refText = conflictingSlNos.join(", ");
-                            const dupChallansText = dups.join(", ");
+                              const tooltipText = conflictDetails.join("\n");
+                              const refText = conflictingSlNos.join(", ");
+                              const dupChallansText = dups.join(", ");
 
-                            return (
-                              <span
-                                title={tooltipText}
-                                className="inline-flex flex-col gap-0.5 mt-1 px-2 py-1 rounded text-[9px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50"
-                              >
-                                <span className="flex items-center gap-1">
-                                  <i className="fas fa-exclamation-triangle text-rose-500"></i>
-                                  ডুপ্লিকেট (Duplicate)
+                              return (
+                                <span
+                                  title={tooltipText}
+                                  className="inline-flex flex-col gap-0.5 mt-1 px-2 py-1 rounded text-[9px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50"
+                                >
+                                  <span className="flex items-center gap-1">
+                                    <i className="fas fa-exclamation-triangle text-rose-500"></i>
+                                    ডুপ্লিকেট (Duplicate)
+                                  </span>
+                                  <span className="text-[8px] font-bold text-rose-600 dark:text-rose-300">
+                                    Ref: {refText} ({dupChallansText})
+                                  </span>
                                 </span>
-                                <span className="text-[8px] font-bold text-rose-600 dark:text-rose-300">
-                                  Ref: {refText} ({dupChallansText})
-                                </span>
-                              </span>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    ) : (
-                      <span className="text-slate-400 font-bold">-</span>
-                    )}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-slate-600 dark:text-slate-300 italic text-sm"
-                    style={/[a-zA-Z]/.test(record.inWord || "") ? { fontFamily: "SutonnyMJ, 'Sutonny MJ'" } : {}}
-                  >
-                    {record.inWord || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span
-                      className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${record.paymentStatus === "Paid"
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
-                          : "bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400"
-                        }`}
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 font-bold">-</span>
+                      )}
+                    </td>
+                  )}
+                  {isColumnVisible("inWord") && (
+                    <td
+                      className="px-4 py-3 text-slate-600 dark:text-slate-300 italic text-sm"
+                      style={/[a-zA-Z]/.test(record.inWord || "") ? { fontFamily: "SutonnyMJ, 'Sutonny MJ'" } : {}}
                     >
-                      {record.paymentStatus || "Unpaid"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center font-bold text-slate-500 dark:text-slate-400">
-                    {record.circle || "-"}
-                  </td>
-                  <td className={`px-4 py-3 text-center min-w-[150px] sticky right-0 border-l border-slate-200 dark:border-slate-700 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] ${record.paymentStatus === "Paid"
-                      ? "bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/40"
-                      : "bg-rose-50/40 dark:bg-rose-950/20 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/40"
-                    }`}>
-                    <div className="flex justify-center items-center gap-1">
-                      {record.paymentStatus !== "Paid" && (
+                      {record.inWord || "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("paymentStatus") && (
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${record.paymentStatus === "Paid"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
+                            : "bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400"
+                          }`}
+                      >
+                        {record.paymentStatus || "Unpaid"}
+                      </span>
+                    </td>
+                  )}
+                  {isColumnVisible("circle") && (
+                    <td className="px-4 py-3 text-center font-bold text-slate-500 dark:text-slate-400">
+                      {record.circle || "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("action") && (
+                    <td className={`px-4 py-3 text-center min-w-[150px] sticky right-0 border-l border-slate-200 dark:border-slate-700 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] ${record.paymentStatus === "Paid"
+                        ? "bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/40"
+                        : "bg-rose-50/40 dark:bg-rose-950/20 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/40"
+                      }`}>
+                      <div className="flex justify-center items-center gap-1">
+                        {record.paymentStatus !== "Paid" && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPayModal(record)}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow transition-all active:scale-95"
+                            title="Pay (পরিশোধ করুন)"
+                          >
+                            <i className="fas fa-credit-card text-[11px]"></i>
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => handleOpenPayModal(record)}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow transition-all active:scale-95"
-                          title="Pay (পরিশোধ করুন)"
+                          onClick={() => handleCopyForWord(record)}
+                          className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${
+                            copiedId === record.id
+                              ? "bg-emerald-600 text-white animate-pulse"
+                              : "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100"
+                          }`}
+                          title="Copy চালান নং, Payment Date, In Word for Word Table"
                         >
-                          <i className="fas fa-credit-card text-[11px]"></i>
+                          <i className={`fas ${copiedId === record.id ? "fa-check" : "fa-copy"} text-[11px]`}></i>
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleCopyForWord(record)}
-                        className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${
-                          copiedId === record.id
-                            ? "bg-emerald-600 text-white animate-pulse"
-                            : "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100"
-                        }`}
-                        title="Copy চালান নং, Payment Date, In Word for Word Table"
-                      >
-                        <i className={`fas ${copiedId === record.id ? "fa-check" : "fa-copy"} text-[11px]`}></i>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenWhatsappModal(record)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 active:scale-95 transition-all"
-                        title="Send via WhatsApp (হোয়াটসঅ্যাপে তথ্য পাঠান)"
-                      >
-                        <i className="fab fa-whatsapp text-[13px]"></i>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(record)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 transition-all"
-                        title="Edit (সম্পাদনা করুন)"
-                      >
-                        <i className="fas fa-edit text-[11px]"></i>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(record.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-all"
-                        title="Delete (মুছে ফেলুন)"
-                      >
-                        <i className="fas fa-trash-alt text-[11px]"></i>
-                      </button>
-                    </div>
-                  </td>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWhatsappModal(record)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 active:scale-95 transition-all"
+                          title="Send via WhatsApp (হোয়াটসঅ্যাপে তথ্য পাঠান)"
+                        >
+                          <i className="fab fa-whatsapp text-[13px]"></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(record)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 transition-all"
+                          title="Edit (সম্পাদনা করুন)"
+                        >
+                          <i className="fas fa-edit text-[11px]"></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(record.id)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-all"
+                          title="Delete (মুছে ফেলুন)"
+                        >
+                          <i className="fas fa-trash-alt text-[11px]"></i>
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
               {sortedHistory.length === 0 && (

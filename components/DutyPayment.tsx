@@ -6,6 +6,8 @@ import { createSimplePdfBlob } from "../utils/simplePdf";
 import { getClientPhones, getPrimaryClientPhone } from "../utils/clientPhones";
 import { PdfSettingsModal, PdfSettings } from "./PdfSettingsModal";
 import { printElement } from "../utils/printTable";
+import { useResizableColumns } from "../utils/useResizableColumns";
+import ColumnVisibilityToggle from "./ColumnVisibilityToggle";
 import * as XLSX from "xlsx";
 
 interface DutyPaymentProps {
@@ -1660,6 +1662,48 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     .filter((r) => paymentIds.includes(r.id))
     .reduce((a, b) => a + b.duty, 0);
 
+  // Table Column Resizing & Visibility
+  const initialColumnWidths = useMemo(
+    () => ({
+      select: 50,
+      date: 110,
+      clientName: 240,
+      beYear: 140,
+      duty: 120,
+      received: 120,
+      receiveDate: 120,
+      status: 120,
+      profit: 110,
+      controls: 120,
+    }),
+    []
+  );
+
+  const {
+    columnWidths,
+    startResizing,
+    toggleColumnVisibility,
+    isColumnVisible,
+    showAllColumns,
+    resetColumns,
+  } = useResizableColumns(initialColumnWidths, 50, "duty_payment_table");
+
+  const tableColumns = useMemo(
+    () => [
+      { key: "select", label: "Select Checkbox" },
+      { key: "date", label: "Date" },
+      { key: "clientName", label: "Client Information" },
+      { key: "beYear", label: "B/E Reference" },
+      { key: "duty", label: "Amount" },
+      { key: "received", label: "Receive" },
+      { key: "receiveDate", label: "Receive Date" },
+      { key: "status", label: "Status" },
+      { key: "profit", label: "Profit" },
+      { key: "controls", label: "Controls" },
+    ],
+    []
+  );
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
       {actionError && (
@@ -2222,6 +2266,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             >
               Today
             </button>
+
+            <ColumnVisibilityToggle
+              columns={tableColumns}
+              isColumnVisible={isColumnVisible}
+              toggleColumnVisibility={toggleColumnVisibility}
+              showAllColumns={showAllColumns}
+              resetColumns={resetColumns}
+              isDark={isDark}
+            />
+
             <button
               onClick={() => {
                 setStartDate("");
@@ -2233,7 +2287,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
               Clear
             </button>
             <button
-              onClick={() => printElement(document.getElementById("duty-table"), "Duty Payment Records", {
+              onClick={() => printElement(document.getElementById("duty-table"), "Customs Duty Payment Records", {
                 header: {
                   organization: systemConfig.agencyName || undefined,
                   subtext: systemConfig.agencyAddress || undefined,
@@ -2326,100 +2380,190 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
           <table id="duty-table" className="w-full text-left border-collapse">
             <thead>
               <tr
-                className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
+                className={`${isDark ? "bg-slate-900/50 border-slate-700" : "bg-slate-50 border-slate-300"} border-b relative select-none`}
               >
-                <th className="px-6 py-3 w-12 text-center">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded cursor-pointer accent-blue-600"
-                    checked={
-                      selectedIds.length === sortedHistory.length &&
-                      sortedHistory.length > 0
-                    }
-                    onChange={() =>
-                      setSelectedIds(
-                        selectedIds.length === sortedHistory.length
-                          ? []
-                          : sortedHistory.map((h) => h.id),
-                      )
-                    }
-                  />
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("date")}
-                    className="inline-flex items-center gap-1"
+                {isColumnVisible("select") && (
+                  <th
+                    style={{ width: columnWidths.select, minWidth: columnWidths.select }}
+                    className="px-6 py-3 w-12 text-center relative group"
                   >
-                    Date <i className={`fas ${getSortIcon("date")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("clientName")}
-                    className="inline-flex items-center gap-1"
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                      checked={
+                        selectedIds.length === sortedHistory.length &&
+                        sortedHistory.length > 0
+                      }
+                      onChange={() =>
+                        setSelectedIds(
+                          selectedIds.length === sortedHistory.length
+                            ? []
+                            : sortedHistory.map((h) => h.id),
+                        )
+                      }
+                    />
+                    <div
+                      onMouseDown={(e) => startResizing("select", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("date") && (
+                  <th
+                    style={{ width: columnWidths.date, minWidth: columnWidths.date }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Client Information{" "}
-                    <i className={`fas ${getSortIcon("clientName")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("beYear")}
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("date")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Date <i className={`fas ${getSortIcon("date")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("date", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("clientName") && (
+                  <th
+                    style={{ width: columnWidths.clientName, minWidth: columnWidths.clientName }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    B/E Reference <i className={`fas ${getSortIcon("beYear")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("duty")}
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("clientName")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Client Information{" "}
+                      <i className={`fas ${getSortIcon("clientName")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("clientName", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("beYear") && (
+                  <th
+                    style={{ width: columnWidths.beYear, minWidth: columnWidths.beYear }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Amount <i className={`fas ${getSortIcon("duty")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("received")}
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("beYear")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      B/E Reference <i className={`fas ${getSortIcon("beYear")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("beYear", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("duty") && (
+                  <th
+                    style={{ width: columnWidths.duty, minWidth: columnWidths.duty }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right relative group"
                   >
-                    Receive <i className={`fas ${getSortIcon("received")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("duty")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Amount <i className={`fas ${getSortIcon("duty")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("duty", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("received") && (
+                  <th
+                    style={{ width: columnWidths.received, minWidth: columnWidths.received }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right relative group"
                   >
-                    Receive Date
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("status")}
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("received")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Receive <i className={`fas ${getSortIcon("received")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("received", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("receiveDate") && (
+                  <th
+                    style={{ width: columnWidths.receiveDate, minWidth: columnWidths.receiveDate }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Status <i className={`fas ${getSortIcon("status")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("profit")}
-                    className="inline-flex items-center gap-1"
+                    <span className="truncate block">Receive Date</span>
+                    <div
+                      onMouseDown={(e) => startResizing("receiveDate", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("status") && (
+                  <th
+                    style={{ width: columnWidths.status, minWidth: columnWidths.status }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center relative group"
                   >
-                    Profit <i className={`fas ${getSortIcon("profit")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
-                  Controls
-                </th>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("status")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Status <i className={`fas ${getSortIcon("status")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("status", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("profit") && (
+                  <th
+                    style={{ width: columnWidths.profit, minWidth: columnWidths.profit }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right relative group"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("profit")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Profit <i className={`fas ${getSortIcon("profit")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("profit", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("controls") && (
+                  <th
+                    style={{ width: columnWidths.controls, minWidth: columnWidths.controls }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center"
+                  >
+                    Controls
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody
@@ -2430,163 +2574,183 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                   key={rec.id}
                   className={`group transition-all ${getRowBackground(rec.status)} ${selectedIds.includes(rec.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""}`}
                 >
-                  <td className="px-6 py-3 text-center">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded cursor-pointer accent-blue-600"
-                      checked={selectedIds.includes(rec.id)}
-                      onChange={() =>
-                        setSelectedIds((prev) =>
-                          prev.includes(rec.id)
-                            ? prev.filter((i) => i !== rec.id)
-                            : [...prev, rec.id],
-                        )
-                      }
-                    />
-                  </td>
-                  <td
-                    className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-400" : "text-slate-900"}`}
-                  >
-                    {rec.date}
-                  </td>
-                  <td className="px-6 py-3">
-                    <p
-                      className={`text-base font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}
+                  {isColumnVisible("select") && (
+                    <td className="px-6 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                        checked={selectedIds.includes(rec.id)}
+                        onChange={() =>
+                          setSelectedIds((prev) =>
+                            prev.includes(rec.id)
+                              ? prev.filter((i) => i !== rec.id)
+                              : [...prev, rec.id],
+                          )
+                        }
+                      />
+                    </td>
+                  )}
+                  {isColumnVisible("date") && (
+                    <td
+                      className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-400" : "text-slate-900"}`}
                     >
-                      {rec.clientName}
-                    </p>
-                    <p
-                      className={`text-xs font-bold mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}
-                    >
-                      AIN: {rec.ain || "-"}
-                    </p>
-                    <div
-                      className="flex items-center gap-2 mt-1.5 text-base font-bold text-slate-600 hover:text-blue-600 cursor-pointer w-fit"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copyToClipboard(rec.phone);
-                      }}
-                    >
-                      <i className="fas fa-phone-alt text-[10px]"></i>{" "}
-                      {rec.phone}{" "}
-                      <i className="fas fa-copy ml-1 opacity-50 hover:opacity-100 text-xs"></i>
-                    </div>
-                  </td>
-                  <td className={`px-6 py-3 ${isDark ? "text-slate-300" : "text-slate-900"}`}>
-                    <div className="text-sm font-bold">{rec.beYear}</div>
-                    {rec.rNo ? (
-                      <div className="text-[10px] font-semibold text-slate-500 mt-1">
-                        R No: {rec.rNo}
-                      </div>
-                    ) : null}
-                  </td>
-                  <td
-                    className={`px-6 py-3 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
-                  >
-                    ৳{rec.duty.toLocaleString()}
-                  </td>
-                  <td
-                    className={`px-6 py-3 text-sm font-bold text-right ${rec.received > 0 ? "text-green-600" : "text-slate-400"}`}
-                  >
-                    {rec.received > 0
-                      ? `৳${rec.received.toLocaleString()}`
-                      : "-"}
-                  </td>
-                  <td
-                    className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}
-                  >
-                    {rec.receiveDate || "-"}
-                  </td>
-                  <td className="px-6 py-3 text-center">
-                    <div className="flex flex-col items-center gap-1">
-                      <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                          rec.status === "Paid"
-                            ? "bg-green-100 text-green-700"
-                            : rec.status === "Completed"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-indigo-100 text-indigo-700"
-                        }`}
+                      {rec.date}
+                    </td>
+                  )}
+                  {isColumnVisible("clientName") && (
+                    <td className="px-6 py-3">
+                      <p
+                        className={`text-base font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}
                       >
-                        {rec.status === "Paid" && rec.paymentMethod
-                          ? `${rec.status} | ${rec.paymentMethod}`
-                          : rec.status}
-                      </span>
-                      {rec.rNo ? (
-                        <span className="text-[10px] font-semibold text-slate-500">
-                          R No: {rec.rNo}
-                        </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
-                    {rec.status === "Paid"
-                      ? `৳${rec.profit.toLocaleString()}`
-                      : "-"}
-                  </td>
-                  <td className="px-6 py-3">
-                    <div className="flex justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                      {/* Workflow Action Buttons */}
-                      {rec.status === "New" && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCompletionTargetId(rec.id);
-                            setCompletionRNo(rec.rNo || "");
-                            setShowCompleteDialog(true);
-                          }}
-                          title="Mark as Completed"
-                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md animate-in zoom-in"
-                        >
-                          <i className="fas fa-check pointer-events-none"></i>
-                        </button>
-                      )}
-
-                      {rec.status === "Completed" && (
-                        <button
-                          type="button"
-                          onClick={() => initiatePayment([rec.id])}
-                          title="Settle Payment"
-                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-md animate-in zoom-in"
-                        >
-                          <i className="fas fa-hand-holding-dollar pointer-events-none"></i>
-                        </button>
-                      )}
-
-                      {/* Standard Actions */}
-                      <button
-                        type="button"
-                        onClick={() => shareWhatsApp([rec])}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                        {rec.clientName}
+                      </p>
+                      <p
+                        className={`text-xs font-bold mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}
                       >
-                        <i className="fab fa-whatsapp pointer-events-none"></i>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => printDutyInvoice([rec])}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-600 hover:bg-slate-600 hover:text-white transition-all shadow-sm"
-                      >
-                        <i className="fas fa-print pointer-events-none"></i>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(rec.id)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
-                      >
-                        <i className="fas fa-pen pointer-events-none"></i>
-                      </button>
-                      <button
-                        type="button"
+                        AIN: {rec.ain || "-"}
+                      </p>
+                      <div
+                        className="flex items-center gap-2 mt-1.5 text-base font-bold text-slate-600 hover:text-blue-600 cursor-pointer w-fit"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteClick(rec.id);
+                          copyToClipboard(rec.phone);
                         }}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-sm"
                       >
-                        <i className="fas fa-trash pointer-events-none"></i>
-                      </button>
-                    </div>
-                  </td>
+                        <i className="fas fa-phone-alt text-[10px]"></i>{" "}
+                        {rec.phone}{" "}
+                        <i className="fas fa-copy ml-1 opacity-50 hover:opacity-100 text-xs"></i>
+                      </div>
+                    </td>
+                  )}
+                  {isColumnVisible("beYear") && (
+                    <td className={`px-6 py-3 ${isDark ? "text-slate-300" : "text-slate-900"}`}>
+                      <div className="text-sm font-bold">{rec.beYear}</div>
+                      {rec.rNo ? (
+                        <div className="text-[10px] font-semibold text-slate-500 mt-1">
+                          R No: {rec.rNo}
+                        </div>
+                      ) : null}
+                    </td>
+                  )}
+                  {isColumnVisible("duty") && (
+                    <td
+                      className={`px-6 py-3 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
+                    >
+                      ৳{rec.duty.toLocaleString()}
+                    </td>
+                  )}
+                  {isColumnVisible("received") && (
+                    <td
+                      className={`px-6 py-3 text-sm font-bold text-right ${rec.received > 0 ? "text-green-600" : "text-slate-400"}`}
+                    >
+                      {rec.received > 0
+                        ? `৳${rec.received.toLocaleString()}`
+                        : "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("receiveDate") && (
+                    <td
+                      className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                    >
+                      {rec.receiveDate || "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("status") && (
+                    <td className="px-6 py-3 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                            rec.status === "Paid"
+                              ? "bg-green-100 text-green-700"
+                              : rec.status === "Completed"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-indigo-100 text-indigo-700"
+                          }`}
+                        >
+                          {rec.status === "Paid" && rec.paymentMethod
+                            ? `${rec.status} | ${rec.paymentMethod}`
+                            : rec.status}
+                        </span>
+                        {rec.rNo ? (
+                          <span className="text-[10px] font-semibold text-slate-500">
+                            R No: {rec.rNo}
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                  )}
+                  {isColumnVisible("profit") && (
+                    <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
+                      {rec.status === "Paid"
+                        ? `৳${rec.profit.toLocaleString()}`
+                        : "-"}
+                    </td>
+                  )}
+                  {isColumnVisible("controls") && (
+                    <td className="px-6 py-3">
+                      <div className="flex justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                        {/* Workflow Action Buttons */}
+                        {rec.status === "New" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCompletionTargetId(rec.id);
+                              setCompletionRNo(rec.rNo || "");
+                              setShowCompleteDialog(true);
+                            }}
+                            title="Mark as Completed"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md animate-in zoom-in"
+                          >
+                            <i className="fas fa-check pointer-events-none"></i>
+                          </button>
+                        )}
+
+                        {rec.status === "Completed" && (
+                          <button
+                            type="button"
+                            onClick={() => initiatePayment([rec.id])}
+                            title="Settle Payment"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-md animate-in zoom-in"
+                          >
+                            <i className="fas fa-hand-holding-dollar pointer-events-none"></i>
+                          </button>
+                        )}
+
+                        {/* Standard Actions */}
+                        <button
+                          type="button"
+                          onClick={() => shareWhatsApp([rec])}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                        >
+                          <i className="fab fa-whatsapp pointer-events-none"></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printDutyInvoice([rec])}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-600 hover:bg-slate-600 hover:text-white transition-all shadow-sm"
+                        >
+                          <i className="fas fa-print pointer-events-none"></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(rec.id)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
+                        >
+                          <i className="fas fa-pen pointer-events-none"></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(rec.id);
+                          }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                        >
+                          <i className="fas fa-trash pointer-events-none"></i>
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

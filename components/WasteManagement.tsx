@@ -4,6 +4,8 @@ import { SystemConfig, WasteCompany, WasteRecord } from "../types";
 import { createSimplePdfBlob } from "../utils/simplePdf";
 import { PdfSettingsModal, PdfSettings } from "./PdfSettingsModal";
 import { printElement } from "../utils/printTable";
+import { useResizableColumns } from "../utils/useResizableColumns";
+import ColumnVisibilityToggle from "./ColumnVisibilityToggle";
 import {
   deleteWasteRecord,
   insertWasteRecord,
@@ -999,6 +1001,54 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     );
   };
 
+  // Table Column Resizing & Visibility
+  const initialColumnWidths = useMemo(
+    () => ({
+      select: 50,
+      date: 110,
+      companyName: 200,
+      carType: 120,
+      garbageTrips: 90,
+      wastageTrips: 90,
+      totalTrips: 90,
+      ratePerTrip: 90,
+      amount: 110,
+      received: 110,
+      due: 110,
+      status: 100,
+      action: 140,
+    }),
+    []
+  );
+
+  const {
+    columnWidths,
+    startResizing,
+    toggleColumnVisibility,
+    isColumnVisible,
+    showAllColumns,
+    resetColumns,
+  } = useResizableColumns(initialColumnWidths, 50, "waste_management_table");
+
+  const tableColumns = useMemo(
+    () => [
+      { key: "select", label: "Select Checkbox" },
+      { key: "date", label: "Date" },
+      { key: "companyName", label: "Company" },
+      { key: "carType", label: "Car Type" },
+      { key: "garbageTrips", label: "Garbage" },
+      { key: "wastageTrips", label: "Wastage" },
+      { key: "totalTrips", label: "Trips" },
+      { key: "ratePerTrip", label: "Rate" },
+      { key: "amount", label: "Amount" },
+      { key: "received", label: "Received" },
+      { key: "due", label: "Due" },
+      { key: "status", label: "Status" },
+      { key: "action", label: "Action" },
+    ],
+    []
+  );
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {actionError && (
@@ -1324,6 +1374,15 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
             >
               <i className="fas fa-print mr-1"></i> Print Table
             </button>
+
+            <ColumnVisibilityToggle
+              columns={tableColumns}
+              isColumnVisible={isColumnVisible}
+              toggleColumnVisibility={toggleColumnVisibility}
+              showAllColumns={showAllColumns}
+              resetColumns={resetColumns}
+              isDark={isDark}
+            />
           </div>
         </div>
 
@@ -1379,51 +1438,193 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
 
         <div className="overflow-x-auto">
           <table id="waste-table" className="w-full min-w-[1200px] text-left text-xs">
-            <thead className={`${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
+            <thead className={`relative select-none ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
               <tr>
-                <th className="px-4 py-3 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={
-                      sortedHistory.length > 0 &&
-                      selectedIds.length === sortedHistory.length
-                    }
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedIds(sortedHistory.map((r) => r.id));
-                      } else {
-                        setSelectedIds([]);
+                {isColumnVisible("select") && (
+                  <th
+                    style={{ width: columnWidths.select, minWidth: columnWidths.select }}
+                    className="px-4 py-3 w-10 text-center relative group"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={
+                        sortedHistory.length > 0 &&
+                        selectedIds.length === sortedHistory.length
                       }
-                    }}
-                    className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                </th>
-                <th onClick={() => toggleSort("date")} className="px-4 py-3 font-black uppercase tracking-widest cursor-pointer select-none hover:text-blue-600">
-                  Date <i className={`fas ${getSortIcon("date")}`}></i>
-                </th>
-                <th onClick={() => toggleSort("companyName")} className="px-4 py-3 font-black uppercase tracking-widest cursor-pointer select-none hover:text-blue-600">
-                  Company <i className={`fas ${getSortIcon("companyName")}`}></i>
-                </th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest">Car Type</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Garbage</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Wastage</th>
-                <th onClick={() => toggleSort("totalTrips")} className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer select-none hover:text-blue-600">
-                  Trips <i className={`fas ${getSortIcon("totalTrips")}`}></i>
-                </th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Rate</th>
-                <th onClick={() => toggleSort("amount")} className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer select-none hover:text-blue-600">
-                  Amount <i className={`fas ${getSortIcon("amount")}`}></i>
-                </th>
-                <th onClick={() => toggleSort("received")} className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer select-none hover:text-blue-600">
-                  Received <i className={`fas ${getSortIcon("received")}`}></i>
-                </th>
-                <th onClick={() => toggleSort("due")} className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer select-none hover:text-blue-600">
-                  Due <i className={`fas ${getSortIcon("due")}`}></i>
-                </th>
-                <th onClick={() => toggleSort("status")} className="px-4 py-3 font-black uppercase tracking-widest text-center cursor-pointer select-none hover:text-blue-600">
-                  Status <i className={`fas ${getSortIcon("status")}`}></i>
-                </th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Action</th>
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds(sortedHistory.map((r) => r.id));
+                        } else {
+                          setSelectedIds([]);
+                        }
+                      }}
+                      className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <div
+                      onMouseDown={(e) => startResizing("select", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("date") && (
+                  <th
+                    style={{ width: columnWidths.date, minWidth: columnWidths.date }}
+                    onClick={() => toggleSort("date")}
+                    className="px-4 py-3 font-black uppercase tracking-widest cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    Date <i className={`fas ${getSortIcon("date")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("date", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("companyName") && (
+                  <th
+                    style={{ width: columnWidths.companyName, minWidth: columnWidths.companyName }}
+                    onClick={() => toggleSort("companyName")}
+                    className="px-4 py-3 font-black uppercase tracking-widest cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    Company <i className={`fas ${getSortIcon("companyName")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("companyName", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("carType") && (
+                  <th
+                    style={{ width: columnWidths.carType, minWidth: columnWidths.carType }}
+                    className="px-4 py-3 font-black uppercase tracking-widest relative group"
+                  >
+                    Car Type
+                    <div
+                      onMouseDown={(e) => startResizing("carType", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("garbageTrips") && (
+                  <th
+                    style={{ width: columnWidths.garbageTrips, minWidth: columnWidths.garbageTrips }}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-right relative group"
+                  >
+                    Garbage
+                    <div
+                      onMouseDown={(e) => startResizing("garbageTrips", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("wastageTrips") && (
+                  <th
+                    style={{ width: columnWidths.wastageTrips, minWidth: columnWidths.wastageTrips }}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-right relative group"
+                  >
+                    Wastage
+                    <div
+                      onMouseDown={(e) => startResizing("wastageTrips", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("totalTrips") && (
+                  <th
+                    style={{ width: columnWidths.totalTrips, minWidth: columnWidths.totalTrips }}
+                    onClick={() => toggleSort("totalTrips")}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    Trips <i className={`fas ${getSortIcon("totalTrips")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("totalTrips", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("ratePerTrip") && (
+                  <th
+                    style={{ width: columnWidths.ratePerTrip, minWidth: columnWidths.ratePerTrip }}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-right relative group"
+                  >
+                    Rate
+                    <div
+                      onMouseDown={(e) => startResizing("ratePerTrip", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("amount") && (
+                  <th
+                    style={{ width: columnWidths.amount, minWidth: columnWidths.amount }}
+                    onClick={() => toggleSort("amount")}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    Amount <i className={`fas ${getSortIcon("amount")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("amount", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("received") && (
+                  <th
+                    style={{ width: columnWidths.received, minWidth: columnWidths.received }}
+                    onClick={() => toggleSort("received")}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    Received <i className={`fas ${getSortIcon("received")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("received", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("due") && (
+                  <th
+                    style={{ width: columnWidths.due, minWidth: columnWidths.due }}
+                    onClick={() => toggleSort("due")}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-right cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    Due <i className={`fas ${getSortIcon("due")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("due", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("status") && (
+                  <th
+                    style={{ width: columnWidths.status, minWidth: columnWidths.status }}
+                    onClick={() => toggleSort("status")}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-center cursor-pointer hover:text-blue-600 relative group"
+                  >
+                    Status <i className={`fas ${getSortIcon("status")}`}></i>
+                    <div
+                      onMouseDown={(e) => startResizing("status", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("action") && (
+                  <th
+                    style={{ width: columnWidths.action, minWidth: columnWidths.action }}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-right"
+                  >
+                    Action
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
@@ -1434,32 +1635,58 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                     selectedIds.includes(record.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""
                   }`}
                 >
-                  <td className="px-4 py-3 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(record.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedIds((prev) => [...prev, record.id]);
-                        } else {
-                          setSelectedIds((prev) => prev.filter((id) => id !== record.id));
-                        }
-                      }}
-                      className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                  </td>
-                  <td className="px-4 py-3 font-bold">{record.date}</td>
-                  <td className="px-4 py-3"><div className="font-bold">{record.companyName}</div>{record.notes ? <div className="mt-1 text-[11px] text-slate-400">{record.notes}</div> : null}</td>
-                  <td className="px-4 py-3">{record.carType}</td>
-                  <td className="px-4 py-3 text-right">{record.garbageTrips}</td>
-                  <td className="px-4 py-3 text-right">{record.wastageTrips}</td>
-                  <td className="px-4 py-3 text-right font-black">{record.totalTrips}</td>
-                  <td className="px-4 py-3 text-right">{formatRate(record.ratePerTrip)}</td>
-                  <td className="px-4 py-3 text-right text-blue-600 font-black">{money(record.amount)}</td>
-                  <td className="px-4 py-3 text-right text-emerald-600 font-black">{money(record.received)}</td>
-                  <td className="px-4 py-3 text-right text-rose-500 font-black">{money(record.due)}</td>
-                  <td className="px-4 py-3 text-center"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${record.status === "Paid" ? "bg-emerald-50 text-emerald-600" : record.status === "Partial" ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"}`}>{record.status}</span></td>
-                  <td className="px-4 py-3"><div className="flex justify-end gap-2">{record.due > 0 || record.amount <= 0 ? <button type="button" onClick={() => handleSettlementStart(record)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">Settle</button> : null}<button type="button" onClick={() => handleRecordEdit(record)} className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600">Edit</button><button type="button" onClick={() => handleRecordDelete(record.id)} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600">Delete</button></div></td>
+                  {isColumnVisible("select") && (
+                    <td className="px-4 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(record.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds((prev) => [...prev, record.id]);
+                          } else {
+                            setSelectedIds((prev) => prev.filter((id) => id !== record.id));
+                          }
+                        }}
+                        className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </td>
+                  )}
+                  {isColumnVisible("date") && (
+                    <td className="px-4 py-3 font-bold">{record.date}</td>
+                  )}
+                  {isColumnVisible("companyName") && (
+                    <td className="px-4 py-3"><div className="font-bold">{record.companyName}</div>{record.notes ? <div className="mt-1 text-[11px] text-slate-400">{record.notes}</div> : null}</td>
+                  )}
+                  {isColumnVisible("carType") && (
+                    <td className="px-4 py-3">{record.carType}</td>
+                  )}
+                  {isColumnVisible("garbageTrips") && (
+                    <td className="px-4 py-3 text-right">{record.garbageTrips}</td>
+                  )}
+                  {isColumnVisible("wastageTrips") && (
+                    <td className="px-4 py-3 text-right">{record.wastageTrips}</td>
+                  )}
+                  {isColumnVisible("totalTrips") && (
+                    <td className="px-4 py-3 text-right font-black">{record.totalTrips}</td>
+                  )}
+                  {isColumnVisible("ratePerTrip") && (
+                    <td className="px-4 py-3 text-right">{formatRate(record.ratePerTrip)}</td>
+                  )}
+                  {isColumnVisible("amount") && (
+                    <td className="px-4 py-3 text-right text-blue-600 font-black">{money(record.amount)}</td>
+                  )}
+                  {isColumnVisible("received") && (
+                    <td className="px-4 py-3 text-right text-emerald-600 font-black">{money(record.received)}</td>
+                  )}
+                  {isColumnVisible("due") && (
+                    <td className="px-4 py-3 text-right text-rose-500 font-black">{money(record.due)}</td>
+                  )}
+                  {isColumnVisible("status") && (
+                    <td className="px-4 py-3 text-center"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${record.status === "Paid" ? "bg-emerald-50 text-emerald-600" : record.status === "Partial" ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"}`}>{record.status}</span></td>
+                  )}
+                  {isColumnVisible("action") && (
+                    <td className="px-4 py-3"><div className="flex justify-end gap-2">{record.due > 0 || record.amount <= 0 ? <button type="button" onClick={() => handleSettlementStart(record)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">Settle</button> : null}<button type="button" onClick={() => handleRecordEdit(record)} className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600">Edit</button><button type="button" onClick={() => handleRecordDelete(record.id)} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600">Delete</button></div></td>
+                  )}
                 </tr>
               ))}
               <tr className={`${isDark ? "bg-slate-900 text-slate-100" : "bg-slate-100 text-slate-900"}`}>

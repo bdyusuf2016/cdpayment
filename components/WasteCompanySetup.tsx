@@ -1,9 +1,11 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { SystemConfig, WasteCompany } from "../types";
 import { insertWasteCompany, updateWasteCompany } from "../utils/supabaseApi";
 import { printElement } from "../utils/printTable";
+import { useResizableColumns } from "../utils/useResizableColumns";
+import ColumnVisibilityToggle from "./ColumnVisibilityToggle";
 
 interface WasteCompanySetupProps {
   companies: WasteCompany[];
@@ -25,6 +27,38 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
   supabase,
 }) => {
   const isDark = systemConfig.theme === "dark";
+
+  // Table Column Resizing & Visibility
+  const initialColumnWidths = useMemo(
+    () => ({
+      name: 200,
+      phone: 150,
+      circle: 150,
+      status: 110,
+      action: 100,
+    }),
+    []
+  );
+
+  const {
+    columnWidths,
+    startResizing,
+    toggleColumnVisibility,
+    isColumnVisible,
+    showAllColumns,
+    resetColumns,
+  } = useResizableColumns(initialColumnWidths, 50, "waste_companies_table");
+
+  const tableColumns = useMemo(
+    () => [
+      { key: "name", label: "Company" },
+      { key: "phone", label: "Phone" },
+      { key: "circle", label: "Circle" },
+      { key: "status", label: "Status" },
+      { key: "action", label: "Action" },
+    ],
+    []
+  );
   const [companyName, setCompanyName] = useState("");
   const [companyPhone, setCompanyPhone] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
@@ -318,6 +352,15 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
             >
               <i className="fas fa-print"></i> Print Directory
             </button>
+            <ColumnVisibilityToggle
+              columns={tableColumns}
+              isColumnVisible={isColumnVisible}
+              toggleColumnVisibility={toggleColumnVisibility}
+              showAllColumns={showAllColumns}
+              resetColumns={resetColumns}
+              isDark={isDark}
+            />
+
             <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-slate-600">
               {companies.length} company(s)
             </span>
@@ -326,13 +369,64 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
 
         <div className="overflow-x-auto">
           <table id="waste-companies-table" className="w-full min-w-[680px] text-left text-xs">
-            <thead className={`${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
+            <thead className={`relative select-none ${isDark ? "bg-slate-900 text-slate-300" : "bg-slate-50 text-slate-500"}`}>
               <tr>
-                <th className="px-4 py-3 font-black uppercase tracking-widest">Company</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest">Phone</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest">Circle</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest">Status</th>
-                <th className="px-4 py-3 font-black uppercase tracking-widest text-right">Action</th>
+                {isColumnVisible("name") && (
+                  <th
+                    style={{ width: columnWidths.name, minWidth: columnWidths.name }}
+                    className="px-4 py-3 font-black uppercase tracking-widest relative group"
+                  >
+                    Company
+                    <div
+                      onMouseDown={(e) => startResizing("name", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+                {isColumnVisible("phone") && (
+                  <th
+                    style={{ width: columnWidths.phone, minWidth: columnWidths.phone }}
+                    className="px-4 py-3 font-black uppercase tracking-widest relative group"
+                  >
+                    Phone
+                    <div
+                      onMouseDown={(e) => startResizing("phone", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+                {isColumnVisible("circle") && (
+                  <th
+                    style={{ width: columnWidths.circle, minWidth: columnWidths.circle }}
+                    className="px-4 py-3 font-black uppercase tracking-widest relative group"
+                  >
+                    Circle
+                    <div
+                      onMouseDown={(e) => startResizing("circle", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+                {isColumnVisible("status") && (
+                  <th
+                    style={{ width: columnWidths.status, minWidth: columnWidths.status }}
+                    className="px-4 py-3 font-black uppercase tracking-widest relative group"
+                  >
+                    Status
+                    <div
+                      onMouseDown={(e) => startResizing("status", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+                {isColumnVisible("action") && (
+                  <th
+                    style={{ width: columnWidths.action, minWidth: columnWidths.action }}
+                    className="px-4 py-3 font-black uppercase tracking-widest text-right"
+                  >
+                    Action
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
@@ -341,38 +435,48 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map((company) => (
                   <tr key={company.id}>
-                    <td className="px-4 py-3 font-bold">{company.name}</td>
-                    <td className="px-4 py-3">{company.phone || "-"}</td>
-                    <td className="px-4 py-3">{company.address || "-"}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
-                          company.active
-                            ? "bg-emerald-50 text-emerald-600"
-                            : "bg-slate-100 text-slate-500"
-                        }`}
-                      >
-                        {company.active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleCompanyEdit(company)}
-                          className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600"
+                    {isColumnVisible("name") && (
+                      <td className="px-4 py-3 font-bold">{company.name}</td>
+                    )}
+                    {isColumnVisible("phone") && (
+                      <td className="px-4 py-3">{company.phone || "-"}</td>
+                    )}
+                    {isColumnVisible("circle") && (
+                      <td className="px-4 py-3">{company.address || "-"}</td>
+                    )}
+                    {isColumnVisible("status") && (
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
+                            company.active
+                              ? "bg-emerald-50 text-emerald-600"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
                         >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleCompanyToggle(company)}
-                          className="rounded-lg bg-slate-100 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600"
-                        >
-                          {company.active ? "Disable" : "Enable"}
-                        </button>
-                      </div>
-                    </td>
+                          {company.active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                    )}
+                    {isColumnVisible("action") && (
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCompanyEdit(company)}
+                            className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCompanyToggle(company)}
+                            className="rounded-lg bg-slate-100 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600"
+                          >
+                            {company.active ? "Disable" : "Enable"}
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
             </tbody>
