@@ -42,6 +42,17 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, label: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    const key = `${label}_${text}`;
+    setCopiedText(key);
+    setTimeout(() => {
+      setCopiedText((prev) => (prev === key ? null : prev));
+    }, 2000);
+  };
 
   const tableRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -681,31 +692,76 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                     </td>
                     <td className="py-3.5 px-4 font-mono text-xs">
                       {vendor.phone ? (
-                        <a
-                          href={`tel:${vendor.phone}`}
-                          className="hover:underline text-blue-500 flex items-center gap-1.5"
-                        >
-                          <i className="fa-solid fa-phone text-[10px]"></i>
-                          {vendor.phone}
-                        </a>
+                        <div className="flex items-center gap-1.5">
+                          <a
+                            href={`tel:${vendor.phone}`}
+                            className="hover:underline text-blue-500 flex items-center gap-1.5"
+                          >
+                            <i className="fa-solid fa-phone text-[10px]"></i>
+                            {vendor.phone}
+                          </a>
+                          <button
+                            onClick={() => copyToClipboard(vendor.phone!, "Phone")}
+                            className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-blue-500/10 text-blue-500 transition-all"
+                            title={isBn ? "ফোন নম্বর কপি করুন" : "Copy Phone No"}
+                          >
+                            <i
+                              className={`fa-solid ${
+                                copiedText === `Phone_${vendor.phone}`
+                                  ? "fa-check text-emerald-500"
+                                  : "fa-copy text-[11px]"
+                              }`}
+                            ></i>
+                          </button>
+                        </div>
                       ) : (
                         <span className="opacity-40">-</span>
                       )}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-xs">
                       {vendor.binNo ? (
-                        <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 font-semibold border border-indigo-500/20">
-                          {vendor.binNo}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 font-semibold border border-indigo-500/20">
+                            {vendor.binNo}
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(vendor.binNo!, "BIN")}
+                            className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-indigo-500/10 text-indigo-500 transition-all"
+                            title={isBn ? "বিআইএন নম্বর কপি করুন" : "Copy BIN No"}
+                          >
+                            <i
+                              className={`fa-solid ${
+                                copiedText === `BIN_${vendor.binNo}`
+                                  ? "fa-check text-emerald-500"
+                                  : "fa-copy text-[11px]"
+                              }`}
+                            ></i>
+                          </button>
+                        </div>
                       ) : (
                         <span className="opacity-40">-</span>
                       )}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-xs">
                       {vendor.eTinNo ? (
-                        <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-500 font-semibold border border-purple-500/20">
-                          {vendor.eTinNo}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-500 font-semibold border border-purple-500/20">
+                            {vendor.eTinNo}
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(vendor.eTinNo!, "E-TIN")}
+                            className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-purple-500/10 text-purple-500 transition-all"
+                            title={isBn ? "ই-টিন নম্বর কপি করুন" : "Copy E-TIN No"}
+                          >
+                            <i
+                              className={`fa-solid ${
+                                copiedText === `E-TIN_${vendor.eTinNo}`
+                                  ? "fa-check text-emerald-500"
+                                  : "fa-copy text-[11px]"
+                              }`}
+                            ></i>
+                          </button>
+                        </div>
                       ) : (
                         <span className="opacity-40">-</span>
                       )}
