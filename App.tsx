@@ -10,6 +10,7 @@ import AssessmentBilling from "./components/AssessmentBilling";
 import AssessmentRecordTab from "./components/AssessmentRecordTab";
 import WasteCompanySetup from "./components/WasteCompanySetup";
 import WasteManagement from "./components/WasteManagement";
+import VendorManagement from "./components/VendorManagement";
 import AinDatabase from "./components/AinDatabase";
 import AdminPanel from "./components/AdminPanel";
 import AuditLogs from "./components/AuditLogs";
@@ -33,6 +34,7 @@ import {
   ClearanceRecord,
   WasteCompany,
   WasteRecord,
+  Vendor,
   StaffUser,
   LogEntry,
 } from "./types";
@@ -91,6 +93,19 @@ const normalizeWasteCompany = (row: any): WasteCompany => ({
   phone: row.phone ?? "",
   address: row.address ?? "",
   active: Boolean(row.active),
+});
+
+const normalizeVendor = (row: any): Vendor => ({
+  id: row.id,
+  vendorName: row.vendorName ?? row.vendor_name ?? "",
+  ownerName: row.ownerName ?? row.owner_name ?? "",
+  phone: row.phone ?? "",
+  binNo: row.binNo ?? row.bin_no ?? "",
+  eTinNo: row.eTinNo ?? row.e_tin_no ?? "",
+  address: row.address ?? "",
+  notes: row.notes ?? "",
+  active: Boolean(row.active ?? true),
+  createdAt: row.createdAt ?? row.created_at ?? "",
 });
 
 
@@ -221,6 +236,16 @@ const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>("duty");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem("sidebar_collapsed") === "true";
+  });
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar_collapsed", String(next));
+      return next;
+    });
+  };
   const [activeStatIndex, setActiveStatIndex] = useState<number | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileName, setProfileName] = useState("");
@@ -240,6 +265,7 @@ const App: React.FC = () => {
   const [clearanceHistory, setClearanceHistory] = useState<ClearanceRecord[]>([]);
   const [wasteCompanies, setWasteCompanies] = useState<WasteCompany[]>([]);
   const [wasteHistory, setWasteHistory] = useState<WasteRecord[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [visibleDutyRows, setVisibleDutyRows] = useState<PaymentRecord[]>([]);
   const [visibleAssessmentRows, setVisibleAssessmentRows] = useState<
     AssessmentRecord[]
@@ -448,6 +474,9 @@ const App: React.FC = () => {
       setWasteHistory,
       normalizeWasteRecord,
     ).then((channel) => channels.push(channel));
+    fetchAndSubscribe("vendors", setVendors, normalizeVendor).then(
+      (channel) => channels.push(channel),
+    );
     fetchAndSubscribe("staff_users", setUsers, normalizeStaffUser).then(
       (channel) => channels.push(channel),
     );
@@ -531,6 +560,7 @@ const App: React.FC = () => {
         clearanceHistory,
         wasteCompanies,
         wasteHistory,
+        vendors,
         users,
         trigger,
       });
@@ -541,7 +571,7 @@ const App: React.FC = () => {
         lastBackup: new Date(payload.timestamp).toLocaleString(),
       }));
     },
-    [assessmentHistory, clearanceHistory, clients, config, dutyHistory, users, wasteCompanies, wasteHistory],
+    [assessmentHistory, clearanceHistory, clients, config, dutyHistory, users, vendors, wasteCompanies, wasteHistory],
   );
 
   useEffect(() => {
@@ -637,6 +667,7 @@ const App: React.FC = () => {
       clearance: "Assesment Record",
       wasteCompanies: "Company Setup",
       waste: "Waste Management",
+      vendors: "Vendor Management",
       ain: "AIN Database",
       reports: "Reports",
       admin: "Admin Panel",
@@ -650,6 +681,7 @@ const App: React.FC = () => {
       clearance: "অ্যাসেসমেন্ট রেকর্ড",
       wasteCompanies: "কোম্পানি সেটআপ",
       waste: "গারবেজ ও ওয়েস্টেজ",
+      vendors: "ভেন্ডার মডিউল",
       ain: "AIN ডাটাবেস",
       reports: "রিপোর্ট",
       admin: "এডমিন প্যানেল",
@@ -693,6 +725,7 @@ const App: React.FC = () => {
   const canAccessClearanceModule = canAccessDutyModule;
   const canAccessWasteCompanyModule = canAccessDutyModule;
   const canAccessWasteModule = canAccessDutyModule;
+  const canAccessVendorModule = canAccessDutyModule;
   const canAccessAinModule = hasPermission("ain_view");
   const canAccessReportsModule = hasPermission("report_view");
   const canAccessLogsModule = hasPermission("view_logs");
@@ -704,6 +737,7 @@ const App: React.FC = () => {
       clearance: canAccessClearanceModule,
       wasteCompanies: canAccessWasteCompanyModule,
       waste: canAccessWasteModule,
+      vendors: canAccessVendorModule,
       ain: canAccessAinModule,
       reports: canAccessReportsModule,
       admin: canAccessAdminModule,
@@ -854,6 +888,7 @@ const App: React.FC = () => {
     { id: "duty", label: t.duty, icon: "fa-file-invoice" },
     { id: "assessment", label: t.assessment, icon: "fa-calculator" },
     { id: "clearance", label: t.clearance, icon: "fa-clipboard-check" },
+    { id: "vendors", label: t.vendors, icon: "fa-store" },
     { id: "waste", label: t.waste, icon: "fa-truck-moving" },
     { id: "wasteCompanies", label: t.wasteCompanies, icon: "fa-building" },
     { id: "ain", label: t.ain, icon: "fa-database" },
@@ -1355,20 +1390,52 @@ const App: React.FC = () => {
   // Main App
   return (
     <div
-      className={`min-h-screen flex flex-col font-sans selection:bg-blue-100 transition-colors duration-300 ${config.theme === "dark" ? "bg-[#0f172a] text-slate-200" : "bg-[#f8fafc] text-slate-900"}`}
+      className={`h-screen flex flex-col overflow-hidden font-sans selection:bg-blue-100 transition-colors duration-300 ${config.theme === "dark" ? "bg-[#0f172a] text-slate-200" : "bg-[#f8fafc] text-slate-900"}`}
     >
-      {/* Top Navigation Bar */}
+      {/* Top Header Bar */}
       <header
-        className={`px-3 md:px-5 py-3 sticky top-0 z-[60] shadow-sm backdrop-blur-md border-b transition-colors ${config.theme === "dark" ? "bg-[#1e293b]/80 border-slate-700" : "bg-white/80 border-slate-100"}`}
+        className={`px-4 py-2.5 shrink-0 z-40 shadow-sm backdrop-blur-md border-b transition-colors ${
+          config.theme === "dark"
+            ? "bg-[#1e293b]/90 border-slate-800"
+            : "bg-white/90 border-slate-200"
+        }`}
       >
-        <div className="max-w-[1600px] mx-auto w-full">
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Hamburger (mobile), Sidebar Toggle (desktop), Agency Brand & Active Breadcrumb */}
+          <div className="flex items-center gap-3">
+            {/* Mobile drawer toggle */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={`p-2 rounded-xl border md:hidden transition-all ${
+                config.theme === "dark"
+                  ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
+                  : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
+              }`}
+              title="Menu"
+            >
+              <i className="fa-solid fa-bars text-sm"></i>
+            </button>
+
+            {/* Desktop collapse toggle */}
+            <button
+              onClick={toggleSidebar}
+              className={`hidden md:flex p-2 rounded-xl border transition-all ${
+                config.theme === "dark"
+                  ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
+                  : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
+              }`}
+              title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              <i className={`fa-solid ${isSidebarCollapsed ? "fa-indent" : "fa-outdent"} text-sm`}></i>
+            </button>
+
+            {/* Logo & Agency Name */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <i className="fas fa-cube text-white text-base"></i>
+              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 text-white font-bold">
+                <i className="fas fa-cube text-base"></i>
               </div>
-              <div className="flex flex-col">
-                <h1 className="text-base md:text-lg font-black tracking-tight leading-none">
+              <div className="hidden sm:flex flex-col">
+                <h1 className="text-base font-black tracking-tight leading-none">
                   {config.agencyName}
                 </h1>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -1380,167 +1447,231 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="hidden lg:flex flex-col items-end mr-2">
-                <span className="text-xs font-bold dark:text-white">
-                  {session.user.email}
-                </span>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                  Logged In
-                </span>
-              </div>
-
-              <div className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg mr-1 border border-slate-200 dark:border-slate-700">
-                <button
-                  onClick={() => setConfig((prev) => ({ ...prev, language: "en" }))}
-                  className={`px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${config.language === "en" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
-                >
-                  ENG
-                </button>
-                <button
-                  onClick={() => setConfig((prev) => ({ ...prev, language: "bn" }))}
-                  className={`px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${config.language === "bn" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
-                >
-                  BAN
-                </button>
-                <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
-                <button
-                  onClick={() => {
-                    const nextTheme = isDark ? "light" : "dark";
-                    setConfig((prev) => ({ ...prev, theme: nextTheme }));
-                    if (supabase) {
-                      updateSystemSettings(supabase, { theme: nextTheme });
-                    }
-                  }}
-                  className={`w-8 h-7 rounded-md flex items-center justify-center transition-all ${isDark ? "text-yellow-400" : "text-slate-400 hover:text-slate-600"}`}
-                >
-                  <i className={`fas ${isDark ? "fa-sun" : "fa-moon"}`}></i>
-                </button>
-              </div>
-
-              {isAdminUser && (
-                <button
-                  onClick={() => setActiveTab("admin")}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-sm active:scale-95 border ${activeTab === "admin" ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500"}`}
-                >
-                  <i className="fas fa-cog text-xs"></i>
-                </button>
-              )}
-              <button
-                onClick={handleOpenProfileModal}
-                className="bg-white dark:bg-slate-800 text-slate-500 hover:text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm border border-slate-200 dark:border-slate-700"
-                title="Profile"
-              >
-                <i className="fas fa-user text-xs"></i>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-600 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm border border-red-100 dark:border-red-900/30"
-              >
-                <i className="fas fa-power-off text-xs"></i>
-              </button>
+            {/* Active View Breadcrumb Badge */}
+            <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-slate-300 dark:border-slate-700">
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center gap-2">
+                <i className={`fas ${navTabs.find((t) => t.id === activeTab)?.icon}`}></i>
+                {navTabs.find((t) => t.id === activeTab)?.label}
+              </span>
             </div>
           </div>
 
-          {/* Header Flow Navigation */}
-          <div className="mt-2.5">
-            {/* Mobile Navigation (Dropdown Style) */}
-            <div className="md:hidden relative z-50">
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className={`w-full p-2.5 rounded-xl border shadow-sm flex items-center justify-between transition-all active:scale-[0.99] ${config.theme === "dark" ? "bg-[#0f172a]/70 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === "dark" ? "bg-slate-700 text-white" : "bg-blue-600 text-white"}`}
-                  >
-                    <i
-                      className={`fas ${navTabs.find((t) => t.id === activeTab)?.icon}`}
-                    ></i>
-                  </div>
-                  <div className="text-left leading-tight">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                      Current View
-                    </p>
-                    <p className="text-xs font-black uppercase tracking-widest">
-                      {navTabs.find((t) => t.id === activeTab)?.label}
-                    </p>
-                  </div>
-                </div>
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isMobileMenuOpen ? "bg-blue-100 text-blue-600 rotate-180" : "bg-slate-100 text-slate-400"}`}
-                >
-                  <i className="fas fa-chevron-down"></i>
-                </div>
-              </button>
+          {/* Right Header Quick Controls */}
+          <div className="flex items-center gap-2">
+            <div className="hidden xl:flex flex-col items-end mr-2">
+              <span className="text-xs font-bold dark:text-white">
+                {session.user.email}
+              </span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                {currentUserRole}
+              </span>
+            </div>
 
-              {isMobileMenuOpen && (
-                <div
-                  className={`absolute top-full left-0 w-full mt-2 p-2 rounded-2xl border shadow-xl flex flex-col gap-2 animate-in slide-in-from-top-5 fade-in duration-200 ${config.theme === "dark" ? "bg-[#1e293b] border-slate-700" : "bg-white border-slate-200"}`}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => setConfig((prev) => ({ ...prev, language: "en" }))}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${config.language === "en" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
+              >
+                ENG
+              </button>
+              <button
+                onClick={() => setConfig((prev) => ({ ...prev, language: "bn" }))}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${config.language === "bn" ? "bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-white" : "text-slate-400"}`}
+              >
+                BAN
+              </button>
+              <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+              <button
+                onClick={() => {
+                  const nextTheme = isDark ? "light" : "dark";
+                  setConfig((prev) => ({ ...prev, theme: nextTheme }));
+                  if (supabase) {
+                    updateSystemSettings(supabase, { theme: nextTheme });
+                  }
+                }}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${isDark ? "text-yellow-400" : "text-slate-400 hover:text-slate-600"}`}
+                title="Toggle Theme"
+              >
+                <i className={`fas ${isDark ? "fa-sun" : "fa-moon"}`}></i>
+              </button>
+            </div>
+
+            {isAdminUser && (
+              <button
+                onClick={() => setActiveTab("admin")}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 border ${activeTab === "admin" ? "bg-blue-600 text-white border-blue-600" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-500"}`}
+                title={t.admin}
+              >
+                <i className="fas fa-cog text-sm"></i>
+              </button>
+            )}
+
+            <button
+              onClick={handleOpenProfileModal}
+              className="bg-white dark:bg-slate-800 text-slate-500 hover:text-blue-600 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm border border-slate-200 dark:border-slate-700"
+              title="Profile"
+            >
+              <i className="fas fa-user text-sm"></i>
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-600 hover:text-white w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm border border-red-100 dark:border-red-900/30"
+              title={t.logout}
+            >
+              <i className="fas fa-power-off text-sm"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Container with Independent Scrolling Sidebar and Content */}
+      <div className="flex flex-1 min-h-0 relative overflow-hidden">
+        {/* Desktop Collapsible Left Sidebar */}
+        <aside
+          className={`hidden md:flex flex-col border-r h-full transition-all duration-300 ease-in-out shrink-0 ${
+            isSidebarCollapsed ? "w-20" : "w-64"
+          } ${
+            config.theme === "dark"
+              ? "bg-[#1e293b]/70 border-slate-800"
+              : "bg-white/90 border-slate-200"
+          }`}
+        >
+          <div className="p-3 flex-1 overflow-y-auto space-y-1">
+            {!isSidebarCollapsed && (
+              <p className="px-3 pt-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                {config.language === "bn" ? "মডিউলসমূহ" : "MODULES"}
+              </p>
+            )}
+
+            {navTabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as TabType)}
+                  title={isSidebarCollapsed ? tab.label : undefined}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
+                    isSidebarCollapsed ? "justify-center" : "justify-start"
+                  } ${
+                    isActive
+                      ? config.theme === "dark"
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                        : "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                      : config.theme === "dark"
+                      ? "text-slate-400 hover:bg-slate-800/80 hover:text-slate-200"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
                 >
-                  {navTabs.map((tab) => (
+                  <i
+                    className={`fas ${tab.icon} text-base transition-transform ${
+                      isActive ? "scale-110" : "opacity-70"
+                    }`}
+                  ></i>
+                  {!isSidebarCollapsed && (
+                    <span className="uppercase tracking-wider font-extrabold truncate">
+                      {tab.label}
+                    </span>
+                  )}
+                  {!isSidebarCollapsed && isActive && (
+                    <span className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sidebar Footer Collapse Toggle */}
+          <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              onClick={toggleSidebar}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                isSidebarCollapsed ? "justify-center" : "justify-start"
+              } ${
+                config.theme === "dark"
+                  ? "bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+              }`}
+            >
+              <i
+                className={`fa-solid ${
+                  isSidebarCollapsed ? "fa-angles-right" : "fa-angles-left"
+                } text-sm`}
+              ></i>
+              {!isSidebarCollapsed && (
+                <span className="uppercase tracking-wider text-[11px]">
+                  {config.language === "bn" ? "ছোট করুন" : "Collapse"}
+                </span>
+              )}
+            </button>
+          </div>
+        </aside>
+
+        {/* Mobile Slide-over Overlay Drawer */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-50 flex">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+              onClick={() => setIsMobileMenuOpen(false)}
+            ></div>
+
+            {/* Mobile Drawer Content */}
+            <div
+              className={`relative flex-1 max-w-xs w-full flex flex-col p-4 shadow-2xl transition-all ${
+                config.theme === "dark"
+                  ? "bg-slate-900 text-white"
+                  : "bg-white text-slate-900"
+              }`}
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-700/50 mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-md">
+                    <i className="fas fa-cube text-sm"></i>
+                  </div>
+                  <span className="font-bold text-sm truncate">{config.agencyName}</span>
+                </div>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg opacity-60 hover:opacity-100"
+                >
+                  <i className="fa-solid fa-xmark text-lg"></i>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-1">
+                {navTabs.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
                     <button
                       key={tab.id}
                       onClick={() => {
                         setActiveTab(tab.id as TabType);
                         setIsMobileMenuOpen(false);
                       }}
-                      className={`flex items-center gap-4 p-3 rounded-xl transition-all ${
-                        activeTab === tab.id
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
+                        isActive
                           ? config.theme === "dark"
                             ? "bg-blue-600 text-white shadow-lg"
                             : "bg-slate-900 text-white shadow-lg"
                           : config.theme === "dark"
-                            ? "text-slate-400 hover:bg-slate-800"
-                            : "text-slate-500 hover:bg-slate-50"
+                          ? "text-slate-400 hover:bg-slate-800"
+                          : "text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeTab === tab.id ? "bg-white/20" : "bg-transparent"}`}
-                      >
-                        <i className={`fas ${tab.icon}`}></i>
-                      </div>
-                      <span className="text-xs font-black uppercase tracking-widest">
-                        {tab.label}
-                      </span>
-                      {activeTab === tab.id && (
-                        <i className="fas fa-check ml-auto"></i>
-                      )}
+                      <i className={`fas ${tab.icon} text-base`}></i>
+                      <span className="uppercase tracking-widest">{tab.label}</span>
+                      {isActive && <i className="fas fa-check ml-auto"></i>}
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Desktop Navigation (Segmented Control) */}
-            <div className="hidden md:flex justify-center">
-              <nav
-                className={`mx-auto flex p-1 rounded-xl shadow-sm border overflow-x-auto no-scrollbar transition-colors ${config.theme === "dark" ? "bg-[#0f172a]/70 border-slate-700" : "bg-white border-slate-200"}`}
-              >
-                {navTabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as TabType)}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap ${
-                      activeTab === tab.id
-                        ? "bg-slate-900 dark:bg-blue-600 text-white shadow-lg"
-                        : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <i
-                      className={`fas ${tab.icon} ${activeTab === tab.id ? "text-white" : "text-slate-400"}`}
-                    ></i>
-                    <span className="uppercase tracking-widest">{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        )}
 
-      {/* Primary Workspace */}
-      <main className="p-4 md:p-8 max-w-[1600px] mx-auto w-full flex-grow">
+        {/* Primary Workspace */}
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-8 w-full">
         <StatsCards
           cards={stats}
           activeIndex={activeStatIndex}
@@ -1714,6 +1845,14 @@ const App: React.FC = () => {
               supabase={supabase}
             />
           )}
+          {activeTab === "vendors" && tabAccess.vendors && (
+            <VendorManagement
+              vendors={vendors}
+              setVendors={setVendors}
+              systemConfig={config}
+              supabase={supabase}
+            />
+          )}
           {activeTab === "waste" && tabAccess.waste && (
             <WasteManagement
               companies={wasteCompanies}
@@ -1777,37 +1916,37 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
-
-      <footer
-        className={`p-8 text-center border-t mt-auto transition-colors ${config.theme === "dark" ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-100"}`}
-      >
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-[0.2em]">
-            {config.agencyName}
-          </p>
-          <p className="text-[9px] font-bold text-slate-400 max-w-sm">
-            System v2.1.0 • {config.agencyAddress}
-          </p>
-          {config.showDeveloperCredit && config.developerCreditName ? (
-            <p className="text-[10px] font-bold text-slate-500">
-              Developed by{" "}
-              {config.developerCreditUrl ? (
-                <a
-                  href={config.developerCreditUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {config.developerCreditName}
-                </a>
-              ) : (
-                config.developerCreditName
-              )}
-            </p>
-          ) : null}
-        </div>
-      </footer>
+          <footer
+            className={`p-6 text-center border-t mt-auto transition-colors ${config.theme === "dark" ? "bg-[#0f172a]/50 border-slate-800" : "bg-white/50 border-slate-100"}`}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-[0.2em]">
+                {config.agencyName}
+              </p>
+              <p className="text-[9px] font-bold text-slate-400 max-w-sm">
+                System v2.1.0 • {config.agencyAddress}
+              </p>
+              {config.showDeveloperCredit && config.developerCreditName ? (
+                <p className="text-[10px] font-bold text-slate-500">
+                  Developed by{" "}
+                  {config.developerCreditUrl ? (
+                    <a
+                      href={config.developerCreditUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {config.developerCreditName}
+                    </a>
+                  ) : (
+                    config.developerCreditName
+                  )}
+                </p>
+              ) : null}
+            </div>
+          </footer>
+        </main>
+      </div>
 
       {showProfileModal && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-300">

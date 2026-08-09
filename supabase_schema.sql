@@ -530,6 +530,42 @@ begin
 end;
 $$ language plpgsql security definer;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- 10. Vendors Table (Stores Vendor Info)
+create table if not exists public.vendors (
+  id uuid default uuid_generate_v4() primary key,
+  owner_auth_id uuid references auth.users(id) default auth.uid(),
+  vendor_name text not null,
+  owner_name text,
+  phone text,
+  bin_no text,
+  e_tin_no text,
+  address text,
+  notes text,
+  active boolean default true,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+alter table public.vendors enable row level security;
+
+create policy "Vendors owner or admin select"
+  on public.vendors for select
+  using (
+    owner_auth_id = auth.uid()
+    or public.can_current_user_access_all_business_data()
+  );
+
+create policy "Vendors owner or admin all"
+  on public.vendors for all
+  using (
+    owner_auth_id = auth.uid()
+    or public.can_current_user_access_all_business_data()
+  )
+  with check (
+    owner_auth_id = auth.uid()
+    or public.can_current_user_access_all_business_data()
+  );

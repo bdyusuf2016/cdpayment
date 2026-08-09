@@ -64,6 +64,19 @@ export interface WasteCompany {
   active: boolean;
 }
 
+export interface Vendor {
+  id: string;
+  vendorName: string;
+  ownerName?: string;
+  phone?: string;
+  binNo?: string;
+  eTinNo?: string;
+  address?: string;
+  notes?: string;
+  active: boolean;
+  createdAt?: string;
+}
+
 export interface WasteRecord {
   id: string;
   date: string;
@@ -174,6 +187,7 @@ export type TabType =
   | 'clearance'
   | 'wasteCompanies'
   | 'waste'
+  | 'vendors'
   | 'ain'
   | 'reports'
   | 'admin'

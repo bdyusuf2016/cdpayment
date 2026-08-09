@@ -6,6 +6,7 @@ import {
   ClearanceRecord,
   WasteCompany,
   WasteRecord,
+  Vendor,
   StaffUser,
   SystemConfig,
   LogEntry,
@@ -149,6 +150,30 @@ const fromWasteCompanyDb = (row: any): WasteCompany => ({
   phone: row.phone ?? "",
   address: row.address ?? "",
   active: Boolean(row.active),
+});
+
+const toVendorDb = (vendor: Partial<Vendor>) => ({
+  vendor_name: vendor.vendorName,
+  owner_name: vendor.ownerName,
+  phone: vendor.phone,
+  bin_no: vendor.binNo,
+  e_tin_no: vendor.eTinNo,
+  address: vendor.address,
+  notes: vendor.notes,
+  active: vendor.active,
+});
+
+const fromVendorDb = (row: any): Vendor => ({
+  id: row.id,
+  vendorName: row.vendorName ?? row.vendor_name ?? "",
+  ownerName: row.ownerName ?? row.owner_name ?? "",
+  phone: row.phone ?? "",
+  binNo: row.binNo ?? row.bin_no ?? "",
+  eTinNo: row.eTinNo ?? row.e_tin_no ?? "",
+  address: row.address ?? "",
+  notes: row.notes ?? "",
+  active: Boolean(row.active ?? true),
+  createdAt: row.createdAt ?? row.created_at ?? "",
 });
 
 const toWasteRecordDb = (record: Partial<WasteRecord>) => ({
@@ -468,6 +493,58 @@ export async function updateWasteCompany(
     throw formatSupabaseError("Update waste company", error);
   }
   return fromWasteCompanyDb(data);
+}
+
+// Vendor CRUD
+export async function insertVendor(
+  supabase: SupabaseClient,
+  vendor: Omit<Vendor, "id">,
+): Promise<Vendor | null> {
+  const { data, error } = await supabase
+    .from("vendors")
+    .insert(toVendorDb(vendor))
+    .select()
+    .single();
+  if (error) {
+    console.error("insertVendor error", error);
+    throw formatSupabaseError("Insert vendor", error);
+  }
+  return fromVendorDb(data);
+}
+
+export async function updateVendor(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<Vendor>,
+): Promise<Vendor | null> {
+  const dbPatch = toVendorDb(patch) as Record<string, unknown>;
+  Object.keys(dbPatch).forEach(
+    (key) => dbPatch[key] === undefined && delete dbPatch[key],
+  );
+
+  const { data, error } = await supabase
+    .from("vendors")
+    .update(dbPatch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("updateVendor error", error);
+    throw formatSupabaseError("Update vendor", error);
+  }
+  return fromVendorDb(data);
+}
+
+export async function deleteVendor(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<boolean> {
+  const { error } = await supabase.from("vendors").delete().eq("id", id);
+  if (error) {
+    console.error("deleteVendor error", error);
+    throw formatSupabaseError("Delete vendor", error);
+  }
+  return true;
 }
 
 // Waste records CRUD

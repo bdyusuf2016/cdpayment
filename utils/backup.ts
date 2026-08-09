@@ -7,6 +7,7 @@ import {
   SystemConfig,
   WasteCompany,
   WasteRecord,
+  Vendor,
 } from "../types";
 
 export const BACKUP_STORAGE_KEYS = {
@@ -25,6 +26,7 @@ interface BackupPayloadInput {
   clearanceHistory: ClearanceRecord[];
   wasteCompanies: WasteCompany[];
   wasteHistory: WasteRecord[];
+  vendors?: Vendor[];
   users: StaffUser[];
   trigger: "manual" | "auto";
 }
@@ -37,6 +39,7 @@ export const buildBackupPayload = ({
   clearanceHistory,
   wasteCompanies,
   wasteHistory,
+  vendors = [],
   users,
   trigger,
 }: BackupPayloadInput) => ({
@@ -49,6 +52,7 @@ export const buildBackupPayload = ({
   clearanceHistory,
   wasteCompanies,
   wasteHistory,
+  vendors,
   users,
 });
 
