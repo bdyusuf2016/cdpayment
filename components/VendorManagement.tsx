@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { SystemConfig, Vendor } from "../types";
 import { insertVendor, updateVendor, deleteVendor } from "../utils/supabaseApi";
 import { printElement } from "../utils/printTable";
+import { useResizableColumns } from "../utils/useResizableColumns";
 
 interface VendorManagementProps {
   vendors: Vendor[];
@@ -53,6 +54,23 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
       setCopiedText((prev) => (prev === key ? null : prev));
     }, 2000);
   };
+
+  // Table Column Resizing
+  const initialColumnWidths = useMemo(
+    () => ({
+      sl: 50,
+      vendorName: 220,
+      ownerName: 160,
+      phone: 160,
+      binNo: 160,
+      eTinNo: 160,
+      address: 220,
+      status: 110,
+      actions: 110,
+    }),
+    []
+  );
+  const { columnWidths, startResizing } = useResizableColumns(initialColumnWidths);
 
   const tableRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -639,21 +657,106 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr
-                className={`border-b text-xs font-semibold uppercase tracking-wider ${
+                className={`border-b text-xs font-semibold uppercase tracking-wider relative select-none ${
                   isDark
                     ? "bg-slate-800/60 border-slate-800 text-slate-400"
                     : "bg-slate-100 border-slate-200 text-slate-600"
                 }`}
               >
-                <th className="py-3.5 px-4 w-12 text-center">#</th>
-                <th className="py-3.5 px-4">{t.vendorName}</th>
-                <th className="py-3.5 px-4">{t.ownerName}</th>
-                <th className="py-3.5 px-4">{t.phone}</th>
-                <th className="py-3.5 px-4">{t.binNo}</th>
-                <th className="py-3.5 px-4">{t.eTinNo}</th>
-                <th className="py-3.5 px-4">{t.address}</th>
-                <th className="py-3.5 px-4 text-center">{t.status}</th>
-                <th className="py-3.5 px-4 text-right pr-6">{t.actions}</th>
+                <th
+                  style={{ width: columnWidths.sl, minWidth: columnWidths.sl }}
+                  className="py-3.5 px-4 text-center relative group"
+                >
+                  #
+                  <div
+                    onMouseDown={(e) => startResizing("sl", e)}
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  ></div>
+                </th>
+
+                <th
+                  style={{ width: columnWidths.vendorName, minWidth: columnWidths.vendorName }}
+                  className="py-3.5 px-4 relative group"
+                >
+                  <span className="truncate block">{t.vendorName}</span>
+                  <div
+                    onMouseDown={(e) => startResizing("vendorName", e)}
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  ></div>
+                </th>
+
+                <th
+                  style={{ width: columnWidths.ownerName, minWidth: columnWidths.ownerName }}
+                  className="py-3.5 px-4 relative group"
+                >
+                  <span className="truncate block">{t.ownerName}</span>
+                  <div
+                    onMouseDown={(e) => startResizing("ownerName", e)}
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  ></div>
+                </th>
+
+                <th
+                  style={{ width: columnWidths.phone, minWidth: columnWidths.phone }}
+                  className="py-3.5 px-4 relative group"
+                >
+                  <span className="truncate block">{t.phone}</span>
+                  <div
+                    onMouseDown={(e) => startResizing("phone", e)}
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  ></div>
+                </th>
+
+                <th
+                  style={{ width: columnWidths.binNo, minWidth: columnWidths.binNo }}
+                  className="py-3.5 px-4 relative group"
+                >
+                  <span className="truncate block">{t.binNo}</span>
+                  <div
+                    onMouseDown={(e) => startResizing("binNo", e)}
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  ></div>
+                </th>
+
+                <th
+                  style={{ width: columnWidths.eTinNo, minWidth: columnWidths.eTinNo }}
+                  className="py-3.5 px-4 relative group"
+                >
+                  <span className="truncate block">{t.eTinNo}</span>
+                  <div
+                    onMouseDown={(e) => startResizing("eTinNo", e)}
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  ></div>
+                </th>
+
+                <th
+                  style={{ width: columnWidths.address, minWidth: columnWidths.address }}
+                  className="py-3.5 px-4 relative group"
+                >
+                  <span className="truncate block">{t.address}</span>
+                  <div
+                    onMouseDown={(e) => startResizing("address", e)}
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  ></div>
+                </th>
+
+                <th
+                  style={{ width: columnWidths.status, minWidth: columnWidths.status }}
+                  className="py-3.5 px-4 text-center relative group"
+                >
+                  <span className="truncate block">{t.status}</span>
+                  <div
+                    onMouseDown={(e) => startResizing("status", e)}
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  ></div>
+                </th>
+
+                <th
+                  style={{ width: columnWidths.actions, minWidth: columnWidths.actions }}
+                  className="py-3.5 px-4 text-right pr-6"
+                >
+                  {t.actions}
+                </th>
               </tr>
             </thead>
             <tbody
