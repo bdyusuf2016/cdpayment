@@ -1,6 +1,8 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { LogEntry, SystemConfig } from "../types";
 import { printElement } from "../utils/printTable";
+import { useResizableColumns } from "../utils/useResizableColumns";
+import ColumnVisibilityToggle from "./ColumnVisibilityToggle";
 import { fetchData } from "../utils/supabaseApi";
 import { formatAuditLogDate, parseAuditLogDate } from "../utils/auditLogDate";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -21,6 +23,38 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
     "timestamp" | "user" | "action" | "module" | "details"
   >("timestamp");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  // Table Column Resizing & Visibility
+  const initialColumnWidths = useMemo(
+    () => ({
+      timestamp: 180,
+      user: 140,
+      action: 140,
+      module: 140,
+      details: 300,
+    }),
+    []
+  );
+
+  const {
+    columnWidths,
+    startResizing,
+    toggleColumnVisibility,
+    isColumnVisible,
+    showAllColumns,
+    resetColumns,
+  } = useResizableColumns(initialColumnWidths, 50, "audit_logs_table");
+
+  const tableColumns = useMemo(
+    () => [
+      { key: "timestamp", label: "Timestamp" },
+      { key: "user", label: "Initiator / User" },
+      { key: "action", label: "Action" },
+      { key: "module", label: "Module" },
+      { key: "details", label: "Payload / Details" },
+    ],
+    []
+  );
 
   const mapLog = (d: any): LogEntry => ({
     id: d.id,
@@ -235,6 +269,15 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
               ></i>
               {loading ? "Loading..." : "Refresh"}
             </button>
+            <ColumnVisibilityToggle
+              columns={tableColumns}
+              isColumnVisible={isColumnVisible}
+              toggleColumnVisibility={toggleColumnVisibility}
+              showAllColumns={showAllColumns}
+              resetColumns={resetColumns}
+              isDark={isDark}
+            />
+
             <button
               onClick={() =>
                 printElement(
@@ -265,55 +308,104 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
           <table id="auditlogs-table" className="w-full text-left border-collapse">
             <thead>
               <tr
-                className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}
+                className={`${isDark ? "bg-slate-900/50" : "bg-slate-50"} border-b ${isDark ? "border-slate-700" : "border-slate-300"} relative select-none`}
               >
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("timestamp")}
-                    className="inline-flex items-center gap-1"
+                {isColumnVisible("timestamp") && (
+                  <th
+                    style={{ width: columnWidths.timestamp, minWidth: columnWidths.timestamp }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Timestamp{" "}
-                    <i className={`fas ${getSortIcon("timestamp")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("user")}
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("timestamp")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Timestamp{" "}
+                      <i className={`fas ${getSortIcon("timestamp")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("timestamp", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("user") && (
+                  <th
+                    style={{ width: columnWidths.user, minWidth: columnWidths.user }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Initiator <i className={`fas ${getSortIcon("user")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("action")}
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("user")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Initiator <i className={`fas ${getSortIcon("user")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("user", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("action") && (
+                  <th
+                    style={{ width: columnWidths.action, minWidth: columnWidths.action }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Action <i className={`fas ${getSortIcon("action")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("module")}
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("action")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Action <i className={`fas ${getSortIcon("action")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("action", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("module") && (
+                  <th
+                    style={{ width: columnWidths.module, minWidth: columnWidths.module }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Module <i className={`fas ${getSortIcon("module")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("details")}
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("module")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Module <i className={`fas ${getSortIcon("module")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("module", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("details") && (
+                  <th
+                    style={{ width: columnWidths.details, minWidth: columnWidths.details }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Activity Detail{" "}
-                    <i className={`fas ${getSortIcon("details")}`}></i>
-                  </button>
-                </th>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("details")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Event Payload / Details{" "}
+                      <i className={`fas ${getSortIcon("details")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("details", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody
@@ -340,62 +432,72 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ systemConfig, supabase, logs }) =
                         : "hover:bg-slate-50/70"
                     }`}
                   >
-                    <td className="px-6 py-3 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
-                      {formatAuditLogDate(log.createdAt ?? log.timestamp)}
-                    </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`text-[11px] font-black uppercase tracking-tight ${
-                          isDark ? "text-slate-200" : "text-slate-900"
-                        }`}
-                      >
-                        {log.user}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            log.type === "danger"
-                              ? "bg-red-500"
-                              : log.type === "success"
-                                ? "bg-green-500"
-                                : log.type === "warning"
-                                  ? "bg-amber-500"
-                                  : "bg-blue-500"
-                          }`}
-                        ></div>
+                    {isColumnVisible("timestamp") && (
+                      <td className="px-6 py-3 text-[11px] font-black text-slate-400 font-mono tracking-tighter whitespace-nowrap">
+                        {formatAuditLogDate(log.createdAt ?? log.timestamp)}
+                      </td>
+                    )}
+                    {isColumnVisible("user") && (
+                      <td className="px-6 py-3">
                         <span
-                          className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${
-                            isDark ? "text-slate-300" : "text-slate-700"
+                          className={`text-[11px] font-black uppercase tracking-tight ${
+                            isDark ? "text-slate-200" : "text-slate-900"
                           }`}
                         >
-                          {log.action}
+                          {log.user}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-tighter ${
-                          isDark
-                            ? "text-slate-400 bg-slate-900 border-slate-700"
-                            : "text-slate-400 bg-slate-100 border-slate-200"
-                        }`}
-                      >
-                        {log.module}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <p
-                        className={`text-[11px] font-bold leading-snug transition-colors ${
-                          isDark
-                            ? "text-slate-400 group-hover:text-slate-200"
-                            : "text-slate-500 group-hover:text-slate-800"
-                        }`}
-                      >
-                        {log.details}
-                      </p>
-                    </td>
+                      </td>
+                    )}
+                    {isColumnVisible("action") && (
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${
+                              log.type === "danger"
+                                ? "bg-red-500"
+                                : log.type === "success"
+                                  ? "bg-green-500"
+                                  : log.type === "warning"
+                                    ? "bg-amber-500"
+                                    : "bg-blue-500"
+                            }`}
+                          ></div>
+                          <span
+                            className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${
+                              isDark ? "text-slate-300" : "text-slate-700"
+                            }`}
+                          >
+                            {log.action}
+                          </span>
+                        </div>
+                      </td>
+                    )}
+                    {isColumnVisible("module") && (
+                      <td className="px-6 py-3">
+                        <span
+                          className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-tighter ${
+                            isDark
+                              ? "text-slate-400 bg-slate-900 border-slate-700"
+                              : "text-slate-400 bg-slate-100 border-slate-200"
+                          }`}
+                        >
+                          {log.module}
+                        </span>
+                      </td>
+                    )}
+                    {isColumnVisible("details") && (
+                      <td className="px-6 py-3">
+                        <p
+                          className={`text-[11px] font-bold leading-snug transition-colors ${
+                            isDark
+                              ? "text-slate-400 group-hover:text-slate-200"
+                              : "text-slate-600 group-hover:text-slate-900"
+                          }`}
+                        >
+                          {log.details}
+                        </p>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

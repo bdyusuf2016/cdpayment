@@ -5,6 +5,7 @@ import { SystemConfig, Vendor } from "../types";
 import { insertVendor, updateVendor, deleteVendor } from "../utils/supabaseApi";
 import { printElement } from "../utils/printTable";
 import { useResizableColumns } from "../utils/useResizableColumns";
+import ColumnVisibilityToggle from "./ColumnVisibilityToggle";
 
 interface VendorManagementProps {
   vendors: Vendor[];
@@ -70,7 +71,29 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
     }),
     []
   );
-  const { columnWidths, startResizing } = useResizableColumns(initialColumnWidths);
+  const {
+    columnWidths,
+    startResizing,
+    toggleColumnVisibility,
+    isColumnVisible,
+    showAllColumns,
+    resetColumns,
+  } = useResizableColumns(initialColumnWidths, 50, "vendor_table");
+
+  const tableColumns = useMemo(
+    () => [
+      { key: "sl", label: "#" },
+      { key: "vendorName", label: isBn ? "ভেন্ডার নাম" : "Vendor Name" },
+      { key: "ownerName", label: isBn ? "ওনারের নাম" : "Owner Name" },
+      { key: "phone", label: isBn ? "ফোন নম্বর" : "Phone No" },
+      { key: "binNo", label: isBn ? "বিআইএন নম্বর" : "BIN No" },
+      { key: "eTinNo", label: isBn ? "ই-টিন নম্বর" : "E-TIN No" },
+      { key: "address", label: isBn ? "ঠিকানা" : "Address" },
+      { key: "status", label: isBn ? "স্ট্যাটাস" : "Status" },
+      { key: "actions", label: isBn ? "অ্যাকশন" : "Actions" },
+    ],
+    [isBn]
+  );
 
   const tableRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -458,6 +481,16 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
               className="hidden"
             />
 
+            <ColumnVisibilityToggle
+              columns={tableColumns}
+              isColumnVisible={isColumnVisible}
+              toggleColumnVisibility={toggleColumnVisibility}
+              showAllColumns={showAllColumns}
+              resetColumns={resetColumns}
+              isDark={isDark}
+              isBn={isBn}
+            />
+
             <button
               onClick={handleExportExcel}
               className={`px-3.5 py-2.5 text-sm font-semibold rounded-xl border transition-all flex items-center gap-2 ${
@@ -663,100 +696,118 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                     : "bg-slate-100 border-slate-200 text-slate-600"
                 }`}
               >
-                <th
-                  style={{ width: columnWidths.sl, minWidth: columnWidths.sl }}
-                  className="py-3.5 px-4 text-center relative group"
-                >
-                  #
-                  <div
-                    onMouseDown={(e) => startResizing("sl", e)}
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  ></div>
-                </th>
+                {isColumnVisible("sl") && (
+                  <th
+                    style={{ width: columnWidths.sl, minWidth: columnWidths.sl }}
+                    className="py-3.5 px-4 text-center relative group"
+                  >
+                    #
+                    <div
+                      onMouseDown={(e) => startResizing("sl", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
 
-                <th
-                  style={{ width: columnWidths.vendorName, minWidth: columnWidths.vendorName }}
-                  className="py-3.5 px-4 relative group"
-                >
-                  <span className="truncate block">{t.vendorName}</span>
-                  <div
-                    onMouseDown={(e) => startResizing("vendorName", e)}
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  ></div>
-                </th>
+                {isColumnVisible("vendorName") && (
+                  <th
+                    style={{ width: columnWidths.vendorName, minWidth: columnWidths.vendorName }}
+                    className="py-3.5 px-4 relative group"
+                  >
+                    <span className="truncate block">{t.vendorName}</span>
+                    <div
+                      onMouseDown={(e) => startResizing("vendorName", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
 
-                <th
-                  style={{ width: columnWidths.ownerName, minWidth: columnWidths.ownerName }}
-                  className="py-3.5 px-4 relative group"
-                >
-                  <span className="truncate block">{t.ownerName}</span>
-                  <div
-                    onMouseDown={(e) => startResizing("ownerName", e)}
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  ></div>
-                </th>
+                {isColumnVisible("ownerName") && (
+                  <th
+                    style={{ width: columnWidths.ownerName, minWidth: columnWidths.ownerName }}
+                    className="py-3.5 px-4 relative group"
+                  >
+                    <span className="truncate block">{t.ownerName}</span>
+                    <div
+                      onMouseDown={(e) => startResizing("ownerName", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
 
-                <th
-                  style={{ width: columnWidths.phone, minWidth: columnWidths.phone }}
-                  className="py-3.5 px-4 relative group"
-                >
-                  <span className="truncate block">{t.phone}</span>
-                  <div
-                    onMouseDown={(e) => startResizing("phone", e)}
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  ></div>
-                </th>
+                {isColumnVisible("phone") && (
+                  <th
+                    style={{ width: columnWidths.phone, minWidth: columnWidths.phone }}
+                    className="py-3.5 px-4 relative group"
+                  >
+                    <span className="truncate block">{t.phone}</span>
+                    <div
+                      onMouseDown={(e) => startResizing("phone", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
 
-                <th
-                  style={{ width: columnWidths.binNo, minWidth: columnWidths.binNo }}
-                  className="py-3.5 px-4 relative group"
-                >
-                  <span className="truncate block">{t.binNo}</span>
-                  <div
-                    onMouseDown={(e) => startResizing("binNo", e)}
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  ></div>
-                </th>
+                {isColumnVisible("binNo") && (
+                  <th
+                    style={{ width: columnWidths.binNo, minWidth: columnWidths.binNo }}
+                    className="py-3.5 px-4 relative group"
+                  >
+                    <span className="truncate block">{t.binNo}</span>
+                    <div
+                      onMouseDown={(e) => startResizing("binNo", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
 
-                <th
-                  style={{ width: columnWidths.eTinNo, minWidth: columnWidths.eTinNo }}
-                  className="py-3.5 px-4 relative group"
-                >
-                  <span className="truncate block">{t.eTinNo}</span>
-                  <div
-                    onMouseDown={(e) => startResizing("eTinNo", e)}
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  ></div>
-                </th>
+                {isColumnVisible("eTinNo") && (
+                  <th
+                    style={{ width: columnWidths.eTinNo, minWidth: columnWidths.eTinNo }}
+                    className="py-3.5 px-4 relative group"
+                  >
+                    <span className="truncate block">{t.eTinNo}</span>
+                    <div
+                      onMouseDown={(e) => startResizing("eTinNo", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
 
-                <th
-                  style={{ width: columnWidths.address, minWidth: columnWidths.address }}
-                  className="py-3.5 px-4 relative group"
-                >
-                  <span className="truncate block">{t.address}</span>
-                  <div
-                    onMouseDown={(e) => startResizing("address", e)}
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  ></div>
-                </th>
+                {isColumnVisible("address") && (
+                  <th
+                    style={{ width: columnWidths.address, minWidth: columnWidths.address }}
+                    className="py-3.5 px-4 relative group"
+                  >
+                    <span className="truncate block">{t.address}</span>
+                    <div
+                      onMouseDown={(e) => startResizing("address", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
 
-                <th
-                  style={{ width: columnWidths.status, minWidth: columnWidths.status }}
-                  className="py-3.5 px-4 text-center relative group"
-                >
-                  <span className="truncate block">{t.status}</span>
-                  <div
-                    onMouseDown={(e) => startResizing("status", e)}
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  ></div>
-                </th>
+                {isColumnVisible("status") && (
+                  <th
+                    style={{ width: columnWidths.status, minWidth: columnWidths.status }}
+                    className="py-3.5 px-4 text-center relative group"
+                  >
+                    <span className="truncate block">{t.status}</span>
+                    <div
+                      onMouseDown={(e) => startResizing("status", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
 
-                <th
-                  style={{ width: columnWidths.actions, minWidth: columnWidths.actions }}
-                  className="py-3.5 px-4 text-right pr-6"
-                >
-                  {t.actions}
-                </th>
+                {isColumnVisible("actions") && (
+                  <th
+                    style={{ width: columnWidths.actions, minWidth: columnWidths.actions }}
+                    className="py-3.5 px-4 text-right pr-6"
+                  >
+                    {t.actions}
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody
@@ -779,135 +830,153 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                       isDark ? "hover:bg-slate-800/40" : "hover:bg-slate-50"
                     }`}
                   >
-                    <td className="py-3.5 px-4 text-center font-mono text-xs opacity-60">
-                      {index + 1}
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-indigo-500">
-                      {vendor.vendorName}
-                      {vendor.notes && (
-                        <span className="block text-xs font-normal opacity-60 truncate max-w-xs">
-                          {vendor.notes}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {vendor.ownerName || <span className="opacity-40">-</span>}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs">
-                      {vendor.phone ? (
-                        <div className="flex items-center gap-1.5">
-                          <a
-                            href={`tel:${vendor.phone}`}
-                            className="hover:underline text-blue-500 flex items-center gap-1.5"
-                          >
-                            <i className="fa-solid fa-phone text-[10px]"></i>
-                            {vendor.phone}
-                          </a>
-                          <button
-                            onClick={() => copyToClipboard(vendor.phone!, "Phone")}
-                            className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-blue-500/10 text-blue-500 transition-all"
-                            title={isBn ? "ফোন নম্বর কপি করুন" : "Copy Phone No"}
-                          >
-                            <i
-                              className={`fa-solid ${
-                                copiedText === `Phone_${vendor.phone}`
-                                  ? "fa-check text-emerald-500"
-                                  : "fa-copy text-[11px]"
-                              }`}
-                            ></i>
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="opacity-40">-</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs">
-                      {vendor.binNo ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 font-semibold border border-indigo-500/20">
-                            {vendor.binNo}
+                    {isColumnVisible("sl") && (
+                      <td className="py-3.5 px-4 text-center font-mono text-xs opacity-60">
+                        {index + 1}
+                      </td>
+                    )}
+                    {isColumnVisible("vendorName") && (
+                      <td className="py-3.5 px-4 font-semibold text-indigo-500">
+                        {vendor.vendorName}
+                        {vendor.notes && (
+                          <span className="block text-xs font-normal opacity-60 truncate max-w-xs">
+                            {vendor.notes}
                           </span>
+                        )}
+                      </td>
+                    )}
+                    {isColumnVisible("ownerName") && (
+                      <td className="py-3.5 px-4">
+                        {vendor.ownerName || <span className="opacity-40">-</span>}
+                      </td>
+                    )}
+                    {isColumnVisible("phone") && (
+                      <td className="py-3.5 px-4 font-mono text-xs">
+                        {vendor.phone ? (
+                          <div className="flex items-center gap-1.5">
+                            <a
+                              href={`tel:${vendor.phone}`}
+                              className="hover:underline text-blue-500 flex items-center gap-1.5"
+                            >
+                              <i className="fa-solid fa-phone text-[10px]"></i>
+                              {vendor.phone}
+                            </a>
+                            <button
+                              onClick={() => copyToClipboard(vendor.phone!, "Phone")}
+                              className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-blue-500/10 text-blue-500 transition-all"
+                              title={isBn ? "ফোন নম্বর কপি করুন" : "Copy Phone No"}
+                            >
+                              <i
+                                className={`fa-solid ${
+                                  copiedText === `Phone_${vendor.phone}`
+                                    ? "fa-check text-emerald-500"
+                                    : "fa-copy text-[11px]"
+                                }`}
+                              ></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="opacity-40">-</span>
+                        )}
+                      </td>
+                    )}
+                    {isColumnVisible("binNo") && (
+                      <td className="py-3.5 px-4 font-mono text-xs">
+                        {vendor.binNo ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 font-semibold border border-indigo-500/20">
+                              {vendor.binNo}
+                            </span>
+                            <button
+                              onClick={() => copyToClipboard(vendor.binNo!, "BIN")}
+                              className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-indigo-500/10 text-indigo-500 transition-all"
+                              title={isBn ? "বিআইএন নম্বর কপি করুন" : "Copy BIN No"}
+                            >
+                              <i
+                                className={`fa-solid ${
+                                  copiedText === `BIN_${vendor.binNo}`
+                                    ? "fa-check text-emerald-500"
+                                    : "fa-copy text-[11px]"
+                                }`}
+                              ></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="opacity-40">-</span>
+                        )}
+                      </td>
+                    )}
+                    {isColumnVisible("eTinNo") && (
+                      <td className="py-3.5 px-4 font-mono text-xs">
+                        {vendor.eTinNo ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-500 font-semibold border border-purple-500/20">
+                              {vendor.eTinNo}
+                            </span>
+                            <button
+                              onClick={() => copyToClipboard(vendor.eTinNo!, "E-TIN")}
+                              className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-purple-500/10 text-purple-500 transition-all"
+                              title={isBn ? "ই-টিন নম্বর কপি করুন" : "Copy E-TIN No"}
+                            >
+                              <i
+                                className={`fa-solid ${
+                                  copiedText === `E-TIN_${vendor.eTinNo}`
+                                    ? "fa-check text-emerald-500"
+                                    : "fa-copy text-[11px]"
+                                }`}
+                              ></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="opacity-40">-</span>
+                        )}
+                      </td>
+                    )}
+                    {isColumnVisible("address") && (
+                      <td className="py-3.5 px-4 max-w-xs truncate">
+                        {vendor.address || <span className="opacity-40">-</span>}
+                      </td>
+                    )}
+                    {isColumnVisible("status") && (
+                      <td className="py-3.5 px-4 text-center">
+                        <button
+                          onClick={() => handleToggleActive(vendor)}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
+                            vendor.active
+                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/20"
+                              : "bg-rose-500/10 text-rose-500 border-rose-500/30 hover:bg-rose-500/20"
+                          }`}
+                        >
+                          {vendor.active
+                            ? isBn
+                              ? "সক্রিয়"
+                              : "Active"
+                            : isBn
+                            ? "নিষ্ক্রিয়"
+                            : "Inactive"}
+                        </button>
+                      </td>
+                    )}
+                    {isColumnVisible("actions") && (
+                      <td className="py-3.5 px-4 text-right pr-6">
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => copyToClipboard(vendor.binNo!, "BIN")}
-                            className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-indigo-500/10 text-indigo-500 transition-all"
-                            title={isBn ? "বিআইএন নম্বর কপি করুন" : "Copy BIN No"}
+                            onClick={() => openEditModal(vendor)}
+                            className="p-1.5 rounded-lg border border-slate-700/50 hover:bg-indigo-500/10 text-indigo-500 transition-all"
+                            title={isBn ? "সম্পাদনা করুন" : "Edit"}
                           >
-                            <i
-                              className={`fa-solid ${
-                                copiedText === `BIN_${vendor.binNo}`
-                                  ? "fa-check text-emerald-500"
-                                  : "fa-copy text-[11px]"
-                              }`}
-                            ></i>
+                            <i className="fa-solid fa-pen text-xs"></i>
+                          </button>
+                          <button
+                            onClick={() => setDeleteVendorId(vendor.id)}
+                            className="p-1.5 rounded-lg border border-rose-500/30 hover:bg-rose-500/10 text-rose-500 transition-all"
+                            title={isBn ? "মুছে ফেলুন" : "Delete"}
+                          >
+                            <i className="fa-solid fa-trash text-xs"></i>
                           </button>
                         </div>
-                      ) : (
-                        <span className="opacity-40">-</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs">
-                      {vendor.eTinNo ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-500 font-semibold border border-purple-500/20">
-                            {vendor.eTinNo}
-                          </span>
-                          <button
-                            onClick={() => copyToClipboard(vendor.eTinNo!, "E-TIN")}
-                            className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-purple-500/10 text-purple-500 transition-all"
-                            title={isBn ? "ই-টিন নম্বর কপি করুন" : "Copy E-TIN No"}
-                          >
-                            <i
-                              className={`fa-solid ${
-                                copiedText === `E-TIN_${vendor.eTinNo}`
-                                  ? "fa-check text-emerald-500"
-                                  : "fa-copy text-[11px]"
-                              }`}
-                            ></i>
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="opacity-40">-</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 max-w-xs truncate">
-                      {vendor.address || <span className="opacity-40">-</span>}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => handleToggleActive(vendor)}
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
-                          vendor.active
-                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/20"
-                            : "bg-rose-500/10 text-rose-500 border-rose-500/30 hover:bg-rose-500/20"
-                        }`}
-                      >
-                        {vendor.active
-                          ? isBn
-                            ? "সক্রিয়"
-                            : "Active"
-                          : isBn
-                          ? "নিষ্ক্রিয়"
-                          : "Inactive"}
-                      </button>
-                    </td>
-                    <td className="py-3.5 px-4 text-right pr-6">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openEditModal(vendor)}
-                          className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-all"
-                          title={t.editVendor}
-                        >
-                          <i className="fa-solid fa-pen-to-square"></i>
-                        </button>
-                        <button
-                          onClick={() => setDeleteVendorId(vendor.id)}
-                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 transition-all"
-                          title={t.delete}
-                        >
-                          <i className="fa-solid fa-trash-can"></i>
-                        </button>
-                      </div>
-                    </td>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

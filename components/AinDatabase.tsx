@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Client, SystemConfig } from "../types";
 import { printElement } from "../utils/printTable";
+import { useResizableColumns } from "../utils/useResizableColumns";
+import ColumnVisibilityToggle from "./ColumnVisibilityToggle";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { insertClient, updateClient, deleteClient } from "../utils/supabaseApi";
 import {
@@ -415,6 +417,40 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
 
   const isDark = systemConfig.theme === "dark";
 
+  // Table Column Resizing & Visibility
+  const initialColumnWidths = useMemo(
+    () => ({
+      select: 50,
+      ain: 150,
+      name: 260,
+      circle: 140,
+      phone: 220,
+      action: 100,
+    }),
+    []
+  );
+
+  const {
+    columnWidths,
+    startResizing,
+    toggleColumnVisibility,
+    isColumnVisible,
+    showAllColumns,
+    resetColumns,
+  } = useResizableColumns(initialColumnWidths, 50, "ain_database_table");
+
+  const tableColumns = useMemo(
+    () => [
+      { key: "select", label: "Select Checkbox" },
+      { key: "ain", label: "AIN ID" },
+      { key: "name", label: "Business Information" },
+      { key: "circle", label: "Circle" },
+      { key: "phone", label: "Communication / Phone" },
+      { key: "action", label: "Action" },
+    ],
+    []
+  );
+
   return (
     <div className="space-y-6">
       {/* Top Action Bar */}
@@ -498,6 +534,15 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
             />
           </div>
           <div className="flex items-center gap-3">
+            <ColumnVisibilityToggle
+              columns={tableColumns}
+              isColumnVisible={isColumnVisible}
+              toggleColumnVisibility={toggleColumnVisibility}
+              showAllColumns={showAllColumns}
+              resetColumns={resetColumns}
+              isDark={isDark}
+            />
+
             <button
               onClick={() => printElement(document.getElementById("ain-table"), "AIN Database Profiles", {
                 header: {
@@ -523,54 +568,109 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
           <table id="ain-table" className="w-full text-left border-collapse">
             <thead>
               <tr
-                className={`${isDark ? "bg-slate-900/50 border-slate-700" : "bg-slate-50 border-slate-300"} border-b`}
+                className={`${isDark ? "bg-slate-900/50 border-slate-700" : "bg-slate-50 border-slate-300"} border-b relative select-none`}
               >
-                <th className="px-6 py-3 w-12 text-center">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded cursor-pointer accent-blue-600"
-                    checked={
-                      sortedClients.length > 0 &&
-                      selectedAins.length === sortedClients.length
-                    }
-                    onChange={toggleSelectAll}
-                    disabled={!canDelete}
-                  />
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("ain")}
-                    className="inline-flex items-center gap-1"
+                {isColumnVisible("select") && (
+                  <th
+                    style={{ width: columnWidths.select, minWidth: columnWidths.select }}
+                    className="px-6 py-3 w-12 text-center relative group"
                   >
-                    AIN ID <i className={`fas ${getSortIcon("ain")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("name")}
-                    className="inline-flex items-center gap-1"
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                      checked={
+                        sortedClients.length > 0 &&
+                        selectedAins.length === sortedClients.length
+                      }
+                      onChange={toggleSelectAll}
+                      disabled={!canDelete}
+                    />
+                    <div
+                      onMouseDown={(e) => startResizing("select", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("ain") && (
+                  <th
+                    style={{ width: columnWidths.ain, minWidth: columnWidths.ain }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Business Information{" "}
-                    <i className={`fas ${getSortIcon("name")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  Circle
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("phone")}
-                    className="inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("ain")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      AIN ID <i className={`fas ${getSortIcon("ain")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("ain", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("name") && (
+                  <th
+                    style={{ width: columnWidths.name, minWidth: columnWidths.name }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    Communication <i className={`fas ${getSortIcon("phone")}`}></i>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
-                  Action
-                </th>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("name")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Business Information{" "}
+                      <i className={`fas ${getSortIcon("name")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("name", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("circle") && (
+                  <th
+                    style={{ width: columnWidths.circle, minWidth: columnWidths.circle }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
+                  >
+                    <span className="truncate block">Circle</span>
+                    <div
+                      onMouseDown={(e) => startResizing("circle", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("phone") && (
+                  <th
+                    style={{ width: columnWidths.phone, minWidth: columnWidths.phone }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("phone")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Communication <i className={`fas ${getSortIcon("phone")}`}></i>
+                    </button>
+                    <div
+                      onMouseDown={(e) => startResizing("phone", e)}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    ></div>
+                  </th>
+                )}
+
+                {isColumnVisible("action") && (
+                  <th
+                    style={{ width: columnWidths.action, minWidth: columnWidths.action }}
+                    className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right"
+                  >
+                    Action
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody
@@ -597,98 +697,110 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                           : "hover:bg-slate-50/70"
                     }`}
                   >
-                    <td className="px-6 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded cursor-pointer accent-blue-600"
-                        checked={selectedAins.includes(client.ain)}
-                        onChange={() => toggleSelectOne(client.ain)}
-                        disabled={!canDelete}
-                      />
-                    </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`text-sm font-black px-3 py-1.5 rounded-xl border shadow-sm ${isDark ? "bg-blue-900/30 border-blue-800 text-blue-400" : "bg-blue-50 border-blue-100 text-blue-700"}`}
-                      >
-                        {client.ain}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div
-                        className={`text-sm font-black transition-colors ${isDark ? "text-slate-200 group-hover:text-blue-400" : "text-slate-800 group-hover:text-blue-700"}`}
-                      >
-                        {client.name}
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">
-                        Verified Importer/Exporter
-                      </div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`text-xs font-black px-2.5 py-1 rounded-xl border shadow-sm ${
-                          client.circle === "West"
-                            ? "bg-purple-50 border-purple-100 text-purple-700 dark:bg-purple-950/20 dark:border-purple-800 dark:text-purple-400"
-                            : client.circle === "North"
-                              ? "bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-400"
-                              : client.circle === "South"
-                                ? "bg-rose-50 border-rose-100 text-rose-700 dark:bg-rose-950/20 dark:border-rose-800 dark:text-rose-400"
-                                : "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400"
-                        }`}
-                      >
-                        {client.circle || "East"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
-                      {getClientPhones(client).length > 0 ? (
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center border shrink-0 ${isDark ? "bg-green-900/20 text-green-500 border-green-800" : "bg-green-50 text-green-500 border-green-100"}`}
-                          >
-                            <i className="fab fa-whatsapp text-sm"></i>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {getClientPhones(client).map((phoneNumber) => (
-                              <span
-                                key={`${client.ain}-${phoneNumber}`}
-                                className={`text-xs font-black px-3 py-1.5 rounded-xl border ${isDark ? "bg-slate-900 border-slate-700 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-600"}`}
-                              >
-                                {phoneNumber}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-slate-300 dark:text-slate-500 text-[11px] italic font-bold">
-                          No WhatsApp Linked
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-all">
-                        <button
-                          onClick={() => handleOpenModal(client)}
-                          disabled={!canAdd}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-blue-400 hover:bg-blue-600 hover:text-white" : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"}`}
-                          title="Edit Profile"
-                        >
-                          <i className="fas fa-pen text-xs"></i>
-                        </button>
-                        <button
-                          onClick={() =>
-                            setConfirmDelete({
-                              show: true,
-                              ain: client.ain,
-                              isBulk: false,
-                            })
-                          }
+                    {isColumnVisible("select") && (
+                      <td className="px-6 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                          checked={selectedAins.includes(client.ain)}
+                          onChange={() => toggleSelectOne(client.ain)}
                           disabled={!canDelete}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-red-400 hover:bg-red-500 hover:text-white" : "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"}`}
-                          title="Delete Record"
+                        />
+                      </td>
+                    )}
+                    {isColumnVisible("ain") && (
+                      <td className="px-6 py-3">
+                        <span
+                          className={`text-sm font-black px-3 py-1.5 rounded-xl border shadow-sm ${isDark ? "bg-blue-900/30 border-blue-800 text-blue-400" : "bg-blue-50 border-blue-100 text-blue-700"}`}
                         >
-                          <i className="fas fa-trash-alt text-xs"></i>
-                        </button>
-                      </div>
-                    </td>
+                          {client.ain}
+                        </span>
+                      </td>
+                    )}
+                    {isColumnVisible("name") && (
+                      <td className="px-6 py-3">
+                        <div
+                          className={`text-sm font-black transition-colors ${isDark ? "text-slate-200 group-hover:text-blue-400" : "text-slate-800 group-hover:text-blue-700"}`}
+                        >
+                          {client.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">
+                          Verified Importer/Exporter
+                        </div>
+                      </td>
+                    )}
+                    {isColumnVisible("circle") && (
+                      <td className="px-6 py-3">
+                        <span
+                          className={`text-xs font-black px-2.5 py-1 rounded-xl border shadow-sm ${
+                            client.circle === "West"
+                              ? "bg-purple-50 border-purple-100 text-purple-700 dark:bg-purple-950/20 dark:border-purple-800 dark:text-purple-400"
+                              : client.circle === "North"
+                                ? "bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-400"
+                                : client.circle === "South"
+                                  ? "bg-rose-50 border-rose-100 text-rose-700 dark:bg-rose-950/20 dark:border-rose-800 dark:text-rose-400"
+                                  : "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400"
+                          }`}
+                        >
+                          {client.circle || "East"}
+                        </span>
+                      </td>
+                    )}
+                    {isColumnVisible("phone") && (
+                      <td className="px-6 py-3">
+                        {getClientPhones(client).length > 0 ? (
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center border shrink-0 ${isDark ? "bg-green-900/20 text-green-500 border-green-800" : "bg-green-50 text-green-500 border-green-100"}`}
+                            >
+                              <i className="fab fa-whatsapp text-sm"></i>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {getClientPhones(client).map((phoneNumber) => (
+                                <span
+                                  key={`${client.ain}-${phoneNumber}`}
+                                  className={`text-xs font-black px-3 py-1.5 rounded-xl border ${isDark ? "bg-slate-900 border-slate-700 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-600"}`}
+                                >
+                                  {phoneNumber}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-300 dark:text-slate-500 text-[11px] italic font-bold">
+                            No WhatsApp Linked
+                          </span>
+                        )}
+                      </td>
+                    )}
+                    {isColumnVisible("action") && (
+                      <td className="px-6 py-3 text-right">
+                        <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-all">
+                          <button
+                            onClick={() => handleOpenModal(client)}
+                            disabled={!canAdd}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-blue-400 hover:bg-blue-600 hover:text-white" : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"}`}
+                            title="Edit Profile"
+                          >
+                            <i className="fas fa-pen text-xs"></i>
+                          </button>
+                          <button
+                            onClick={() =>
+                              setConfirmDelete({
+                                show: true,
+                                ain: client.ain,
+                                isBulk: false,
+                              })
+                            }
+                            disabled={!canDelete}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? "bg-slate-700 text-red-400 hover:bg-red-500 hover:text-white" : "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"}`}
+                            title="Delete Record"
+                          >
+                            <i className="fas fa-trash-alt text-xs"></i>
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
