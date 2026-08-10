@@ -432,6 +432,10 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     return selectedRecords.reduce((sum, r) => sum + (r.due || 0), 0);
   }, [selectedRecords]);
 
+  const selectedTotalTrips = useMemo(() => {
+    return selectedRecords.reduce((sum, r) => sum + (r.totalTrips || 0), 0);
+  }, [selectedRecords]);
+
   const summary = useMemo(
     () =>
       filteredHistory.reduce(
@@ -1808,6 +1812,9 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
             <span className="text-xs font-black uppercase tracking-wider">
               Selected {selectedIds.length}
             </span>
+            <span className="text-base md:text-lg font-extrabold tracking-wide text-amber-500">
+              Trips {selectedTotalTrips}
+            </span>
             <span className="text-base md:text-lg font-extrabold tracking-wide">
               Total {money(selectedTotalAmount)}
             </span>
@@ -1850,7 +1857,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className={`text-lg font-black ${isDark ? "text-white" : "text-slate-900"}`}>Waste Bulk Settlement</h3>
-                <p className="mt-1 text-xs font-medium text-slate-400">Processing {bulkSettlementIds.length} entry(ies)</p>
+                <p className="mt-1 text-xs font-medium text-slate-400">Processing {bulkSettlementIds.length} entry(ies) ({selectedTotalTrips} total trips)</p>
               </div>
               <button
                 type="button"
@@ -1868,7 +1875,11 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                 </div>
               ) : null}
 
-              <div className={`grid grid-cols-2 gap-3 rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+              <div className={`grid grid-cols-3 gap-2 rounded-2xl border p-4 ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Trips</p>
+                  <p className="mt-2 text-sm font-black text-amber-500">{selectedTotalTrips}</p>
+                </div>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Selected</p>
                   <p className="mt-2 text-sm font-black text-blue-600">{money(selectedTotalAmount)}</p>
