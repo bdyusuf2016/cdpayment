@@ -470,17 +470,46 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   }, [filteredHistory]);
 
   const dayWiseSummary = useMemo(() => {
-    const grouped = new Map<string, { date: string; trips: number; amount: number; received: number; due: number }>();
+    const grouped = new Map<
+      string,
+      {
+        date: string;
+        companySet: Set<string>;
+        trips: number;
+        amount: number;
+        received: number;
+        due: number;
+      }
+    >();
     historyForDayWiseReport.forEach((row) => {
       const key = row.date;
-      const current = grouped.get(key) || { date: key, trips: 0, amount: 0, received: 0, due: 0 };
+      const current = grouped.get(key) || {
+        date: key,
+        companySet: new Set<string>(),
+        trips: 0,
+        amount: 0,
+        received: 0,
+        due: 0,
+      };
+      if (row.companyId || row.companyName) {
+        current.companySet.add(row.companyId || row.companyName);
+      }
       current.trips += row.totalTrips || 0;
       current.amount += row.amount || 0;
       current.received += row.received || 0;
       current.due += row.due || 0;
       grouped.set(key, current);
     });
-    return Array.from(grouped.values()).sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
+    return Array.from(grouped.values())
+      .map((item) => ({
+        date: item.date,
+        companyCount: item.companySet.size,
+        trips: item.trips,
+        amount: item.amount,
+        received: item.received,
+        due: item.due,
+      }))
+      .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
   }, [historyForDayWiseReport]);
 
   const reportRangeLabel = useMemo(() => {
@@ -878,9 +907,9 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     lines.push(`Received,${summary.received}`);
     lines.push(`Due,${summary.due}`);
     lines.push("");
-    lines.push("Date,Trips,Amount,Received,Due");
+    lines.push("Date,Company Count,Trips,Amount,Received,Due");
     dayWiseSummary.forEach((row) => {
-      lines.push([row.date, row.trips, row.amount, row.received, row.due].map(toCsvValue).join(","));
+      lines.push([row.date, row.companyCount, row.trips, row.amount, row.received, row.due].map(toCsvValue).join(","));
     });
     lines.push("");
     lines.push("Date,Company,Car Type,Garbage,Wastage,Total Trips,Rate,Amount,Received,Due,Status,Payment Method,Notes");
@@ -965,12 +994,12 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     lines.push("DAY-WISE SUMMARY");
     lines.push(thinSeparator);
     lines.push(
-      `${padRight("Date", 12)}${padLeft("Trips", 10)}${padLeft("Amount", 18)}${padLeft("Received", 18)}${padLeft("Due", 18)}`
+      `${padRight("Date", 12)}${padLeft("Companies", 11)}${padLeft("Trips", 9)}${padLeft("Amount", 16)}${padLeft("Received", 16)}${padLeft("Due", 16)}`
     );
     lines.push(thinSeparator);
     dayWiseSummary.forEach((row) => {
       lines.push(
-        `${padRight(row.date, 12)}${padLeft(String(row.trips), 10)}${padLeft(money(row.amount), 18)}${padLeft(money(row.received), 18)}${padLeft(money(row.due), 18)}`
+        `${padRight(row.date, 12)}${padLeft(String(row.companyCount), 11)}${padLeft(String(row.trips), 9)}${padLeft(money(row.amount), 16)}${padLeft(money(row.received), 16)}${padLeft(money(row.due), 16)}`
       );
     });
     lines.push(thinSeparator);
@@ -1404,12 +1433,12 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
               <span className="text-[10px] font-bold text-slate-400">{dayWiseSummary.length} day(s)</span>
             </div>
             <div className="max-h-[22rem] overflow-auto">
-              <table className="w-full min-w-[620px] text-left text-xs">
-                <thead className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-white text-slate-500"}`}><tr><th className="px-4 py-3 font-black uppercase tracking-widest">Date</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Trips</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Amount</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Received</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Due</th></tr></thead>
+              <table className="w-full min-w-[660px] text-left text-xs">
+                <thead className={`${isDark ? "bg-slate-800 text-slate-300" : "bg-white text-slate-500"}`}><tr><th className="px-4 py-3 font-black uppercase tracking-widest">Date</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Company Count</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Trips</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Amount</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Received</th><th className="px-4 py-3 font-black uppercase tracking-widest text-right">Due</th></tr></thead>
                 <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
                   {dayWiseSummary.map((row) => (
                     <tr key={row.date} onClick={() => { const inputDate = convertDisplayDateToInput(row.date); setStartDate(inputDate); setEndDate(inputDate); }} className={`cursor-pointer ${isDark ? "hover:bg-slate-800/70" : "hover:bg-blue-50"}`}>
-                      <td className="px-4 py-3 font-bold">{row.date}</td><td className="px-4 py-3 text-right">{row.trips}</td><td className="px-4 py-3 text-right text-blue-600 font-black">{money(row.amount)}</td><td className="px-4 py-3 text-right text-emerald-600 font-black">{money(row.received)}</td><td className="px-4 py-3 text-right text-rose-500 font-black">{money(row.due)}</td>
+                      <td className="px-4 py-3 font-bold">{row.date}</td><td className="px-4 py-3 text-right font-bold text-slate-600 dark:text-slate-300">{row.companyCount}</td><td className="px-4 py-3 text-right">{row.trips}</td><td className="px-4 py-3 text-right text-blue-600 font-black">{money(row.amount)}</td><td className="px-4 py-3 text-right text-emerald-600 font-black">{money(row.received)}</td><td className="px-4 py-3 text-right text-rose-500 font-black">{money(row.due)}</td>
                     </tr>
                   ))}
                 </tbody>
