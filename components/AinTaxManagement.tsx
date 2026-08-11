@@ -429,6 +429,39 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         aNo: 8,
       };
 
+      // Auto detect totalTax column by matching 0.00 / decimal currency format patterns across columns
+      let matched00TaxCol = -1;
+      const colScores: Record<number, number> = {};
+      const sampleCheckRows = matrix.slice(0, Math.min(matrix.length, 15));
+
+      sampleCheckRows.forEach((row) => {
+        row.forEach((cell, colIdx) => {
+          if (colIdx < 4) return; // Skip metadata columns (0..3)
+          const val = (cell || "").trim();
+          // Check if formatted like 105,158.00, 10,788.00, 134.50, 2,267.75, 0.00
+          const is00Format =
+            /^\d{1,3}(,\d{3})*\.\d{2}$/.test(val) ||
+            /^\d+\.\d{2}$/.test(val) ||
+            /^\d{1,3}(,\d{3})*\.\d{1,2}$/.test(val);
+
+          const rawNum = Number(val.replace(/[^0-9.-]/g, ""));
+          const isLargeNum = rawNum > 50;
+
+          if (is00Format || isLargeNum) {
+            colScores[colIdx] = (colScores[colIdx] || 0) + (is00Format ? 3 : 1);
+          }
+        });
+      });
+
+      let maxScore = 0;
+      Object.entries(colScores).forEach(([colStr, score]) => {
+        const cIdx = Number(colStr);
+        if (score > maxScore) {
+          maxScore = score;
+          matched00TaxCol = cIdx;
+        }
+      });
+
       if (maxCols >= 20) {
         // Exact User Requested 31-Column Structure:
         // Col 1: Year (2023) -> index 0
@@ -438,7 +471,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         // Col 9: Reg No (105045) -> index 8
         // Col 10: Date (2023-08-02) -> index 9
         // Col 11: Type (EX) -> index 10
-        // Col 26: Total Tax (134.5) -> index 25
+        // Col 28 / Col 26: Matched 0.00 Total Tax Column
         defaultMapping = {
           year: 0,
           ainName: 3,
@@ -447,7 +480,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           regNo: 8,
           date: 9,
           type: 10,
-          totalTax: 27,
+          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : (27 < maxCols ? 27 : 25),
           aNo: 18,
         };
       } else if (maxCols >= 10) {
@@ -459,7 +492,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           regNo: 7 < maxCols ? 7 : 8,
           date: 8 < maxCols ? 8 : 9,
           type: 9 < maxCols ? 9 : 7,
-          totalTax: 16 < maxCols ? 16 : maxCols - 2,
+          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : (16 < maxCols ? 16 : maxCols - 2),
           aNo: 18 < maxCols ? 18 : maxCols - 1,
         };
       }
