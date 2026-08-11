@@ -246,14 +246,28 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       }
       const type = rawType;
 
-      // 8. Total Tax: numeric tax amount (excluding token 1 taka fees and non-tax numbers)
+      // 8. Total Tax: numeric tax amount from Col 26 (index 25 / 26) or mapped tax column
       let totalTax = 0;
       if (mapping.totalTax >= 0 && cells[mapping.totalTax]) {
         const rawTax = cells[mapping.totalTax].replace(/[^0-9.-]/g, "");
         totalTax = Number(rawTax) || 0;
       }
 
-      // If totalTax is <= 1 (token fee or empty), search TAX columns (index >= 12) for real tax amount > 1
+      // Check Col 26 (index 25 or 26) explicitly if mapped totalTax is <= 1
+      if (totalTax <= 1 && cells[25]) {
+        const rawTax25 = cells[25].replace(/[^0-9.-]/g, "");
+        if (Number(rawTax25) > 1) {
+          totalTax = Number(rawTax25);
+        }
+      }
+      if (totalTax <= 1 && cells[26]) {
+        const rawTax26 = cells[26].replace(/[^0-9.-]/g, "");
+        if (Number(rawTax26) > 1) {
+          totalTax = Number(rawTax26);
+        }
+      }
+
+      // Fallback search TAX columns (index >= 12) if still <= 1
       if (totalTax <= 1) {
         for (let i = cells.length - 1; i >= 12; i--) {
           const cellVal = (cells[i] || "").trim();
@@ -463,7 +477,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         let typeCol = 9 < maxCols ? 9 : (7 < maxCols ? 7 : 6);
         let regNoCol = 7 < maxCols ? 7 : 8;
         let dateCol = 8 < maxCols ? 8 : 9;
-        let taxCol = 16 < maxCols ? 16 : maxCols - 2;
+        let taxCol = 25 < maxCols ? 25 : (26 < maxCols ? 26 : (16 < maxCols ? 16 : maxCols - 2));
         let aNoCol = 18 < maxCols ? 18 : maxCols - 1;
 
         // Dynamic inspection override if sample row cells vary
