@@ -71,7 +71,9 @@ export function printElement(
         txt === "controls" ||
         txt === "actions" ||
         txt === "control" ||
-        txt === "action"
+        txt === "action" ||
+        txt === "select" ||
+        txt.includes("অ্যাকশন")
       ) {
         excluded.add(idx);
       }

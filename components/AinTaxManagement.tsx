@@ -1109,7 +1109,9 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   // Print Table
   const handlePrint = () => {
     if (tableRef.current) {
-      printElement(tableRef.current, isBn ? "AIN ট্যাক্স বকেয়া বিবরণী" : "AIN Tax Due Statement");
+      printElement(tableRef.current, isBn ? "AIN ট্যাক্স বকেয়া বিবরণী" : "AIN Tax Due Statement", {
+        autoExcludeControls: true,
+      });
     }
   };
 
