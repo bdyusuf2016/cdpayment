@@ -245,32 +245,40 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       }
       const type = rawType;
 
-      // 8. Total Tax: Primary mapped column value with smart fallback if 0/empty/1
+      // 8. Total Tax: Primary mapped column value supporting 0.00 format & smart fallback
+      const parseTaxAmount = (val: string): number => {
+        if (!val) return 0;
+        let clean = val.trim();
+        if (/^0([.,]0+)?\s*(-|\/=)?$/i.test(clean)) return 0;
+        if (clean.includes(",") && clean.includes(".")) {
+          clean = clean.replace(/,/g, "");
+        } else if (clean.includes(",") && !clean.includes(".")) {
+          clean = clean.replace(/,/g, "");
+        }
+        const rawNum = clean.replace(/[^0-9.-]/g, "");
+        const num = Number(rawNum);
+        return isNaN(num) ? 0 : num;
+      };
+
       let totalTax = 0;
       if (mapping.totalTax >= 0 && cells[mapping.totalTax] !== undefined) {
-        const rawTax = cells[mapping.totalTax].replace(/[^0-9.-]/g, "");
-        totalTax = Number(rawTax) || 0;
+        totalTax = parseTaxAmount(cells[mapping.totalTax]);
       }
 
       // If totalTax is <= 1 (e.g. Col 26 has 0, 0.00 or empty for this row), search Col 28 / Col 27 / tax columns for real tax amount
       if (totalTax <= 1) {
         if (cells[27]) {
-          const rawTax27 = cells[27].replace(/[^0-9.-]/g, "");
-          if (Number(rawTax27) > 1) {
-            totalTax = Number(rawTax27);
-          }
+          const t27 = parseTaxAmount(cells[27]);
+          if (t27 > 1) totalTax = t27;
         }
         if (totalTax <= 1 && cells[26]) {
-          const rawTax26 = cells[26].replace(/[^0-9.-]/g, "");
-          if (Number(rawTax26) > 1) {
-            totalTax = Number(rawTax26);
-          }
+          const t26 = parseTaxAmount(cells[26]);
+          if (t26 > 1) totalTax = t26;
         }
         if (totalTax <= 1) {
           for (let i = cells.length - 1; i >= 12; i--) {
             const cellVal = (cells[i] || "").trim();
-            const rawTax = cellVal.replace(/[^0-9.-]/g, "");
-            const num = Number(rawTax);
+            const num = parseTaxAmount(cellVal);
             if (
               num > 1 &&
               i !== mapping.ainNo &&
