@@ -447,7 +447,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           regNo: 8,
           date: 9,
           type: 10,
-          totalTax: 25,
+          totalTax: 27,
           aNo: 18,
         };
       } else if (maxCols >= 10) {
