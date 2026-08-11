@@ -245,51 +245,22 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       }
       const type = rawType;
 
-      // 8. Total Tax: STRICTLY MAPPED COLUMN VALUE ONLY (No Col 28 or secondary column override)
-      const parseTaxAmount = (val: string): number => {
-        if (!val) return 0;
-        let clean = val.trim();
-        if (/^0([.,]0+)?\s*(-|\/=)?$/i.test(clean)) return 0;
-        if (clean.includes(",") && clean.includes(".")) {
-          clean = clean.replace(/,/g, "");
-        } else if (clean.includes(",") && !clean.includes(".")) {
-          clean = clean.replace(/,/g, "");
+      // 8. Total Tax: Exact formula from DutyPayment.tsx (parseImportedDutyAmount)
+      const parseDutyPaymentAmount = (value: unknown): number => {
+        if (typeof value === "number") {
+          return Number.isFinite(value) ? value : 0;
         }
-        const rawNum = clean.replace(/[^0-9.-]/g, "");
-        const num = Number(rawNum);
-        return isNaN(num) ? 0 : num;
+        const cleaned = String(value ?? "")
+          .replace(/,/g, "")
+          .trim();
+        if (!cleaned) return 0;
+        const parsed = Number(cleaned);
+        return Number.isFinite(parsed) ? parsed : 0;
       };
 
       let totalTax = 0;
       if (mapping.totalTax >= 0 && cells[mapping.totalTax] !== undefined) {
-        totalTax = parseTaxAmount(cells[mapping.totalTax]);
-      }
-
-      // If totalTax is <= 1 (e.g. selected column has 0 or empty for this row), search other row tax columns for real tax amount > 1
-      if (totalTax <= 1) {
-        for (let i = cells.length - 1; i >= 10; i--) {
-          const cellVal = (cells[i] || "").trim();
-          const num = parseTaxAmount(cellVal);
-          if (
-            num > 1 &&
-            i !== mapping.ainNo &&
-            i !== mapping.regNo &&
-            i !== mapping.year &&
-            i !== mapping.aNo &&
-            cellVal !== regNo &&
-            cellVal !== ainNo &&
-            cellVal !== year &&
-            !/^\d{4}$/.test(cellVal) &&
-            !/^\d{4}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal) &&
-            !/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal)
-          ) {
-            totalTax = num;
-            break;
-          }
-        }
-        if (totalTax <= 1) {
-          totalTax = 0;
-        }
+        totalTax = parseDutyPaymentAmount(cells[mapping.totalTax]);
       }
 
       // 9. Sanitize A No (Assessment No): 4-8 digit numeric assessment number like 12345 or 13479 (MUST NOT be 000437789-0403 ref format)
