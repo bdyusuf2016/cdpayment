@@ -457,66 +457,38 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         aNo: 8,
       };
 
-      if (maxCols >= 10) {
-        // Exact NBR ASYCUDA Export Structure (as shown in user software table screenshot)
-        // Col 0: Year (2023)
-        // Col 3: Declarant Name / AIN Name (Mona Lisa International)
-        // Col 4: Declarant / AIN No (803020311)
-        // Col 5: Ref (#537)
-        // Col 6: Type (C) or Col 9 (EX)
-        // Col 7: Reg No (101716)
-        // Col 8: Reg Date (26/07/2023)
-        // Col 16: Total Tax (1,017.51)
-        // Col 18: Ast. # / A No (101... / 13479)
-        
-        let ainNameCol = sampleRow[3] && /[a-zA-Z]{3,}/.test(sampleRow[3]) ? 3 : 2;
-        let ainNoCol = 4 < maxCols ? 4 : 5;
-        let refCol = 5 < maxCols ? 5 : 6;
-        let typeCol = 9 < maxCols ? 9 : (7 < maxCols ? 7 : 6);
-        let regNoCol = 7 < maxCols ? 7 : 8;
-        let dateCol = 8 < maxCols ? 8 : 9;
-        let taxCol = 25 < maxCols ? 25 : (27 < maxCols ? 27 : (16 < maxCols ? 16 : maxCols - 2));
-        let aNoCol = 18 < maxCols ? 18 : maxCols - 1;
-
-        // Dynamic inspection override if sample row cells vary
-        sampleRow.forEach((cell, idx) => {
-          const val = cell.trim();
-          if (/^\d{4}-\d{2}-\d{2}$/.test(val) || /^\d{2}[-/]\d{2}[-/]\d{4}$/.test(val)) {
-            dateCol = idx;
-          }
-          if (/^\d{8,11}$/.test(val) && idx !== 0) {
-            ainNoCol = idx;
-          }
-          if (val.startsWith("#")) {
-            refCol = idx;
-          }
-        });
-
-        // Find Total Tax column (numeric value > 50 near end)
-        for (let idx = sampleRow.length - 1; idx >= 4; idx--) {
-          const valStr = (sampleRow[idx] || "").replace(/[^0-9.-]/g, "");
-          const num = Number(valStr);
-          if (
-            num > 50 &&
-            !/^\d{4}$/.test(sampleRow[idx]) &&
-            !/^\d{4}-\d{2}-\d{2}$/.test(sampleRow[idx]) &&
-            !/^\d{8,11}$/.test(sampleRow[idx])
-          ) {
-            taxCol = idx;
-            break;
-          }
-        }
-
+      if (maxCols >= 20) {
+        // Exact User Requested 31-Column Structure:
+        // Col 1: Year (2023) -> index 0
+        // Col 4: AIN Name (FAIR VENTURE LT) -> index 3
+        // Col 6: AIN No (803000265) -> index 5
+        // Col 7: Ref (#292) -> index 6
+        // Col 9: Reg No (105045) -> index 8
+        // Col 10: Date (2023-08-02) -> index 9
+        // Col 11: Type (EX) -> index 10
+        // Col 26: Total Tax (134.5) -> index 25
         defaultMapping = {
           year: 0,
-          ainName: ainNameCol,
-          ainNo: ainNoCol,
-          ref: refCol,
-          regNo: regNoCol,
-          date: dateCol,
-          type: typeCol,
-          totalTax: taxCol,
-          aNo: aNoCol,
+          ainName: 3,
+          ainNo: 5,
+          ref: 6,
+          regNo: 8,
+          date: 9,
+          type: 10,
+          totalTax: 25,
+          aNo: 18,
+        };
+      } else if (maxCols >= 10) {
+        defaultMapping = {
+          year: 0,
+          ainName: sampleRow[3] && /[a-zA-Z]{3,}/.test(sampleRow[3]) ? 3 : 2,
+          ainNo: 4 < maxCols ? 4 : 5,
+          ref: 5 < maxCols ? 5 : 6,
+          regNo: 7 < maxCols ? 7 : 8,
+          date: 8 < maxCols ? 8 : 9,
+          type: 9 < maxCols ? 9 : 7,
+          totalTax: 16 < maxCols ? 16 : maxCols - 2,
+          aNo: 18 < maxCols ? 18 : maxCols - 1,
         };
       }
 
