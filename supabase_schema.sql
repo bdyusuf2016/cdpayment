@@ -569,3 +569,46 @@ create policy "Vendors owner or admin all"
     owner_auth_id = auth.uid()
     or public.can_current_user_access_all_business_data()
   );
+
+-- 11. AIN Tax Records Table (Stores AIN Tax Due / Arrears)
+create table if not exists public.ain_tax_records (
+  id uuid default uuid_generate_v4() primary key,
+  owner_auth_id uuid references auth.users(id) default auth.uid(),
+  year text,
+  ain_name text,
+  ain_no text,
+  ref text,
+  reg_no text,
+  date text,
+  type text,
+  total_tax numeric default 0,
+  a_no text,
+  payment_status text default 'Unpaid' check (payment_status in ('Paid', 'Unpaid')),
+  payment_date text,
+  payment_method text,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+alter table public.ain_tax_records enable row level security;
+
+drop policy if exists "AIN Tax Records owner or admin select" on public.ain_tax_records;
+drop policy if exists "AIN Tax Records owner or admin all" on public.ain_tax_records;
+
+create policy "AIN Tax Records owner or admin select"
+  on public.ain_tax_records for select
+  using (
+    owner_auth_id = auth.uid()
+    or public.can_current_user_access_all_business_data()
+  );
+
+create policy "AIN Tax Records owner or admin all"
+  on public.ain_tax_records for all
+  using (
+    owner_auth_id = auth.uid()
+    or public.can_current_user_access_all_business_data()
+  )
+  with check (
+    owner_auth_id = auth.uid()
+    or public.can_current_user_access_all_business_data()
+  );
+

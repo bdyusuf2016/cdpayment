@@ -12,6 +12,7 @@ import WasteCompanySetup from "./components/WasteCompanySetup";
 import WasteManagement from "./components/WasteManagement";
 import VendorManagement from "./components/VendorManagement";
 import AinDatabase from "./components/AinDatabase";
+import AinTaxManagement from "./components/AinTaxManagement";
 import AdminPanel from "./components/AdminPanel";
 import AuditLogs from "./components/AuditLogs";
 import Auth from "./components/Auth";
@@ -35,6 +36,7 @@ import {
   WasteCompany,
   WasteRecord,
   Vendor,
+  AinTaxRecord,
   StaffUser,
   LogEntry,
 } from "./types";
@@ -174,6 +176,23 @@ const normalizeAuditLog = (row: any): LogEntry => ({
   type: row.type || "info",
 });
 
+const normalizeAinTaxRecord = (row: any): AinTaxRecord => ({
+  id: row.id,
+  year: row.year ?? "",
+  ainName: row.ainName ?? row.ain_name ?? "",
+  ainNo: row.ainNo ?? row.ain_no ?? "",
+  ref: row.ref ?? "",
+  regNo: row.regNo ?? row.reg_no ?? "",
+  date: row.date ?? "",
+  type: row.type ?? "",
+  totalTax: Number(row.totalTax ?? row.total_tax ?? 0),
+  aNo: row.aNo ?? row.a_no ?? "",
+  paymentStatus: (row.paymentStatus ?? row.payment_status ?? "Unpaid") as "Paid" | "Unpaid",
+  paymentDate: row.paymentDate ?? row.payment_date ?? "",
+  paymentMethod: row.paymentMethod ?? row.payment_method ?? "",
+  createdAt: row.createdAt ?? row.created_at ?? undefined,
+});
+
 const normalizeClient = (row: any): Client => {
   const phones = getClientPhones({ phone: row.phone ?? "" });
   return {
@@ -266,6 +285,7 @@ const App: React.FC = () => {
   const [wasteCompanies, setWasteCompanies] = useState<WasteCompany[]>([]);
   const [wasteHistory, setWasteHistory] = useState<WasteRecord[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [ainTaxHistory, setAinTaxHistory] = useState<AinTaxRecord[]>([]);
   const [visibleDutyRows, setVisibleDutyRows] = useState<PaymentRecord[]>([]);
   const [visibleAssessmentRows, setVisibleAssessmentRows] = useState<
     AssessmentRecord[]
@@ -275,6 +295,7 @@ const App: React.FC = () => {
   >([]);
   const [visibleWasteRows, setVisibleWasteRows] = useState<WasteRecord[]>([]);
   const [visibleAinRows, setVisibleAinRows] = useState<Client[]>([]);
+  const [visibleAinTaxRows, setVisibleAinTaxRows] = useState<AinTaxRecord[]>([]);
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [auditLogs, setAuditLogs] = useState<LogEntry[]>([]);
 
@@ -477,6 +498,11 @@ const App: React.FC = () => {
     fetchAndSubscribe("vendors", setVendors, normalizeVendor).then(
       (channel) => channels.push(channel),
     );
+    fetchAndSubscribe(
+      "ain_tax_records",
+      setAinTaxHistory,
+      normalizeAinTaxRecord,
+    ).then((channel) => channels.push(channel));
     fetchAndSubscribe("staff_users", setUsers, normalizeStaffUser).then(
       (channel) => channels.push(channel),
     );
@@ -490,7 +516,7 @@ const App: React.FC = () => {
         .from("system_settings")
         .select("*")
         .limit(1)
-        .single();
+        .maybeSingle();
       if (!error && data) {
         setConfig((prev) => ({ ...prev, ...normalizeSystemConfig(data) }));
       }
@@ -561,6 +587,7 @@ const App: React.FC = () => {
         wasteCompanies,
         wasteHistory,
         vendors,
+        ainTaxHistory,
         users,
         trigger,
       });
@@ -571,7 +598,7 @@ const App: React.FC = () => {
         lastBackup: new Date(payload.timestamp).toLocaleString(),
       }));
     },
-    [assessmentHistory, clearanceHistory, clients, config, dutyHistory, users, vendors, wasteCompanies, wasteHistory],
+    [ainTaxHistory, assessmentHistory, clearanceHistory, clients, config, dutyHistory, users, vendors, wasteCompanies, wasteHistory],
   );
 
   useEffect(() => {
@@ -669,6 +696,7 @@ const App: React.FC = () => {
       waste: "Waste Management",
       vendors: "Vendor Management",
       ain: "AIN Database",
+      ainTax: "AIN Tax Due",
       reports: "Reports",
       admin: "Admin Panel",
       logs: "Audit Logs",
@@ -683,6 +711,7 @@ const App: React.FC = () => {
       waste: "গারবেজ ও ওয়েস্টেজ",
       vendors: "ভেন্ডার মডিউল",
       ain: "AIN ডাটাবেস",
+      ainTax: "AIN ট্যাক্স বকেয়া",
       reports: "রিপোর্ট",
       admin: "এডমিন প্যানেল",
       logs: "অডিট লগ",
@@ -727,6 +756,7 @@ const App: React.FC = () => {
   const canAccessWasteModule = canAccessDutyModule;
   const canAccessVendorModule = canAccessDutyModule;
   const canAccessAinModule = hasPermission("ain_view");
+  const canAccessAinTaxModule = canAccessDutyModule || hasPermission("ain_tax_view") || hasPermission("ain_view");
   const canAccessReportsModule = hasPermission("report_view");
   const canAccessLogsModule = hasPermission("view_logs");
   const canAccessAdminModule = isAdminUser;
@@ -739,6 +769,7 @@ const App: React.FC = () => {
       waste: canAccessWasteModule,
       vendors: canAccessVendorModule,
       ain: canAccessAinModule,
+      ainTax: canAccessAinTaxModule,
       reports: canAccessReportsModule,
       admin: canAccessAdminModule,
       logs: canAccessLogsModule,
@@ -747,6 +778,7 @@ const App: React.FC = () => {
     [
       canAccessAdminModule,
       canAccessAinModule,
+      canAccessAinTaxModule,
       canAccessAssessmentModule,
       canAccessClearanceModule,
       canAccessWasteCompanyModule,
@@ -892,6 +924,7 @@ const App: React.FC = () => {
     { id: "waste", label: t.waste, icon: "fa-truck-moving" },
     { id: "wasteCompanies", label: t.wasteCompanies, icon: "fa-building" },
     { id: "ain", label: t.ain, icon: "fa-database" },
+    { id: "ainTax", label: t.ainTax, icon: "fa-receipt" },
     { id: "reports", label: t.reports, icon: "fa-chart-line" },
     { id: "logs", label: t.logs, icon: "fa-list-check" },
   ];
@@ -911,6 +944,43 @@ const App: React.FC = () => {
 
   const stats = useMemo(() => {
     switch (activeTab) {
+      case "ainTax": {
+        const rows = visibleAinTaxRows;
+        const totalTaxSum = rows.reduce((acc, r) => acc + (r.totalTax || 0), 0);
+        const uniqueAins = new Set(
+          rows.map((r) => r.ainNo || r.ainName).filter(Boolean),
+        ).size;
+        const topTax =
+          rows.length > 0
+            ? Math.max(...rows.map((r) => r.totalTax || 0))
+            : 0;
+        return [
+          {
+            label:
+              config.language === "en" ? "Total Tax Due" : "মোট ট্যাক্স বাকী",
+            value: `Tk ${totalTaxSum.toLocaleString("en-BD")}`,
+            color: "#ef4444",
+          },
+          {
+            label: config.language === "en" ? "Total Entries" : "মোট এন্ট্রি",
+            value: rows.length.toLocaleString(),
+            color: "#2563eb",
+          },
+          {
+            label: config.language === "en" ? "Unique AINs" : "ইউনিক AIN",
+            value: uniqueAins.toLocaleString(),
+            color: "#f59e0b",
+          },
+          {
+            label:
+              config.language === "en"
+                ? "Highest Tax Due"
+                : "সর্বোচ্চ একক বাকী",
+            value: `Tk ${topTax.toLocaleString("en-BD")}`,
+            color: "#10b981",
+          },
+        ];
+      }
       case "ain":
         {
           const rows = visibleAinRows;
@@ -1323,6 +1393,21 @@ const App: React.FC = () => {
             `Total AIN in View: ${visibleAinRows.length}`,
             `Without Phone: ${noPhone}`,
             `Inactive AIN: ${inactive}`,
+          ],
+        };
+      }
+      case "ainTax": {
+        const rows = visibleAinTaxRows;
+        const totalTaxSum = rows.reduce((acc, r) => acc + (r.totalTax || 0), 0);
+        const uniqueAins = new Set(
+          rows.map((r) => r.ainNo || r.ainName).filter(Boolean),
+        ).size;
+        return {
+          title: `${stats[activeStatIndex].label} Details`,
+          items: [
+            `Total Filtered Entries: ${rows.length}`,
+            `Total Tax Due: Tk ${totalTaxSum.toLocaleString("en-BD")}`,
+            `Unique AIN Holders: ${uniqueAins}`,
           ],
         };
       }
@@ -1793,6 +1878,7 @@ const App: React.FC = () => {
               (activeTab === "wasteCompanies" && wasteCompanies.length === 0) ||
               (activeTab === "waste" && visibleWasteRows.length === 0) ||
               (activeTab === "ain" && visibleAinRows.length === 0) ||
+              (activeTab === "ainTax" && visibleAinTaxRows.length === 0) ||
               (activeTab === "logs" && auditLogs.length === 0)) && (
               <div
                 className={`mb-4 rounded-xl border px-4 py-3 text-xs font-bold ${
@@ -1875,6 +1961,15 @@ const App: React.FC = () => {
               canDelete={hasPermission("ain_delete")}
               canImport={hasPermission("ain_import")}
               canExport={hasPermission("ain_export")}
+            />
+          )}
+          {activeTab === "ainTax" && tabAccess.ainTax && (
+            <AinTaxManagement
+              history={ainTaxHistory}
+              setHistory={setAinTaxHistory}
+              onVisibleRowsChange={setVisibleAinTaxRows}
+              systemConfig={config}
+              supabase={supabase}
             />
           )}
           {activeTab === "reports" && tabAccess.reports && (

@@ -8,6 +8,7 @@ import {
   WasteCompany,
   WasteRecord,
   Vendor,
+  AinTaxRecord,
 } from "../types";
 
 export const BACKUP_STORAGE_KEYS = {
@@ -27,6 +28,7 @@ interface BackupPayloadInput {
   wasteCompanies: WasteCompany[];
   wasteHistory: WasteRecord[];
   vendors?: Vendor[];
+  ainTaxHistory?: AinTaxRecord[];
   users: StaffUser[];
   trigger: "manual" | "auto";
 }
@@ -40,6 +42,7 @@ export const buildBackupPayload = ({
   wasteCompanies,
   wasteHistory,
   vendors = [],
+  ainTaxHistory = [],
   users,
   trigger,
 }: BackupPayloadInput) => ({
@@ -53,6 +56,7 @@ export const buildBackupPayload = ({
   wasteCompanies,
   wasteHistory,
   vendors,
+  ainTaxHistory,
   users,
 });
 

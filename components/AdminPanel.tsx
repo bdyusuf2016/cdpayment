@@ -32,55 +32,150 @@ interface AdminPanelProps {
   supabase: SupabaseClient | null;
 }
 
-// Permission metadata and defaults
-const PERMISSION_ITEMS: {
-  key: keyof GranularPermissions;
-  label: string;
-  code: string;
-}[] = [
-  { key: "bill_add", label: "Add Bills", code: "BILL_ADD" },
-  { key: "bill_edit", label: "Edit Bills", code: "BILL_EDIT" },
-  { key: "bill_delete", label: "Delete Bills", code: "BILL_DELETE" },
-  { key: "bill_bulk_pay", label: "Bulk Pay", code: "BILL_BULK_PAY" },
-  { key: "bill_export", label: "Export Bills", code: "BILL_EXPORT" },
-  { key: "bill_wa_share", label: "WA Share", code: "BILL_WA_SHARE" },
-  { key: "invoice_print", label: "Print Invoice", code: "INVOICE_PRINT" },
-  { key: "ain_view", label: "View AINs", code: "AIN_VIEW" },
-  { key: "ain_add", label: "Add AIN", code: "AIN_ADD" },
-  { key: "ain_delete", label: "Delete AIN", code: "AIN_DELETE" },
-  { key: "ain_import", label: "Import AINs", code: "AIN_IMPORT" },
-  { key: "ain_export", label: "Export AINs", code: "AIN_EXPORT" },
-  { key: "user_manage", label: "Manage Users", code: "USER_MANAGE" },
-  { key: "user_reset_pass", label: "Reset Passwords", code: "USER_RESET_PASS" },
-  { key: "view_logs", label: "View Logs", code: "VIEW_LOGS" },
-  { key: "report_view", label: "Daily Report", code: "REPORT_VIEW" },
-  { key: "settings_manage", label: "Manage Settings", code: "SETTINGS_MANAGE" },
+export interface ModulePermissionGroup {
+  moduleId: string;
+  moduleNameBn: string;
+  moduleNameEn: string;
+  icon: string;
+  permissions: {
+    key: keyof GranularPermissions;
+    labelBn: string;
+    labelEn: string;
+    code: string;
+  }[];
+}
+
+export const MODULE_PERMISSION_GROUPS: ModulePermissionGroup[] = [
+  {
+    moduleId: "duty",
+    moduleNameBn: "কাস্টমস ডিউটি পে মডিউল",
+    moduleNameEn: "Customs Duty Payment Module",
+    icon: "fa-solid fa-credit-card text-blue-500",
+    permissions: [
+      { key: "duty_view", labelBn: "ডিউটি রেকর্ড দেখুন", labelEn: "View Duty Records", code: "DUTY_VIEW" },
+      { key: "bill_add", labelBn: "ডিউটি বিল যুক্ত করুন", labelEn: "Add Duty Bill", code: "DUTY_ADD" },
+      { key: "bill_edit", labelBn: "ডিউটি বিল এডিট করুন", labelEn: "Edit Duty Bill", code: "DUTY_EDIT" },
+      { key: "bill_delete", labelBn: "ডিউটি বিল ডিলেট করুন", labelEn: "Delete Duty Bill", code: "DUTY_DELETE" },
+      { key: "bill_bulk_pay", labelBn: "বাল্ক পেমেন্ট সম্পন্ন করুন", labelEn: "Bulk Pay Bills", code: "DUTY_BULK_PAY" },
+      { key: "bill_export", labelBn: "এক্সেল এক্সপোর্ট", labelEn: "Export Duty Excel", code: "DUTY_EXPORT" },
+      { key: "bill_wa_share", labelBn: "হোয়াটসঅ্যাপ শেয়ার", labelEn: "WhatsApp Share", code: "DUTY_WA_SHARE" },
+      { key: "invoice_print", labelBn: "ইনভয়েস প্রিন্ট", labelEn: "Print Invoice", code: "INVOICE_PRINT" },
+    ],
+  },
+  {
+    moduleId: "assessment",
+    moduleNameBn: "অ্যাসেসমেন্ট বিলিং মডিউল",
+    moduleNameEn: "Assessment Billing Module",
+    icon: "fa-solid fa-calculator text-amber-500",
+    permissions: [
+      { key: "assessment_view", labelBn: "অ্যাসেসমেন্ট বিল দেখুন", labelEn: "View Assessment Bills", code: "ASSESSMENT_VIEW" },
+      { key: "assessment_add", labelBn: "নতুন বিল যুক্ত করুন", labelEn: "Add Assessment Bill", code: "ASSESSMENT_ADD" },
+      { key: "assessment_edit", labelBn: "বিল এডিট করুন", labelEn: "Edit Assessment Bill", code: "ASSESSMENT_EDIT" },
+      { key: "assessment_delete", labelBn: "বিল ডিলেট করুন", labelEn: "Delete Assessment Bill", code: "ASSESSMENT_DELETE" },
+      { key: "assessment_export", labelBn: "এক্সেল এক্সপোর্ট", labelEn: "Export Assessment", code: "ASSESSMENT_EXPORT" },
+    ],
+  },
+  {
+    moduleId: "clearance",
+    moduleNameBn: "ডেইলি ক্লিয়ারেন্স ট্র্যাকার মডিউল",
+    moduleNameEn: "Daily Clearance Tracker",
+    icon: "fa-solid fa-boxes-packing text-emerald-500",
+    permissions: [
+      { key: "clearance_view", labelBn: "ক্লিয়ারেন্স ডাটা দেখুন", labelEn: "View Clearance Records", code: "CLEARANCE_VIEW" },
+      { key: "clearance_add", labelBn: "ক্লিয়ারেন্স এন্ট্রি দিন", labelEn: "Add Clearance Record", code: "CLEARANCE_ADD" },
+      { key: "clearance_edit", labelBn: "ক্লিয়ারেন্স এডিট করুন", labelEn: "Edit Clearance Record", code: "CLEARANCE_EDIT" },
+      { key: "clearance_delete", labelBn: "ক্লিয়ারেন্স ডিলেট করুন", labelEn: "Delete Clearance Record", code: "CLEARANCE_DELETE" },
+    ],
+  },
+  {
+    moduleId: "waste",
+    moduleNameBn: "ওয়েস্ট ট্র্যাকার ও ময়লা গাড়ি মডিউল",
+    moduleNameEn: "Waste & Garbage Tracker Module",
+    icon: "fa-solid fa-dumpster text-purple-500",
+    permissions: [
+      { key: "waste_view", labelBn: "ওয়েস্ট রেকর্ড দেখুন", labelEn: "View Waste Records", code: "WASTE_VIEW" },
+      { key: "waste_add", labelBn: "ওয়েস্ট ট্রিপ যুক্ত করুন", labelEn: "Add Waste Record", code: "WASTE_ADD" },
+      { key: "waste_edit", labelBn: "ট্রিপ এডিট করুন", labelEn: "Edit Waste Record", code: "WASTE_EDIT" },
+      { key: "waste_delete", labelBn: "ট্রিপ ডিলেট করুন", labelEn: "Delete Waste Record", code: "WASTE_DELETE" },
+      { key: "waste_company_manage", labelBn: "ওয়েস্ট কোম্পানি ম্যানেজমেন্ট", labelEn: "Manage Waste Companies", code: "WASTE_COMPANY_MANAGE" },
+    ],
+  },
+  {
+    moduleId: "ain",
+    moduleNameBn: "AIN ক্লায়েন্ট ডাটাবেস মডিউল",
+    moduleNameEn: "AIN Client Database Module",
+    icon: "fa-solid fa-address-book text-cyan-500",
+    permissions: [
+      { key: "ain_view", labelBn: "AIN ক্লায়েন্ট তালিকা দেখুন", labelEn: "View AIN Clients", code: "AIN_VIEW" },
+      { key: "ain_add", labelBn: "AIN ক্লায়েন্ট যুক্ত করুন", labelEn: "Add AIN Client", code: "AIN_ADD" },
+      { key: "ain_delete", labelBn: "AIN ক্লায়েন্ট ডিলেট করুন", labelEn: "Delete AIN Client", code: "AIN_DELETE" },
+      { key: "ain_import", labelBn: "AIN ইমপোর্ট করুন", labelEn: "Import AINs", code: "AIN_IMPORT" },
+      { key: "ain_export", labelBn: "AIN এক্সপোর্ট করুন", labelEn: "Export AINs", code: "AIN_EXPORT" },
+    ],
+  },
+  {
+    moduleId: "ain_tax",
+    moduleNameBn: "AIN ট্যাক্স বকেয়া ম্যানেজমেন্ট মডিউল",
+    moduleNameEn: "AIN Tax Due Management Module",
+    icon: "fa-solid fa-hand-holding-dollar text-rose-500",
+    permissions: [
+      { key: "ain_tax_view", labelBn: "বকেয়া ট্যাক্স বিবরণী দেখুন", labelEn: "View AIN Tax Due", code: "AIN_TAX_VIEW" },
+      { key: "ain_tax_add", labelBn: "ট্যাক্স এন্ট্রি যুক্ত করুন", labelEn: "Add AIN Tax Record", code: "AIN_TAX_ADD" },
+      { key: "ain_tax_edit", labelBn: "ট্যাক্স এন্ট্রি এডিট করুন", labelEn: "Edit AIN Tax Record", code: "AIN_TAX_EDIT" },
+      { key: "ain_tax_delete", labelBn: "ট্যাক্স এন্ট্রি ডিলেট করুন", labelEn: "Delete AIN Tax Record", code: "AIN_TAX_DELETE" },
+      { key: "ain_tax_pay", labelBn: "পেমেন্ট স্ট্যাটাস পরিবর্তন করুন (Pay)", labelEn: "Update Payment Status (Pay)", code: "AIN_TAX_PAY" },
+      { key: "ain_tax_import", labelBn: "এক্সেল কাস্টমস পেস্ট ইমপোর্ট", labelEn: "Import ASYCUDA Excel", code: "AIN_TAX_IMPORT" },
+      { key: "ain_tax_export", labelBn: "ট্যাক্স রিপোর্ট এক্সপোর্ট", labelEn: "Export AIN Tax Excel", code: "AIN_TAX_EXPORT" },
+    ],
+  },
+  {
+    moduleId: "admin",
+    moduleNameBn: "ইউজার প্রোফাইল ও এডমিন পারমিশন মডিউল",
+    moduleNameEn: "User Profile & Admin Controls",
+    icon: "fa-solid fa-user-gear text-indigo-500",
+    permissions: [
+      { key: "user_profile_edit", labelBn: "ইউজার প্রোফাইল সংশোধন (Edit Profile)", labelEn: "Edit User Profile", code: "USER_PROFILE_EDIT" },
+      { key: "user_manage", labelBn: "ইউজার অ্যাকাউন্ট ও পারমিশন নিয়ন্ত্রণ", labelEn: "Manage Users & Permissions", code: "USER_MANAGE" },
+      { key: "user_reset_pass", labelBn: "পাসওয়ার্ড রিসেট", labelEn: "Reset User Passwords", code: "USER_RESET_PASS" },
+      { key: "view_logs", labelBn: "অডিট লগস দেখুন", labelEn: "View System Audit Logs", code: "VIEW_LOGS" },
+      { key: "report_view", labelBn: "ডেইলি / মান্থলি রিপোর্ট দেখুন", labelEn: "View Reports", code: "REPORT_VIEW" },
+      { key: "settings_manage", labelBn: "সিস্টেম সেটিংস পরিবর্তন", labelEn: "Manage System Settings", code: "SETTINGS_MANAGE" },
+    ],
+  },
 ];
 
-const initialPermissions: GranularPermissions = PERMISSION_ITEMS.reduce(
-  (acc, it) => {
-    acc[it.key as string] = false;
+const ALL_PERMISSION_KEYS = MODULE_PERMISSION_GROUPS.flatMap((g) => g.permissions.map((p) => p.key));
+
+const initialPermissions: GranularPermissions = ALL_PERMISSION_KEYS.reduce(
+  (acc, key) => {
+    acc[key] = false;
     return acc;
   },
-  {} as GranularPermissions,
+  {} as GranularPermissions
 );
 
-const adminRolePermissions: GranularPermissions = PERMISSION_ITEMS.reduce(
-  (acc, it) => {
-    acc[it.key as string] = true;
+const adminRolePermissions: GranularPermissions = ALL_PERMISSION_KEYS.reduce(
+  (acc, key) => {
+    acc[key] = true;
     return acc;
   },
-  {} as GranularPermissions,
+  {} as GranularPermissions
 );
 
 const userRolePermissions: GranularPermissions = {
   ...initialPermissions,
+  duty_view: true,
   bill_add: true,
   bill_edit: true,
   bill_wa_share: true,
   invoice_print: true,
+  assessment_view: true,
+  assessment_add: true,
+  clearance_view: true,
+  waste_view: true,
   ain_view: true,
   ain_add: true,
+  ain_tax_view: true,
 };
 
 const getDefaultPermissionsForRole = (role: string): GranularPermissions =>
@@ -1051,119 +1146,358 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* Add/Edit User Modal (Updated UI) */}
+      {/* Add/Edit User Modal (Fixed Header & Sticky Footer with Prominent Close Button) */}
       {showAddUser && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-300 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-300"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddUser(false);
+          }}
+        >
           <div
-            className={`rounded-[1.5rem] shadow-2xl w-full max-w-6xl overflow-hidden p-8 animate-in zoom-in-95 ${isDark ? "bg-slate-800" : "bg-white"}`}
+            className={`rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col h-[90vh] max-h-[850px] overflow-hidden border ${
+              isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
+            }`}
           >
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-              <h3
-                className={`text-xl font-black flex items-center gap-3 ${isDark ? "text-white" : "text-slate-900"}`}
-              >
-                <i className="fas fa-user-shield text-blue-600"></i>{" "}
-                {editingUserId ? "Edit User Profile" : "Admin User Management"}
-              </h3>
-              <div className="flex gap-2">
+            {/* Fixed Top Header */}
+            <div
+              className={`p-5 px-6 border-b flex items-center justify-between shrink-0 ${
+                isDark ? "border-slate-700 bg-slate-800/90 text-white" : "border-slate-200 bg-slate-50 text-slate-900"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-bold">
+                  <i className="fas fa-user-shield"></i>
+                </div>
+                <div>
+                  <h3 className="text-base font-black uppercase tracking-wider">
+                    {editingUserId
+                      ? config.language === "bn"
+                        ? "ইউজার প্রোফাইল ও পারমিশন এডিট"
+                        : "Edit User Profile & Permissions"
+                      : config.language === "bn"
+                      ? "নতুন ইউজার অ্যাকাউন্ট তৈরি করুন"
+                      : "Create New User Account"}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium">
+                    {editingUserId
+                      ? `Updating profile and module access for ${userName}`
+                      : "Configure user credentials and assign module permissions"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
                 <button
+                  type="button"
                   onClick={handleSaveUser}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg transition-all active:scale-95"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
                 >
-                  <i className="fas fa-save mr-2"></i> Save User
+                  <i className="fas fa-save"></i>
+                  <span>{config.language === "bn" ? "সংরক্ষণ করুন" : "Save User"}</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowAddUser(false)}
-                  className={`px-6 py-2 rounded-lg font-bold text-sm transition-all hover:bg-slate-200 ${isDark ? "bg-slate-700 text-slate-300" : "bg-slate-100 text-slate-600"}`}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer text-lg font-bold ${
+                    isDark ? "bg-slate-700/60" : "bg-slate-200/80"
+                  }`}
+                  title="Close (বন্ধ করুন)"
                 >
-                  <i className="fas fa-times mr-2"></i> Close
+                  <i className="fas fa-xmark"></i>
                 </button>
               </div>
             </div>
 
-            {/* Form Inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-              <input
-                type="text"
-                placeholder="Full Name"
-                className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
-                value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                disabled={Boolean(editingUserId)}
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
-                value={userPassword}
-                onChange={(e) => setUserPassword(e.target.value)}
-                disabled={Boolean(editingUserId)}
-              />
-              <select
-                className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
-                value={userRole}
-                onChange={(e) => {
-                  const role = e.target.value;
-                  setUserRole(role);
-                  setPermissions(getDefaultPermissionsForRole(role));
-                }}
+            {/* Scrollable Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+              {/* Form Inputs Header */}
+              <div
+                className={`p-5 rounded-2xl border ${
+                  isDark ? "bg-slate-900/60 border-slate-700" : "bg-slate-50 border-slate-200"
+                }`}
               >
-                <option value="User">USER</option>
-                <option value="Admin">ADMIN</option>
-              </select>
-              <select
-                className={`px-4 py-3 rounded-xl border outline-none font-bold text-sm ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"}`}
-                value={userActive}
-                onChange={(e) => setUserActive(e.target.value)}
-              >
-                <option value="Yes">Active: YES</option>
-                <option value="No">Active: NO</option>
-              </select>
+                <h4 className="text-xs font-black uppercase tracking-wider text-blue-600 mb-3 flex items-center gap-2">
+                  <i className="fas fa-id-card"></i> Profile Details (প্রোফাইল তথ্য)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Full Name (পূর্ণ নাম) *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Full Name"
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-bold text-xs ${
+                        isDark
+                          ? "bg-slate-800 border-slate-700 text-white focus:border-blue-500"
+                          : "bg-white border-slate-300 text-slate-900 focus:border-blue-500"
+                      }`}
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-bold text-xs ${
+                        isDark
+                          ? "bg-slate-800 border-slate-700 text-white focus:border-blue-500"
+                          : "bg-white border-slate-300 text-slate-900 focus:border-blue-500"
+                      }`}
+                      value={userEmail}
+                      onChange={(e) => setUserEmail(e.target.value)}
+                      disabled={Boolean(editingUserId)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      {editingUserId ? "New Password (Optional)" : "Password *"}
+                    </label>
+                    <input
+                      type="password"
+                      placeholder={editingUserId ? "Leave blank to keep current" : "Password"}
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-bold text-xs ${
+                        isDark
+                          ? "bg-slate-800 border-slate-700 text-white focus:border-blue-500"
+                          : "bg-white border-slate-300 text-slate-900 focus:border-blue-500"
+                      }`}
+                      value={userPassword}
+                      onChange={(e) => setUserPassword(e.target.value)}
+                      disabled={Boolean(editingUserId)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Account Role (রোল)
+                    </label>
+                    <select
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-bold text-xs ${
+                        isDark
+                          ? "bg-slate-800 border-slate-700 text-white focus:border-blue-500"
+                          : "bg-white border-slate-300 text-slate-900 focus:border-blue-500"
+                      }`}
+                      value={userRole}
+                      onChange={(e) => {
+                        const role = e.target.value;
+                        setUserRole(role);
+                        setPermissions(getDefaultPermissionsForRole(role));
+                      }}
+                    >
+                      <option value="User">USER (স্টাফ)</option>
+                      <option value="Admin">ADMIN (এডমিন)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Account Status (অবস্থা)
+                    </label>
+                    <select
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-bold text-xs ${
+                        isDark
+                          ? "bg-slate-800 border-slate-700 text-white focus:border-blue-500"
+                          : "bg-white border-slate-300 text-slate-900 focus:border-blue-500"
+                      }`}
+                      value={userActive}
+                      onChange={(e) => setUserActive(e.target.value)}
+                    >
+                      <option value="Yes">Active (সক্রিয়)</option>
+                      <option value="No">Disabled (নিষ্ক্রিয়)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Module-Based Permissions Matrix */}
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+                  <div>
+                    <h4 className="font-black text-blue-600 text-xs uppercase tracking-widest flex items-center gap-2">
+                      <i className="fas fa-lock"></i> মডিউল ভিত্তিক পারমিশন ম্যাট্রিক্স (Module Permissions)
+                    </h4>
+                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                      ব্যবহারকারীর রোল অনুযায়ী প্রতিটি মডিউলের সুনির্দিষ্ট অ্যাকশন সিলেক্ট করুন
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPermissions((prev) => {
+                          const updated = { ...prev };
+                          ALL_PERMISSION_KEYS.forEach((k) => {
+                            updated[k] = true;
+                          });
+                          return updated;
+                        });
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-black bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-all cursor-pointer"
+                    >
+                      <i className="fas fa-check-double mr-1.5"></i> Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPermissions((prev) => {
+                          const updated = { ...prev };
+                          ALL_PERMISSION_KEYS.forEach((k) => {
+                            updated[k] = false;
+                          });
+                          return updated;
+                        });
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all cursor-pointer"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  {MODULE_PERMISSION_GROUPS.map((group) => {
+                    const groupKeys = group.permissions.map((p) => p.key);
+                    const isAllSelected = groupKeys.every((k) => permissions[k]);
+
+                    return (
+                      <div
+                        key={group.moduleId}
+                        className={`p-5 rounded-2xl border transition-all ${
+                          isDark
+                            ? "bg-slate-900/70 border-slate-700/80"
+                            : "bg-slate-50/80 border-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200/50 dark:border-slate-800">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm shadow-sm ${isDark ? "bg-slate-800" : "bg-white"}`}>
+                              <i className={group.icon}></i>
+                            </div>
+                            <div>
+                              <h5 className={`font-black text-xs uppercase tracking-wider ${isDark ? "text-white" : "text-slate-900"}`}>
+                                {config.language === "bn" ? group.moduleNameBn : group.moduleNameEn}
+                              </h5>
+                              <span className="text-[10px] text-slate-400 font-semibold">
+                                {group.permissions.filter((p) => permissions[p.key]).length} of {group.permissions.length} active
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const targetVal = !isAllSelected;
+                                setPermissions((prev) => {
+                                  const updated = { ...prev };
+                                  group.permissions.forEach((p) => {
+                                    updated[p.key] = targetVal;
+                                  });
+                                  return updated;
+                                });
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                isAllSelected
+                                  ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30"
+                                  : "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+                              }`}
+                            >
+                              {isAllSelected ? "Clear Module" : "Select Module"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                          {group.permissions.map((perm) => {
+                            const isChecked = Boolean(permissions[perm.key]);
+                            return (
+                              <div
+                                key={perm.key}
+                                onClick={() =>
+                                  setPermissions((prev) => ({
+                                    ...prev,
+                                    [perm.key]: !prev[perm.key],
+                                  }))
+                                }
+                                className={`p-3 rounded-xl border cursor-pointer transition-all select-none relative flex items-start justify-between gap-2 ${
+                                  isChecked
+                                    ? isDark
+                                      ? "bg-blue-900/30 border-blue-500 text-white shadow-sm"
+                                      : "bg-blue-50/80 border-blue-500 text-blue-950 shadow-sm"
+                                    : isDark
+                                    ? "bg-slate-800/60 border-slate-700/60 hover:border-slate-500 text-slate-300"
+                                    : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"
+                                }`}
+                              >
+                                <div className="space-y-0.5">
+                                  <p className="font-bold text-xs leading-snug">
+                                    {config.language === "bn" ? perm.labelBn : perm.labelEn}
+                                  </p>
+                                  <p className="text-[9px] text-slate-400 font-mono tracking-wider">
+                                    {perm.code}
+                                  </p>
+                                </div>
+                                <div
+                                  className={`w-4 h-4 rounded border shrink-0 mt-0.5 flex items-center justify-center transition-all ${
+                                    isChecked ? "bg-blue-600 border-blue-600" : "border-slate-400"
+                                  }`}
+                                >
+                                  {isChecked && <i className="fas fa-check text-white text-[9px]"></i>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            {/* Permissions Matrix */}
-            <div>
-              <h4 className="font-bold text-blue-600 text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
-                <i className="fas fa-lock"></i> Permissions
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {PERMISSION_ITEMS.map((perm) => (
-                  <div
-                    key={perm.key}
-                    onClick={() => togglePermission(perm.key)}
-                    className={`p-4 rounded-xl border cursor-pointer group transition-all relative overflow-hidden ${isDark ? "bg-slate-900 border-slate-700 hover:border-slate-500" : "bg-slate-50 border-slate-200 hover:border-slate-400"}`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p
-                          className={`font-bold text-sm ${permissions[perm.key] ? "text-blue-600" : isDark ? "text-slate-300" : "text-slate-700"}`}
-                        >
-                          {perm.label}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono mt-1">
-                          {perm.code}
-                        </p>
-                      </div>
-                      <div
-                        className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${permissions[perm.key] ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}
-                      >
-                        {permissions[perm.key] && (
-                          <i className="fas fa-check text-white text-[10px]"></i>
-                        )}
-                      </div>
-                    </div>
-                    {permissions[perm.key] && (
-                      <div className="absolute inset-0 border-2 border-blue-600 rounded-xl pointer-events-none"></div>
-                    )}
-                  </div>
-                ))}
+            {/* Fixed Sticky Footer Actions */}
+            <div
+              className={`p-4 px-6 border-t flex items-center justify-between gap-3 shrink-0 ${
+                isDark ? "border-slate-700 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-50 text-slate-700"
+              }`}
+            >
+              <div className="text-xs font-bold text-slate-400">
+                {editingUserId ? (
+                  <span>Editing permissions for: <b className="text-blue-500">{userName || "User"}</b></span>
+                ) : (
+                  <span>Creating new user account</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddUser(false)}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    isDark
+                      ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                  }`}
+                >
+                  <i className="fas fa-times mr-1.5"></i>
+                  {config.language === "bn" ? "বন্ধ করুন (Close)" : "Close Modal"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveUser}
+                  className="px-6 py-2.5 rounded-xl text-white text-xs font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+                >
+                  <i className="fas fa-save"></i>
+                  <span>{config.language === "bn" ? "সংরক্ষণ করুন (Save)" : "Save Changes"}</span>
+                </button>
               </div>
             </div>
           </div>

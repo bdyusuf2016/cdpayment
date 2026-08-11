@@ -7,6 +7,7 @@ import {
   WasteCompany,
   WasteRecord,
   Vendor,
+  AinTaxRecord,
   StaffUser,
   SystemConfig,
   LogEntry,
@@ -745,14 +746,25 @@ export async function updateSystemSettings(
     if (dbPatch[k] === undefined) delete dbPatch[k];
   });
 
-  // There's only one settings row, so we update it.
-  const { data, error } = await supabase
+  // There's only one settings row, so we update it or insert if missing
+  let { data, error } = await supabase
     .from("system_settings")
     .update(dbPatch)
     .eq("id", 1) // Assuming the settings row has id 1
     .select()
-    .single();
-  if (error) {
+    .maybeSingle();
+
+  if (!data && !error) {
+    const insertRes = await supabase
+      .from("system_settings")
+      .insert([{ id: 1, ...dbPatch }])
+      .select()
+      .maybeSingle();
+    data = insertRes.data;
+    error = insertRes.error;
+  }
+
+  if (error || !data) {
     console.error("updateSystemSettings error", error);
     return null;
   }
@@ -923,4 +935,109 @@ export async function deleteCustomContact(
     return false;
   }
 }
+
+// AIN Tax Records CRUD
+export const toAinTaxDb = (record: Partial<AinTaxRecord>) => ({
+  year: record.year ?? "",
+  ain_name: record.ainName ?? "",
+  ain_no: record.ainNo ?? "",
+  ref: record.ref ?? "",
+  reg_no: record.regNo ?? "",
+  date: record.date ?? "",
+  type: record.type ?? "",
+  total_tax: record.totalTax ?? 0,
+  a_no: record.aNo ?? "",
+  payment_status: record.paymentStatus ?? "Unpaid",
+  payment_date: record.paymentDate ?? "",
+  payment_method: record.paymentMethod ?? "",
+});
+
+export const fromAinTaxDb = (row: any): AinTaxRecord => ({
+  id: row.id,
+  year: row.year ?? "",
+  ainName: row.ainName ?? row.ain_name ?? "",
+  ainNo: row.ainNo ?? row.ain_no ?? "",
+  ref: row.ref ?? "",
+  regNo: row.regNo ?? row.reg_no ?? "",
+  date: row.date ?? "",
+  type: row.type ?? "",
+  totalTax: Number(row.totalTax ?? row.total_tax ?? 0),
+  aNo: row.aNo ?? row.a_no ?? "",
+  paymentStatus: (row.paymentStatus ?? row.payment_status ?? "Unpaid") as "Paid" | "Unpaid",
+  paymentDate: row.paymentDate ?? row.payment_date ?? "",
+  paymentMethod: row.paymentMethod ?? row.payment_method ?? "",
+  createdAt: row.createdAt ?? row.created_at ?? undefined,
+});
+
+export async function insertAinTaxRecord(
+  supabase: SupabaseClient,
+  record: Omit<AinTaxRecord, "id" | "createdAt">
+): Promise<AinTaxRecord | null> {
+  const { data, error } = await supabase
+    .from("ain_tax_records")
+    .insert(toAinTaxDb(record))
+    .select()
+    .single();
+  if (error) {
+    console.error("insertAinTaxRecord error", error);
+    throw formatSupabaseError("Insert AIN Tax record", error);
+  }
+  return fromAinTaxDb(data);
+}
+
+export async function bulkInsertAinTaxRecords(
+  supabase: SupabaseClient,
+  records: Omit<AinTaxRecord, "id" | "createdAt">[]
+): Promise<AinTaxRecord[]> {
+  const payload = records.map((r) => toAinTaxDb(r));
+  const { data, error } = await supabase
+    .from("ain_tax_records")
+    .insert(payload)
+    .select();
+  if (error) {
+    console.error("bulkInsertAinTaxRecords error", error);
+    throw formatSupabaseError("Bulk insert AIN Tax records", error);
+  }
+  return (data || []).map((row) => fromAinTaxDb(row));
+}
+
+export async function updateAinTaxRecord(
+  supabase: SupabaseClient,
+  id: string,
+  record: Partial<AinTaxRecord>
+): Promise<AinTaxRecord | null> {
+  const dbPatch = toAinTaxDb(record) as Record<string, unknown>;
+  Object.keys(dbPatch).forEach((key) => {
+    if (dbPatch[key] === undefined) delete dbPatch[key];
+  });
+  const { data, error } = await supabase
+    .from("ain_tax_records")
+    .update(dbPatch)
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+  if (error) {
+    console.error("updateAinTaxRecord error", error);
+    throw formatSupabaseError("Update AIN Tax record", error);
+  }
+  return data ? fromAinTaxDb(data) : null;
+}
+
+export async function deleteAinTaxRecord(
+  supabase: SupabaseClient,
+  id: string
+): Promise<{ id: string } | null> {
+  const { data, error } = await supabase
+    .from("ain_tax_records")
+    .delete()
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+  if (error) {
+    console.error("deleteAinTaxRecord error", error);
+    throw formatSupabaseError("Delete AIN Tax record", error);
+  }
+  return { id };
+}
+
 
