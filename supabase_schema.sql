@@ -582,7 +582,6 @@ create table if not exists public.ain_tax_records (
   date text,
   type text,
   total_tax numeric default 0,
-  a_no text,
   payment_status text default 'Unpaid' check (payment_status in ('Paid', 'Unpaid')),
   payment_date text,
   payment_method text,

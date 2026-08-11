@@ -1,7 +1,7 @@
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
-import { SystemConfig, AinTaxRecord } from "../types";
+import { SystemConfig, AinTaxRecord, Client } from "../types";
 import {
   insertAinTaxRecord,
   updateAinTaxRecord,
@@ -18,6 +18,7 @@ interface AinTaxManagementProps {
   onVisibleRowsChange?: (rows: AinTaxRecord[]) => void;
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
+  clients: Client[];
 }
 
 const LOCAL_STORAGE_KEY = "ain_tax_records_local";
@@ -28,6 +29,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   onVisibleRowsChange,
   systemConfig,
   supabase,
+  clients,
 }) => {
   const isDark = systemConfig.theme === "dark";
   const isBn = systemConfig.language === "bn";
@@ -54,7 +56,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   const [formDate, setFormDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [formType, setFormType] = useState("");
   const [formTotalTax, setFormTotalTax] = useState("");
-  const [formANo, setFormANo] = useState("");
   const [formPaymentStatus, setFormPaymentStatus] = useState<"Paid" | "Unpaid">("Unpaid");
   const [formPaymentDate, setFormPaymentDate] = useState("");
   const [formPaymentMethod, setFormPaymentMethod] = useState("");
@@ -77,7 +78,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   const [colMapDate, setColMapDate] = useState<number>(5);
   const [colMapType, setColMapType] = useState<number>(6);
   const [colMapTotalTax, setColMapTotalTax] = useState<number>(7);
-  const [colMapANo, setColMapANo] = useState<number>(8);
 
   // Status & Feedback
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -89,6 +89,37 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   const tableRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const clientNameByAin = useMemo(() => {
+    const next = new Map<string, string>();
+    clients.forEach((client) => {
+      const ain = (client.ain || "").trim();
+      const name = (client.name || "").trim();
+      if (ain && name) next.set(ain, name);
+    });
+    return next;
+  }, [clients]);
+
+  const shouldUseAinDatabaseName = (value: string) => {
+    const normalized = (value || "").trim().toLowerCase();
+    if (!normalized) return true;
+    if (normalized.length > 60) return true;
+    if (normalized.includes("tin:")) return true;
+    const addressHints = [
+      "processing zone",
+      "export processing zone",
+      "industrial park",
+      "plot #",
+      "plot no",
+      "extension area",
+      "gazipur",
+      "sadar ps",
+      "nayapaltan",
+      "road",
+      "house",
+      "floor",
+    ];
+    return addressHints.some((hint) => normalized.includes(hint));
+  };
   // Load from local storage if needed on mount
   useEffect(() => {
     if (history.length === 0) {
@@ -137,7 +168,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       date: number;
       type: number;
       totalTax: number;
-      aNo: number;
     }
   ) => {
     const rows: Omit<AinTaxRecord, "id">[] = [];
@@ -183,6 +213,11 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       if (!ainNo) {
         const foundAinNo = cells.find((c) => /^\d{8,11}$/.test((c || "").trim()));
         if (foundAinNo) ainNo = foundAinNo.trim();
+      }
+
+      const ainDatabaseName = ainNo ? clientNameByAin.get(ainNo) || "" : "";
+      if (ainDatabaseName && shouldUseAinDatabaseName(ainName)) {
+        ainName = ainDatabaseName;
       }
 
       // 4. Ref: User mapped column or fallback
@@ -263,44 +298,17 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         totalTax = parseDutyPaymentAmount(cells[mapping.totalTax]);
       }
 
-      // 9. Sanitize A No (Assessment No): 4-8 digit numeric assessment number like 12345 or 13479 (MUST NOT be 000437789-0403 ref format)
-      let rawANo = mapping.aNo >= 0 ? (cells[mapping.aNo] || "").trim() : "";
-      const taxNumStr = totalTax > 0 ? totalTax.toString() : "";
-      const rawANoNum = rawANo.replace(/[^0-9.-]/g, "");
+      const mappedTaxCell = mapping.totalTax >= 0 && cells[mapping.totalTax] !== undefined
+        ? String(cells[mapping.totalTax] ?? "").trim()
+        : "";
 
-      if (
-        !rawANo ||
-        rawANo.includes("-") || // Reject 000437789-0403 format with hyphen
-        rawANo === "Green" ||
-        rawANo === "Red" ||
-        rawANo === "Yellow" ||
-        rawANo === "EX" ||
-        rawANo === "C" ||
-        rawANo === regNo ||
-        rawANo === ainNo ||
-        (taxNumStr && rawANoNum === taxNumStr)
-      ) {
-        const foundANo = cells.find((c, idx) => {
-          const val = (c || "").trim();
-          const cleanVal = val.replace(/[^0-9.-]/g, "");
-          return (
-            val !== "Green" &&
-            val !== "Red" &&
-            val !== "Yellow" &&
-            val !== "EX" &&
-            val !== "C" &&
-            val !== year &&
-            val !== ainNo &&
-            val !== regNo &&
-            !val.includes("-") && // EXCLUDE hyphenated formats like 000437789-0403
-            (!taxNumStr || cleanVal !== taxNumStr) &&
-            /^\d{4,8}$/.test(val) &&
-            idx > 5
-          );
-        });
-        rawANo = foundANo ? foundANo.trim() : "";
+      const taxLooksZeroOnly =
+        mappedTaxCell !== "" &&
+        ["0", "0.00", "0.0", "0,00", "0.000", "0,000"].includes(mappedTaxCell.toLowerCase().replace(/\s/g, ""));
+
+      if (taxLooksZeroOnly) {
+        return;
       }
-      const aNo = rawANo;
 
       if (year || ainName || ainNo || totalTax > 0 || ref || regNo) {
         rows.push({
@@ -312,7 +320,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           date,
           type,
           totalTax,
-          aNo,
           paymentStatus: "Unpaid",
         });
       }
@@ -424,7 +431,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         date: 5,
         type: 6,
         totalTax: 7,
-        aNo: 8,
       };
 
       // Auto detect totalTax column by matching 0.00 / decimal currency format patterns across columns
@@ -472,28 +478,54 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       // Col 9: Ty... (EX / IM) -> index 8
       // Col 16: Total taxes (134.50, 130.00, 2,267.75) -> index 15
       // Col 18: Ast. # (105158, 10788, 112213) -> index 17
-
       const firstRowLower = matrix[0].map((c) => (c || "").trim().toLowerCase());
-      const headerTotalTax = firstRowLower.findIndex((c) => c.includes("total tax") || c.includes("total taxes"));
-      const headerAstNo = firstRowLower.findIndex((c) => c.includes("ast. #") || c.includes("ast #") || c.includes("ast."));
+      const headerTotalTax = firstRowLower.findIndex(
+        (c) => c.includes("total tax") || c.includes("total taxes")
+      );
+      const headerAinName = firstRowLower.findIndex(
+        (c) =>
+          c.includes("declarant name") ||
+          c.includes("ain name") ||
+          c.includes("importer name") ||
+          c.includes("exporter name")
+      );
+      const headerAinNo = firstRowLower.findIndex(
+        (c) =>
+          c.includes("ain no") ||
+          c.includes("ain number") ||
+          c.includes("declarant no") ||
+          c === "declarant"
+      );
+      const headerRef = firstRowLower.findIndex(
+        (c) => c === "ref" || c.includes("ref no") || c.includes("reference")
+      );
+      const headerRegNo = firstRowLower.findIndex(
+        (c) =>
+          (c.includes("reg") || c.includes("registration")) &&
+          (c.includes("no") || c.endsWith("no")) &&
+          !c.includes("date")
+      );
+      const headerDate = firstRowLower.findIndex(
+        (c) =>
+          c.includes("reg date") ||
+          c.includes("registration date") ||
+          c === "date" ||
+          c.endsWith(" date")
+      );
+      const headerType = firstRowLower.findIndex(
+        (c) => c === "ty" || c === "type" || c.startsWith("ty ") || c.includes(" type")
+      );
 
       if (headerTotalTax >= 0) {
         defaultMapping = {
           year: 0,
-          ainName: firstRowLower.findIndex((c) => c.includes("declarant name") || c.includes("ain name")) >= 0
-            ? firstRowLower.findIndex((c) => c.includes("declarant name") || c.includes("ain name")) : 2,
-          ainNo: firstRowLower.findIndex((c) => c === "declarant" || c.includes("ain no")) >= 0
-            ? firstRowLower.findIndex((c) => c === "declarant" || c.includes("ain no")) : 3,
-          ref: firstRowLower.findIndex((c) => c.includes("ref")) >= 0
-            ? firstRowLower.findIndex((c) => c.includes("ref")) : 4,
-          regNo: firstRowLower.findIndex((c) => c.includes("reg.") || c.includes("reg no")) >= 0
-            ? firstRowLower.findIndex((c) => c.includes("reg.") || c.includes("reg no")) : 6,
-          date: firstRowLower.findIndex((c) => c.includes("reg. da") || c.includes("reg date") || c.includes("date")) >= 0
-            ? firstRowLower.findIndex((c) => c.includes("reg. da") || c.includes("reg date") || c.includes("date")) : 7,
-          type: firstRowLower.findIndex((c) => c.includes("ty") || c.includes("type")) >= 0
-            ? firstRowLower.findIndex((c) => c.includes("ty") || c.includes("type")) : 8,
+          ainName: headerAinName >= 0 ? headerAinName : 2,
+          ainNo: headerAinNo >= 0 ? headerAinNo : 3,
+          ref: headerRef >= 0 ? headerRef : 4,
+          regNo: headerRegNo >= 0 ? headerRegNo : 6,
+          date: headerDate >= 0 ? headerDate : 7,
+          type: headerType >= 0 ? headerType : 8,
           totalTax: headerTotalTax,
-          aNo: headerAstNo >= 0 ? headerAstNo : 17,
         };
       } else if (maxCols >= 15 && maxCols <= 25) {
         // ASYCUDA Window Direct Export (18 Columns as shown in user software screenshot)
@@ -506,7 +538,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           date: 7,
           type: 8,
           totalTax: 15,
-          aNo: 17,
         };
       } else if (maxCols >= 26) {
         // Extended 31-Column Structure
@@ -519,7 +550,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           date: 9,
           type: 10,
           totalTax: matched00TaxCol >= 0 ? matched00TaxCol : 25,
-          aNo: 18,
         };
       } else if (maxCols >= 10) {
         defaultMapping = {
@@ -531,7 +561,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           date: 8 < maxCols ? 8 : 9,
           type: 9 < maxCols ? 9 : 7,
           totalTax: matched00TaxCol >= 0 ? matched00TaxCol : (15 < maxCols ? 15 : maxCols - 2),
-          aNo: 17 < maxCols ? 17 : maxCols - 1,
         };
       }
 
@@ -543,7 +572,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       setColMapDate(defaultMapping.date);
       setColMapType(defaultMapping.type);
       setColMapTotalTax(defaultMapping.totalTax);
-      setColMapANo(defaultMapping.aNo);
 
       const rows = applyColumnMapping(matrix, defaultMapping);
       setParsedPreviewRows(rows);
@@ -564,7 +592,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       date: number;
       type: number;
       totalTax: number;
-      aNo: number;
     }>
   ) => {
     const nextMapping = {
@@ -576,7 +603,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       date: partial.date ?? colMapDate,
       type: partial.type ?? colMapType,
       totalTax: partial.totalTax ?? colMapTotalTax,
-      aNo: partial.aNo ?? colMapANo,
     };
 
     if (partial.year !== undefined) setColMapYear(partial.year);
@@ -587,7 +613,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     if (partial.date !== undefined) setColMapDate(partial.date);
     if (partial.type !== undefined) setColMapType(partial.type);
     if (partial.totalTax !== undefined) setColMapTotalTax(partial.totalTax);
-    if (partial.aNo !== undefined) setColMapANo(partial.aNo);
 
     if (rawMatrixRows.length > 0) {
       const rows = applyColumnMapping(rawMatrixRows, nextMapping);
@@ -674,7 +699,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           return;
         }
 
-        // Convert array rows to text lines
+        // Convert array rows to text lines and feed them through the
+        // same parsing pipeline as raw paste so preview state is populated.
         const lines = data
           .filter(
             (r) =>
@@ -685,9 +711,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
         const text = lines.join("\n");
         setPastedRawText(text);
-        const rows = parseRawExcelText(text);
-        setParsedPreviewRows(rows);
-        setSelectedPreviewIndices(rows.map((_, idx) => idx));
+        handlePastedTextChange(text);
         setIsPasteModalOpen(true);
       } catch (err: any) {
         console.error("Excel File Read Error:", err);
@@ -709,7 +733,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     setFormDate(new Date().toISOString().split("T")[0]);
     setFormType("");
     setFormTotalTax("");
-    setFormANo("");
     setFormPaymentStatus("Unpaid");
     setFormPaymentDate("");
     setFormPaymentMethod("");
@@ -730,7 +753,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     setFormDate(rec.date);
     setFormType(rec.type);
     setFormTotalTax(rec.totalTax.toString());
-    setFormANo(rec.aNo);
     setFormPaymentStatus(rec.paymentStatus || "Unpaid");
     setFormPaymentDate(rec.paymentDate || "");
     setFormPaymentMethod(rec.paymentMethod || "");
@@ -754,7 +776,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       date: formDate.trim(),
       type: formType.trim(),
       totalTax: Number(formTotalTax) || 0,
-      aNo: formANo.trim(),
       paymentStatus: formPaymentStatus,
       paymentDate: formPaymentStatus === "Paid" ? (formPaymentDate || new Date().toISOString().split("T")[0]) : "",
       paymentMethod: formPaymentStatus === "Paid" ? formPaymentMethod.trim() : "",
@@ -965,7 +986,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         r.ainNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.ref.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.regNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.aNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.year.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (r.paymentStatus || "Unpaid").toLowerCase().includes(searchTerm.toLowerCase());
@@ -1109,7 +1129,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       Date: r.date,
       Type: r.type,
       "Total Tax": r.totalTax,
-      "A No": r.aNo,
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -1271,8 +1290,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={
                 isBn
-                  ? "AIN Name, AIN No, Ref, Reg No, A No ইত্যাদি দিয়ে খুঁজুন..."
-                  : "Search by AIN Name, AIN No, Ref, Reg No, A No..."
+                  ? "AIN Name, AIN No, Ref, Reg No ইত্যাদি দিয়ে খুঁজুন..."
+                  : "Search by AIN Name, AIN No, Ref, Reg No..."
               }
               className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs font-semibold border transition-all focus:outline-none focus:ring-2 ${
                 isDark
@@ -1845,7 +1864,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                       "date",
                       "type",
                       "status",
-                    ].filter((k) => isColumnVisible(k)).length}
+                    ].filter((k) => isColumnVisible(k as any)).length}
                     className="p-3.5 text-right uppercase tracking-wider text-slate-500 font-bold"
                   >
                     {isBn ? "সর্বমোট ট্যাক্স (Total Tax):" : "Total Tax Sum:"}
@@ -1878,7 +1897,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                       "date",
                       "type",
                       "status",
-                    ].filter((k) => isColumnVisible(k)).length}
+                    ].filter((k) => isColumnVisible(k as any)).length}
                     className="p-3.5 text-right uppercase tracking-wider text-rose-600 dark:text-rose-400 font-black"
                   >
                     {isBn ? "মোট বকেয়া শুল্ক (Unpaid Tax Due):" : "Unpaid Tax Due:"}
@@ -2018,7 +2037,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   {isBn ? "প্রত্যাশিত কলাম অর্ডার (Column Order):" : "Expected Column Order:"}
                 </p>
                 <div className="flex flex-wrap gap-2 text-[11px] font-mono">
-                  {["Year", "AIN Name", "AIN No", "Ref", "Reg No", "Date", "Type", "Total Tax", "A No"].map(
+                  {["Year", "AIN Name", "AIN No", "Ref", "Reg No", "Date", "Type", "Total Tax"].map(
                     (col) => (
                       <span
                         key={col}
@@ -2233,7 +2252,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                         ))}
                       </select>
                     </div>
-
 
                   </div>
                 </div>

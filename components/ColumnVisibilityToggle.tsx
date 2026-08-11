@@ -11,6 +11,7 @@ interface ColumnVisibilityToggleProps {
   toggleColumnVisibility: (key: any) => void;
   showAllColumns: () => void;
   resetColumns: () => void;
+  systemConfig?: any;
   isDark?: boolean;
   isBn?: boolean;
 }
@@ -21,6 +22,7 @@ export const ColumnVisibilityToggle: React.FC<ColumnVisibilityToggleProps> = ({
   toggleColumnVisibility,
   showAllColumns,
   resetColumns,
+  systemConfig,
   isDark = false,
   isBn = false,
 }) => {

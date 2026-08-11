@@ -232,7 +232,6 @@ export interface AinTaxRecord {
   date: string;
   type: string;
   totalTax: number;
-  aNo: string;
   paymentStatus?: "Paid" | "Unpaid";
   paymentDate?: string;
   paymentMethod?: string;

@@ -186,7 +186,6 @@ const normalizeAinTaxRecord = (row: any): AinTaxRecord => ({
   date: row.date ?? "",
   type: row.type ?? "",
   totalTax: Number(row.totalTax ?? row.total_tax ?? 0),
-  aNo: row.aNo ?? row.a_no ?? "",
   paymentStatus: (row.paymentStatus ?? row.payment_status ?? "Unpaid") as "Paid" | "Unpaid",
   paymentDate: row.paymentDate ?? row.payment_date ?? "",
   paymentMethod: row.paymentMethod ?? row.payment_method ?? "",
@@ -1970,6 +1969,7 @@ const App: React.FC = () => {
               onVisibleRowsChange={setVisibleAinTaxRows}
               systemConfig={config}
               supabase={supabase}
+              clients={clients}
             />
           )}
           {activeTab === "reports" && tabAccess.reports && (
