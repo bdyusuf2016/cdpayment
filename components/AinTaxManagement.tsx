@@ -444,7 +444,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         let typeCol = 9 < maxCols ? 9 : (7 < maxCols ? 7 : 6);
         let regNoCol = 7 < maxCols ? 7 : 8;
         let dateCol = 8 < maxCols ? 8 : 9;
-        let taxCol = 25 < maxCols ? 25 : (26 < maxCols ? 26 : (16 < maxCols ? 16 : maxCols - 2));
+        let taxCol = 27 < maxCols ? 27 : (25 < maxCols ? 25 : (16 < maxCols ? 16 : maxCols - 2));
         let aNoCol = 18 < maxCols ? 18 : maxCols - 1;
 
         // Dynamic inspection override if sample row cells vary
