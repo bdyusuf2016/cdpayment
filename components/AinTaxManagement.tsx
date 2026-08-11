@@ -253,9 +253,9 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         totalTax = Number(rawTax) || 0;
       }
 
-      // If totalTax is <= 1 (token fee or empty), search row for real tax amount > 1
+      // If totalTax is <= 1 (token fee or empty), search TAX columns (index >= 12) for real tax amount > 1
       if (totalTax <= 1) {
-        for (let i = cells.length - 1; i >= 4; i--) {
+        for (let i = cells.length - 1; i >= 12; i--) {
           const cellVal = (cells[i] || "").trim();
           const rawTax = cellVal.replace(/[^0-9.-]/g, "");
           const num = Number(rawTax);
@@ -268,7 +268,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
             cellVal !== ainNo &&
             cellVal !== year &&
             !/^\d{4}$/.test(cellVal) &&
-            !/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(cellVal) &&
+            !/^\d{4}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal) &&
             !/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal)
           ) {
             totalTax = num;
@@ -1810,23 +1810,73 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               )}
             </tbody>
 
-            {/* Table Footer with Sum */}
+            {/* Table Footer with Precise Total Tax Sum */}
             {filteredRows.length > 0 && (
               <tfoot>
+                {/* Row 1: Total Tax */}
                 <tr
                   className={`border-t font-extrabold text-xs ${
                     isDark
                       ? "bg-slate-800/90 text-white"
-                      : "bg-slate-100 text-slate-900"
+                      : "bg-slate-100/90 text-slate-900"
                   }`}
                 >
-                  <td colSpan={7} className="p-4 text-right uppercase tracking-wider">
-                    {isBn ? "মোট বাকী শুল্ক (Total Tax Due):" : "Total Tax Due:"}
+                  <td
+                    colSpan={[
+                      "select",
+                      "sl",
+                      "year",
+                      "ainName",
+                      "ainNo",
+                      "ref",
+                      "regNo",
+                      "date",
+                      "type",
+                      "status",
+                    ].filter((k) => isColumnVisible(k)).length}
+                    className="p-3.5 text-right uppercase tracking-wider text-slate-500 font-bold"
+                  >
+                    {isBn ? "সর্বমোট ট্যাক্স (Total Tax):" : "Total Tax Sum:"}
                   </td>
-                  <td className="p-4 text-right font-black text-rose-600 dark:text-rose-400 text-base">
-                    ৳ {totalTaxAmount.toLocaleString("en-BD")}
+                  {isColumnVisible("totalTax") && (
+                    <td className="p-3.5 text-right font-black text-slate-900 dark:text-white text-sm">
+                      {totalTaxAmount.toLocaleString("en-BD")}
+                    </td>
+                  )}
+                  {isColumnVisible("actions") && <td></td>}
+                </tr>
+
+                {/* Row 2: Unpaid Tax Due */}
+                <tr
+                  className={`border-t font-black text-xs ${
+                    isDark
+                      ? "bg-rose-950/40 text-rose-300"
+                      : "bg-rose-50 text-rose-900"
+                  }`}
+                >
+                  <td
+                    colSpan={[
+                      "select",
+                      "sl",
+                      "year",
+                      "ainName",
+                      "ainNo",
+                      "ref",
+                      "regNo",
+                      "date",
+                      "type",
+                      "status",
+                    ].filter((k) => isColumnVisible(k)).length}
+                    className="p-3.5 text-right uppercase tracking-wider text-rose-600 dark:text-rose-400 font-black"
+                  >
+                    {isBn ? "মোট বকেয়া শুল্ক (Unpaid Tax Due):" : "Unpaid Tax Due:"}
                   </td>
-                  <td colSpan={4}></td>
+                  {isColumnVisible("totalTax") && (
+                    <td className="p-3.5 text-right font-black text-rose-600 dark:text-rose-400 text-sm">
+                      {unpaidTaxAmount.toLocaleString("en-BD")}
+                    </td>
+                  )}
+                  {isColumnVisible("actions") && <td></td>}
                 </tr>
               </tfoot>
             )}
