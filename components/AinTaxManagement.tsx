@@ -803,9 +803,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     }
   };
 
-  // Toggle Payment Status for a Single Entry (Pay / Unpaid)
-  const handleTogglePaymentStatus = async (record: AinTaxRecord, newStatus: "Paid" | "Unpaid") => {
-    setIsSaving(true);
+  // Toggle Payment Status for a Single Entry (Pay / Unpaid) - INSTANT OPTIMISTIC UPDATE
+  const handleTogglePaymentStatus = (record: AinTaxRecord, newStatus: "Paid" | "Unpaid") => {
     const today = new Date().toISOString().split("T")[0];
     const payload = {
       ...record,
@@ -813,132 +812,118 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       paymentDate: newStatus === "Paid" ? today : "",
     };
 
-    try {
-      if (supabase) {
-        const updated = await updateAinTaxRecord(supabase, record.id, payload);
-        if (updated) {
-          setHistory((prev) => {
-            const next = prev.map((r) => (r.id === updated.id ? updated : r));
-            syncToLocalStorage(next);
-            return next;
-          });
-        }
-      } else {
-        setHistory((prev) => {
-          const next = prev.map((r) => (r.id === record.id ? payload : r));
-          syncToLocalStorage(next);
-          return next;
-        });
-      }
-      showSuccess(
-        newStatus === "Paid"
-          ? (isBn ? "রেকর্ডটি 'Paid' বা পরিশোধিত হিসেবে চিহ্নিত করা হয়েছে!" : "Record marked as Paid!")
-          : (isBn ? "রেকর্ডটি 'Unpaid' বা বকেয়া হিসেবে চিহ্নিত করা হয়েছে!" : "Record marked as Unpaid!")
-      );
-    } catch (err: any) {
-      console.error("Payment status toggle error", err);
-      showError(err?.message || (isBn ? "পেমেন্ট স্ট্যাটাস আপডেট করতে সমস্যা হয়েছে।" : "Failed to update payment status."));
-    } finally {
-      setIsSaving(false);
+    // 1. Instant local state & localStorage update
+    setHistory((prev) => {
+      const next = prev.map((r) => (r.id === record.id ? payload : r));
+      syncToLocalStorage(next);
+      return next;
+    });
+
+    showSuccess(
+      newStatus === "Paid"
+        ? (isBn ? "রেকর্ডটি 'Paid' বা পরিশোধিত হিসেবে চিহ্নিত করা হয়েছে!" : "Record marked as Paid!")
+        : (isBn ? "রেকর্ডটি 'Unpaid' বা বকেয়া হিসেবে চিহ্নিত করা হয়েছে!" : "Record marked as Unpaid!")
+    );
+
+    // 2. Background Supabase persistence
+    if (supabase) {
+      updateAinTaxRecord(supabase, record.id, payload).catch((err) => {
+        console.error("Background payment status update error", err);
+      });
     }
   };
 
-  // Bulk Mark Selected Entries as Paid / Unpaid
-  const handleBulkMarkStatus = async (newStatus: "Paid" | "Unpaid") => {
+  // Bulk Mark Selected Entries as Paid / Unpaid - INSTANT OPTIMISTIC UPDATE
+  const handleBulkMarkStatus = (newStatus: "Paid" | "Unpaid") => {
     if (selectedIds.length === 0) return;
-    setIsSaving(true);
     const today = new Date().toISOString().split("T")[0];
+    const targets = [...selectedIds];
 
-    try {
-      if (supabase) {
-        for (const id of selectedIds) {
-          const rec = history.find((r) => r.id === id);
-          if (rec) {
-            await updateAinTaxRecord(supabase, id, {
-              ...rec,
+    // 1. Instant local state & localStorage update
+    setHistory((prev) => {
+      const next = prev.map((r) =>
+        targets.includes(r.id)
+          ? {
+              ...r,
               paymentStatus: newStatus,
               paymentDate: newStatus === "Paid" ? today : "",
-            });
-          }
-        }
-      }
-      setHistory((prev) => {
-        const next = prev.map((r) =>
-          selectedIds.includes(r.id)
-            ? {
-                ...r,
-                paymentStatus: newStatus,
-                paymentDate: newStatus === "Paid" ? today : "",
-              }
-            : r
-        );
-        syncToLocalStorage(next);
-        return next;
-      });
-      showSuccess(
-        newStatus === "Paid"
-          ? (isBn ? `সিলেক্টকৃত ${selectedIds.length} টি এন্ট্রি 'Paid' করা হয়েছে!` : `Marked ${selectedIds.length} records as Paid!`)
-          : (isBn ? `সিলেক্টকৃত ${selectedIds.length} টি এন্ট্রি 'Unpaid' করা হয়েছে!` : `Marked ${selectedIds.length} records as Unpaid!`)
+            }
+          : r
       );
-      setSelectedIds([]);
-    } catch (err: any) {
-      console.error("Bulk status update error", err);
-      showError(err?.message || (isBn ? "বাল্ক স্ট্যাটাস আপডেট ব্যর্থ হয়েছে।" : "Bulk status update failed."));
-    } finally {
-      setIsSaving(false);
-    }
-  };
+      syncToLocalStorage(next);
+      return next;
+    });
 
-  // Delete Single Entry
-  const handleDeleteRecord = async (id: string) => {
-    setIsSaving(true);
-    try {
-      if (supabase) {
-        await deleteAinTaxRecord(supabase, id);
-      }
-      setHistory((prev) => {
-        const next = prev.filter((r) => r.id !== id);
-        syncToLocalStorage(next);
-        return next;
+    showSuccess(
+      newStatus === "Paid"
+        ? (isBn ? `সিলেক্টকৃত ${targets.length} টি এন্ট্রি 'Paid' করা হয়েছে!` : `Marked ${targets.length} records as Paid!`)
+        : (isBn ? `সিলেক্টকৃত ${targets.length} টি এন্ট্রি 'Unpaid' করা হয়েছে!` : `Marked ${targets.length} records as Unpaid!`)
+    );
+    setSelectedIds([]);
+
+    // 2. Background Supabase persistence
+    if (supabase) {
+      targets.forEach((id) => {
+        const rec = history.find((r) => r.id === id);
+        if (rec) {
+          updateAinTaxRecord(supabase, id, {
+            ...rec,
+            paymentStatus: newStatus,
+            paymentDate: newStatus === "Paid" ? today : "",
+          }).catch((err) => {
+            console.error("Background bulk status update error", err);
+          });
+        }
       });
-      setSelectedIds((prev) => prev.filter((i) => i !== id));
-      showSuccess(isBn ? "এন্ট্রি মুছে ফেলা হয়েছে!" : "Record deleted!");
-      setDeleteConfirmId(null);
-    } catch (err: any) {
-      console.error("Delete error", err);
-      showError(err?.message || (isBn ? "মুছে ফেলতে সমস্যা হয়েছে।" : "Delete failed."));
-    } finally {
-      setIsSaving(false);
     }
   };
 
-  // Bulk Delete Selected
-  const handleBulkDelete = async () => {
+  // Delete Single Entry - INSTANT OPTIMISTIC UPDATE
+  const handleDeleteRecord = (id: string) => {
+    // 1. Instant local state & localStorage update
+    setHistory((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      syncToLocalStorage(next);
+      return next;
+    });
+    setSelectedIds((prev) => prev.filter((i) => i !== id));
+    showSuccess(isBn ? "এন্ট্রি মুছে ফেলা হয়েছে!" : "Record deleted!");
+    setDeleteConfirmId(null);
+
+    // 2. Background Supabase deletion
+    if (supabase) {
+      deleteAinTaxRecord(supabase, id).catch((err) => {
+        console.error("Background delete error", err);
+      });
+    }
+  };
+
+  // Bulk Delete Selected - INSTANT OPTIMISTIC UPDATE
+  const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
-    setIsSaving(true);
-    try {
-      if (supabase) {
-        for (const id of selectedIds) {
-          await deleteAinTaxRecord(supabase, id);
-        }
-      }
-      setHistory((prev) => {
-        const next = prev.filter((r) => !selectedIds.includes(r.id));
-        syncToLocalStorage(next);
-        return next;
+    const targets = [...selectedIds];
+
+    // 1. Instant local state & localStorage update
+    setHistory((prev) => {
+      const next = prev.filter((r) => !targets.includes(r.id));
+      syncToLocalStorage(next);
+      return next;
+    });
+    showSuccess(
+      isBn
+        ? `মোট ${targets.length} টি এন্ট্রি মুছে ফেলা হয়েছে!`
+        : `Deleted ${targets.length} records!`
+    );
+    setSelectedIds([]);
+    setIsBulkDeleteConfirmOpen(false);
+
+    // 2. Background Supabase deletion
+    if (supabase) {
+      targets.forEach((id) => {
+        deleteAinTaxRecord(supabase, id).catch((err) => {
+          console.error("Background bulk delete error", err);
+        });
       });
-      showSuccess(
-        isBn
-          ? `মোট ${selectedIds.length} টি এন্ট্রি মুছে ফেলা হয়েছে!`
-          : `Deleted ${selectedIds.length} records!`
-      );
-      setSelectedIds([]);
-      setIsBulkDeleteConfirmOpen(false);
-    } catch (err: any) {
-      console.error("Bulk delete error", err);
-      showError(err?.message || (isBn ? "বাল্ক ডিলেট ব্যর্থ হয়েছে।" : "Bulk delete failed."));
-    } finally {
-      setIsSaving(false);
     }
   };
 
