@@ -462,16 +462,56 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         }
       });
 
-      if (maxCols >= 20) {
-        // Exact User Requested 31-Column Structure:
-        // Col 1: Year (2023) -> index 0
-        // Col 4: AIN Name (FAIR VENTURE LT) -> index 3
-        // Col 6: AIN No (803000265) -> index 5
-        // Col 7: Ref (#292) -> index 6
-        // Col 9: Reg No (105045) -> index 8
-        // Col 10: Date (2023-08-02) -> index 9
-        // Col 11: Type (EX) -> index 10
-        // Col 28 / Col 26: Matched 0.00 Total Tax Column
+      // Exact NBR ASYCUDA Table Structure (as shown in user screenshot):
+      // Col 1: Year (2023) -> index 0
+      // Col 2: Office Name -> index 1
+      // Col 3: Declarant Name (FAIR VENTURE L...) -> index 2
+      // Col 4: Declarant / AIN No (803000265) -> index 3
+      // Col 5: Ref. (#292) -> index 4
+      // Col 6: R... (C) -> index 5
+      // Col 7: Reg. ... (105045) -> index 6
+      // Col 8: Reg. Date (02/08/2023) -> index 7
+      // Col 9: Ty... (EX / IM) -> index 8
+      // Col 16: Total taxes (134.50, 130.00, 2,267.75) -> index 15
+      // Col 18: Ast. # (105158, 10788, 112213) -> index 17
+
+      const firstRowLower = matrix[0].map((c) => (c || "").trim().toLowerCase());
+      const headerTotalTax = firstRowLower.findIndex((c) => c.includes("total tax") || c.includes("total taxes"));
+      const headerAstNo = firstRowLower.findIndex((c) => c.includes("ast. #") || c.includes("ast #") || c.includes("ast."));
+
+      if (headerTotalTax >= 0) {
+        defaultMapping = {
+          year: 0,
+          ainName: firstRowLower.findIndex((c) => c.includes("declarant name") || c.includes("ain name")) >= 0
+            ? firstRowLower.findIndex((c) => c.includes("declarant name") || c.includes("ain name")) : 2,
+          ainNo: firstRowLower.findIndex((c) => c === "declarant" || c.includes("ain no")) >= 0
+            ? firstRowLower.findIndex((c) => c === "declarant" || c.includes("ain no")) : 3,
+          ref: firstRowLower.findIndex((c) => c.includes("ref")) >= 0
+            ? firstRowLower.findIndex((c) => c.includes("ref")) : 4,
+          regNo: firstRowLower.findIndex((c) => c.includes("reg.") || c.includes("reg no")) >= 0
+            ? firstRowLower.findIndex((c) => c.includes("reg.") || c.includes("reg no")) : 6,
+          date: firstRowLower.findIndex((c) => c.includes("reg. da") || c.includes("reg date") || c.includes("date")) >= 0
+            ? firstRowLower.findIndex((c) => c.includes("reg. da") || c.includes("reg date") || c.includes("date")) : 7,
+          type: firstRowLower.findIndex((c) => c.includes("ty") || c.includes("type")) >= 0
+            ? firstRowLower.findIndex((c) => c.includes("ty") || c.includes("type")) : 8,
+          totalTax: headerTotalTax,
+          aNo: headerAstNo >= 0 ? headerAstNo : 17,
+        };
+      } else if (maxCols >= 15 && maxCols <= 25) {
+        // ASYCUDA Window Direct Export (18 Columns as shown in user software screenshot)
+        defaultMapping = {
+          year: 0,
+          ainName: 2,
+          ainNo: 3,
+          ref: 4,
+          regNo: 6,
+          date: 7,
+          type: 8,
+          totalTax: 15,
+          aNo: 17,
+        };
+      } else if (maxCols >= 26) {
+        // Extended 31-Column Structure
         defaultMapping = {
           year: 0,
           ainName: 3,
@@ -480,7 +520,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           regNo: 8,
           date: 9,
           type: 10,
-          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : (27 < maxCols ? 27 : 25),
+          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : 25,
           aNo: 18,
         };
       } else if (maxCols >= 10) {
@@ -492,8 +532,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           regNo: 7 < maxCols ? 7 : 8,
           date: 8 < maxCols ? 8 : 9,
           type: 9 < maxCols ? 9 : 7,
-          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : (16 < maxCols ? 16 : maxCols - 2),
-          aNo: 18 < maxCols ? 18 : maxCols - 1,
+          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : (15 < maxCols ? 15 : maxCols - 2),
+          aNo: 17 < maxCols ? 17 : maxCols - 1,
         };
       }
 
