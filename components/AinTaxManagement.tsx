@@ -157,44 +157,44 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         return; // Skip header
       }
 
-      // 1. Year: 4-digit valid year (e.g. 2023)
-      let year = mapping.year >= 0 ? (cells[mapping.year] || "").trim() : "";
-      if (!/^(19|20)\d{2}$/.test(year)) {
+      // 1. Year: User mapped column or fallback
+      let year = mapping.year >= 0 && cells[mapping.year] !== undefined ? cells[mapping.year].trim() : "";
+      if (!year || !/^(19|20)\d{2}$/.test(year)) {
         const foundYr = cells.find((c) => /^(19|20)\d{2}$/.test((c || "").trim()));
         if (foundYr) year = foundYr.trim();
       }
 
-      // 2. AIN Name: Text / Character Company Name (e.g. Mona Lisa International, Lima Enterprise)
-      let ainName = mapping.ainName >= 0 ? (cells[mapping.ainName] || "").trim() : "";
-      if (!ainName || (/^\d/.test(ainName) && !/[a-zA-Z]{4,}/.test(ainName))) {
+      // 2. AIN Name: User mapped column or fallback
+      let ainName = mapping.ainName >= 0 && cells[mapping.ainName] !== undefined ? cells[mapping.ainName].trim() : "";
+      if (!ainName) {
         const foundName = cells.find(
           (c, idx) =>
             idx !== 0 &&
             idx !== mapping.ainNo &&
             /[a-zA-Z]{3,}/.test(c) &&
             !/^\d{4}-\d{2}-\d{2}$/.test(c) &&
-            !c.startsWith("#")
+            !c.trim().startsWith("#")
         );
         if (foundName) ainName = foundName.trim();
       }
 
-      // 3. AIN No: 803XXXXXX / 8-11 digit AIN number
-      let ainNo = mapping.ainNo >= 0 ? (cells[mapping.ainNo] || "").trim() : "";
-      if (!ainNo || !/^\d{8,11}$/.test(ainNo)) {
+      // 3. AIN No: User mapped column or fallback
+      let ainNo = mapping.ainNo >= 0 && cells[mapping.ainNo] !== undefined ? cells[mapping.ainNo].trim() : "";
+      if (!ainNo) {
         const foundAinNo = cells.find((c) => /^\d{8,11}$/.test((c || "").trim()));
         if (foundAinNo) ainNo = foundAinNo.trim();
       }
 
-      // 4. Ref: Must start with '#' or be reference code (e.g. #12, #47, #537)
-      let ref = mapping.ref >= 0 ? (cells[mapping.ref] || "").trim() : "";
-      if (!ref || !ref.startsWith("#")) {
+      // 4. Ref: User mapped column or fallback
+      let ref = mapping.ref >= 0 && cells[mapping.ref] !== undefined ? cells[mapping.ref].trim() : "";
+      if (!ref) {
         const foundRef = cells.find((c) => (c || "").trim().startsWith("#"));
         if (foundRef) ref = foundRef.trim();
       }
 
-      // 5. Reg No: 4-6 digit registration number (e.g. 12345, 101716, 10338)
-      let regNo = mapping.regNo >= 0 ? (cells[mapping.regNo] || "").trim() : "";
-      if (!regNo || !/^\d{4,6}$/.test(regNo) || regNo === ainNo || regNo === year) {
+      // 5. Reg No: User mapped column or fallback
+      let regNo = mapping.regNo >= 0 && cells[mapping.regNo] !== undefined ? cells[mapping.regNo].trim() : "";
+      if (!regNo) {
         const foundReg = cells.find(
           (c) =>
             /^\d{4,6}$/.test((c || "").trim()) &&
@@ -204,13 +204,12 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         if (foundReg) regNo = foundReg.trim();
       }
 
-      // 6. Sanitize Date: MUST be a valid date string (supports YYYY-MM-DD, DD/MM/YYYY, D/M/YYYY)
+      // 6. Date: User mapped column or fallback
       const DATE_REGEX = /^(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{4})$/;
-      let rawDate = mapping.date >= 0 ? (cells[mapping.date] || "").trim() : "";
-      if (!DATE_REGEX.test(rawDate)) {
-        // Fallback: search row cells for any cell matching date format
+      let rawDate = mapping.date >= 0 && cells[mapping.date] !== undefined ? cells[mapping.date].trim() : "";
+      if (!rawDate || !DATE_REGEX.test(rawDate)) {
         const foundDateCell = cells.find((c) => DATE_REGEX.test((c || "").trim()));
-        rawDate = foundDateCell ? foundDateCell.trim() : "";
+        if (foundDateCell) rawDate = foundDateCell.trim();
       }
 
       let date = "";
@@ -226,9 +225,9 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         }
       }
 
-      // 7. Sanitize Type: ONLY EX or IM allowed (C, H, etc. strictly excluded)
+      // 7. Type: User mapped column or fallback (ONLY EX or IM allowed)
       const VALID_TYPES = ["EX", "IM"];
-      let rawType = mapping.type >= 0 ? (cells[mapping.type] || "").trim().toUpperCase() : "";
+      let rawType = mapping.type >= 0 && cells[mapping.type] !== undefined ? cells[mapping.type].trim().toUpperCase() : "";
       if (rawType === "EXP") rawType = "EX";
       if (rawType === "IMP") rawType = "IM";
 
@@ -246,52 +245,20 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       }
       const type = rawType;
 
-      // 8. Total Tax: numeric tax amount from Col 26 (index 25 / 26) or mapped tax column
+      // 8. Total Tax: DIRECT VALUE FROM USER MAPPED COLUMN (e.g. Col 28 or Col 26)
       let totalTax = 0;
-      if (mapping.totalTax >= 0 && cells[mapping.totalTax]) {
+      if (mapping.totalTax >= 0 && cells[mapping.totalTax] !== undefined) {
         const rawTax = cells[mapping.totalTax].replace(/[^0-9.-]/g, "");
         totalTax = Number(rawTax) || 0;
-      }
-
-      // Check Col 26 (index 25 or 26) explicitly if mapped totalTax is <= 1
-      if (totalTax <= 1 && cells[25]) {
-        const rawTax25 = cells[25].replace(/[^0-9.-]/g, "");
-        if (Number(rawTax25) > 1) {
-          totalTax = Number(rawTax25);
-        }
-      }
-      if (totalTax <= 1 && cells[26]) {
-        const rawTax26 = cells[26].replace(/[^0-9.-]/g, "");
-        if (Number(rawTax26) > 1) {
-          totalTax = Number(rawTax26);
-        }
-      }
-
-      // Fallback search TAX columns (index >= 12) if still <= 1
-      if (totalTax <= 1) {
+      } else {
         for (let i = cells.length - 1; i >= 12; i--) {
           const cellVal = (cells[i] || "").trim();
           const rawTax = cellVal.replace(/[^0-9.-]/g, "");
           const num = Number(rawTax);
-          if (
-            num > 1 &&
-            i !== mapping.ainNo &&
-            i !== mapping.regNo &&
-            i !== mapping.year &&
-            cellVal !== regNo &&
-            cellVal !== ainNo &&
-            cellVal !== year &&
-            !/^\d{4}$/.test(cellVal) &&
-            !/^\d{4}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal) &&
-            !/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal)
-          ) {
+          if (num > 1) {
             totalTax = num;
             break;
           }
-        }
-        // If still <= 1 (token fee with no real tax due), set to 0
-        if (totalTax <= 1) {
-          totalTax = 0;
         }
       }
 
