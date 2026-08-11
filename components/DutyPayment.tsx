@@ -86,7 +86,8 @@ const parseDelimitedLine = (line: string): (string | number | null)[] => {
 };
 
 const isLikelyCustomsRecordStart = (line: string): boolean =>
-  /^\d{4}\t\d+/.test(line.trim());
+  /^(19|20)\d{2}(\t|\s{2,}|,)/.test(line.trim()) ||
+  /^(year|বছর|sl|#|ain\s*no|office)/i.test(line.trim());
 
 const parseMultilineTabbedRows = (
   rawText: string,
@@ -99,13 +100,13 @@ const parseMultilineTabbedRows = (
   const startCount = lines.filter(isLikelyCustomsRecordStart).length;
   if (startCount === 0) return [];
 
-  const rows: (string | number | null)[][] = [];
+  const recordBlocks: string[][] = [];
   let currentBlock: string[] = [];
 
   lines.forEach((line) => {
     if (isLikelyCustomsRecordStart(line)) {
       if (currentBlock.length > 0) {
-        rows.push(parseDelimitedLine(currentBlock.join(" ")));
+        recordBlocks.push(currentBlock);
       }
       currentBlock = [line];
       return;
@@ -117,12 +118,56 @@ const parseMultilineTabbedRows = (
   });
 
   if (currentBlock.length > 0) {
-    rows.push(parseDelimitedLine(currentBlock.join(" ")));
+    recordBlocks.push(currentBlock);
   }
 
-  return rows.filter((row) =>
-    row.some((cell) => String(cell ?? "").trim() !== ""),
-  );
+  const rows: (string | number | null)[][] = [];
+  recordBlocks.forEach((blockLines) => {
+    const hasTabs = blockLines.some((l) => l.includes("\t"));
+    const hasCommas = !hasTabs && blockLines.some((l) => l.includes(","));
+
+    if (hasTabs) {
+      const cells: string[] = [];
+      blockLines.forEach((line) => {
+        const parts = line.split("\t").map((c) => normalizePastedCell(c));
+        if (cells.length === 0) {
+          cells.push(...parts);
+        } else {
+          cells[cells.length - 1] = [cells[cells.length - 1], parts[0]].filter(Boolean).join(" ");
+          if (parts.length > 1) {
+            cells.push(...parts.slice(1));
+          }
+        }
+      });
+      if (cells.some((cell) => cell.trim() !== "")) {
+        rows.push(cells);
+      }
+    } else if (hasCommas) {
+      const cells: string[] = [];
+      blockLines.forEach((line) => {
+        const parts = line.split(",").map((c) => normalizePastedCell(c));
+        if (cells.length === 0) {
+          cells.push(...parts);
+        } else {
+          cells[cells.length - 1] = [cells[cells.length - 1], parts[0]].filter(Boolean).join(" ");
+          if (parts.length > 1) {
+            cells.push(...parts.slice(1));
+          }
+        }
+      });
+      if (cells.some((cell) => cell.trim() !== "")) {
+        rows.push(cells);
+      }
+    } else {
+      const singleLine = blockLines.map((l) => l.trim()).join(" ");
+      const cells = singleLine.split(/\s{2,}/).map((c) => normalizePastedCell(c)).filter(Boolean);
+      if (cells.length > 0) {
+        rows.push(cells);
+      }
+    }
+  });
+
+  return rows;
 };
 
 const inferImportColumns = (

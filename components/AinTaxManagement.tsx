@@ -40,6 +40,11 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "Unpaid" | "Paid">("all");
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | "all">(25);
+  const [jumpPageInput, setJumpPageInput] = useState("");
+
   // Selection
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -78,6 +83,24 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   const [colMapDate, setColMapDate] = useState<number>(5);
   const [colMapType, setColMapType] = useState<number>(6);
   const [colMapTotalTax, setColMapTotalTax] = useState<number>(7);
+
+  // Pivot Table & Summary Report State
+  const [isPivotModalOpen, setIsPivotModalOpen] = useState(false);
+  const [pivotRowDim, setPivotRowDim] = useState<
+    "ainName" | "ainNo" | "year" | "type" | "paymentStatus" | "month" | "date"
+  >("ainName");
+  const [pivotColDim, setPivotColDim] = useState<"none" | "paymentStatus" | "type" | "year">("none");
+  const [pivotMetric, setPivotMetric] = useState<
+    "financialBreakdown" | "totalTax" | "count" | "average" | "minmax"
+  >("financialBreakdown");
+  const [pivotSortBy, setPivotSortBy] = useState<
+    "tax_desc" | "tax_asc" | "count_desc" | "label_asc" | "label_desc"
+  >("tax_desc");
+  const [pivotSearch, setPivotSearch] = useState("");
+  const [pivotStartDate, setPivotStartDate] = useState("");
+  const [pivotEndDate, setPivotEndDate] = useState("");
+  const [pivotExpandedGroups, setPivotExpandedGroups] = useState<string[]>([]);
+  const pivotTableRef = useRef<HTMLDivElement | null>(null);
 
   // Status & Feedback
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -361,20 +384,20 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         .map((l) => l.replace(/\u00a0/g, " ").trim())
         .filter(Boolean);
 
-      const lineBlocks: string[] = [];
+      const recordBlocks: string[][] = [];
       let currentBlock: string[] = [];
 
-      // Valid year starts with 19xx or 20xx (e.g. 2023, 2024), NOT address numbers like 1172
+      // Valid record starts with year (e.g. 2023, 2024) or header row keywords
       const isRecordStart = (line: string) => {
         if (/^(19|20)\d{2}(\t|\s{2,}|,)/.test(line)) return true;
-        if (/^(year|বছর|sl|#|ain\s*no)/i.test(line)) return true;
+        if (/^(year|বছর|sl|#|ain\s*no|office)/i.test(line)) return true;
         return false;
       };
 
       rawLines.forEach((line) => {
         if (isRecordStart(line)) {
           if (currentBlock.length > 0) {
-            lineBlocks.push(currentBlock.join("\t"));
+            recordBlocks.push(currentBlock);
           }
           currentBlock = [line];
         } else {
@@ -386,21 +409,55 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         }
       });
       if (currentBlock.length > 0) {
-        lineBlocks.push(currentBlock.join("\t"));
+        recordBlocks.push(currentBlock);
       }
 
+      // Convert each block of lines to a single unified row of cells without column shifting
       const matrix: string[][] = [];
-      lineBlocks.forEach((block) => {
-        let cells: string[];
-        if (block.includes("\t")) {
-          cells = block.split("\t").map((c) => c.trim());
-        } else if (block.includes(",")) {
-          cells = block.split(",").map((c) => c.trim());
+      recordBlocks.forEach((blockLines) => {
+        const hasTabs = blockLines.some((l) => l.includes("\t"));
+        const hasCommas = !hasTabs && blockLines.some((l) => l.includes(","));
+
+        if (hasTabs) {
+          const cells: string[] = [];
+          blockLines.forEach((line) => {
+            const parts = line.split("\t").map((c) => c.replace(/\s+/g, " ").trim());
+            if (cells.length === 0) {
+              cells.push(...parts);
+            } else {
+              // The first part of continuation line merges into the last cell of previous line
+              cells[cells.length - 1] = [cells[cells.length - 1], parts[0]].filter(Boolean).join(" ");
+              // Any subsequent parts are new cells
+              if (parts.length > 1) {
+                cells.push(...parts.slice(1));
+              }
+            }
+          });
+          if (cells.some((c) => c !== "")) {
+            matrix.push(cells);
+          }
+        } else if (hasCommas) {
+          const cells: string[] = [];
+          blockLines.forEach((line) => {
+            const parts = line.split(",").map((c) => c.replace(/\s+/g, " ").trim());
+            if (cells.length === 0) {
+              cells.push(...parts);
+            } else {
+              cells[cells.length - 1] = [cells[cells.length - 1], parts[0]].filter(Boolean).join(" ");
+              if (parts.length > 1) {
+                cells.push(...parts.slice(1));
+              }
+            }
+          });
+          if (cells.some((c) => c !== "")) {
+            matrix.push(cells);
+          }
         } else {
-          cells = block.split(/\s{2,}/).map((c) => c.trim());
-        }
-        if (cells.length > 0) {
-          matrix.push(cells);
+          const singleLine = blockLines.map((l) => l.trim()).join(" ");
+          const cells = singleLine.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean);
+          if (cells.length > 0) {
+            matrix.push(cells);
+          }
         }
       });
 
@@ -433,7 +490,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         totalTax: 7,
       };
 
-      // Auto detect totalTax column by matching 0.00 / decimal currency format patterns across columns
+      // Auto detect totalTax column by matching decimal currency format patterns across columns
       let matched00TaxCol = -1;
       const colScores: Record<number, number> = {};
       const sampleCheckRows = matrix.slice(0, Math.min(matrix.length, 15));
@@ -442,17 +499,19 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         row.forEach((cell, colIdx) => {
           if (colIdx < 4) return; // Skip metadata columns (0..3)
           const val = (cell || "").trim();
-          // Check if formatted like 105,158.00, 10,788.00, 134.50, 2,267.75, 0.00
-          const is00Format =
+          // Check if formatted like 828.48, 2055.42, 105,158.00, 134.50, 0.00
+          const isDecimalAmount =
             /^\d{1,3}(,\d{3})*\.\d{2}$/.test(val) ||
             /^\d+\.\d{2}$/.test(val) ||
             /^\d{1,3}(,\d{3})*\.\d{1,2}$/.test(val);
 
           const rawNum = Number(val.replace(/[^0-9.-]/g, ""));
-          const isLargeNum = rawNum > 50;
+          const isPositiveNum = Number.isFinite(rawNum) && rawNum > 0;
 
-          if (is00Format || isLargeNum) {
-            colScores[colIdx] = (colScores[colIdx] || 0) + (is00Format ? 3 : 1);
+          if (isDecimalAmount) {
+            colScores[colIdx] = (colScores[colIdx] || 0) + 10;
+          } else if (isPositiveNum && !/^\d{4}-\d{2}-\d{2}$/.test(val) && !/^\d{4,6}$/.test(val)) {
+            colScores[colIdx] = (colScores[colIdx] || 0) + 1;
           }
         });
       });
@@ -466,18 +525,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         }
       });
 
-      // Exact NBR ASYCUDA Table Structure (as shown in user screenshot):
-      // Col 1: Year (2023) -> index 0
-      // Col 2: Office Name -> index 1
-      // Col 3: Declarant Name (FAIR VENTURE L...) -> index 2
-      // Col 4: Declarant / AIN No (803000265) -> index 3
-      // Col 5: Ref. (#292) -> index 4
-      // Col 6: R... (C) -> index 5
-      // Col 7: Reg. ... (105045) -> index 6
-      // Col 8: Reg. Date (02/08/2023) -> index 7
-      // Col 9: Ty... (EX / IM) -> index 8
-      // Col 16: Total taxes (134.50, 130.00, 2,267.75) -> index 15
-      // Col 18: Ast. # (105158, 10788, 112213) -> index 17
       const firstRowLower = matrix[0].map((c) => (c || "").trim().toLowerCase());
       const headerTotalTax = firstRowLower.findIndex(
         (c) => c.includes("total tax") || c.includes("total taxes")
@@ -519,16 +566,28 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       if (headerTotalTax >= 0) {
         defaultMapping = {
           year: 0,
-          ainName: headerAinName >= 0 ? headerAinName : 2,
-          ainNo: headerAinNo >= 0 ? headerAinNo : 3,
-          ref: headerRef >= 0 ? headerRef : 4,
-          regNo: headerRegNo >= 0 ? headerRegNo : 6,
-          date: headerDate >= 0 ? headerDate : 7,
-          type: headerType >= 0 ? headerType : 8,
+          ainName: headerAinName >= 0 ? headerAinName : (maxCols >= 20 ? 3 : 2),
+          ainNo: headerAinNo >= 0 ? headerAinNo : (maxCols >= 20 ? 4 : 3),
+          ref: headerRef >= 0 ? headerRef : (maxCols >= 20 ? 5 : 4),
+          regNo: headerRegNo >= 0 ? headerRegNo : (maxCols >= 20 ? 7 : 6),
+          date: headerDate >= 0 ? headerDate : (maxCols >= 20 ? 8 : 7),
+          type: headerType >= 0 ? headerType : (maxCols >= 20 ? 9 : 8),
           totalTax: headerTotalTax,
         };
-      } else if (maxCols >= 15 && maxCols <= 25) {
-        // ASYCUDA Window Direct Export (18 Columns as shown in user software screenshot)
+      } else if (maxCols >= 20 && maxCols <= 25) {
+        // ASYCUDA 22-Column Format (Year, Office Code, Office Name, Declarant Name, Declarant AIN, Ref, Model, Reg No, Date, Type, ..., Total Tax [col 16])
+        defaultMapping = {
+          year: 0,
+          ainName: 3,
+          ainNo: 4,
+          ref: 5,
+          regNo: 7,
+          date: 8,
+          type: 9,
+          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : 16,
+        };
+      } else if (maxCols >= 15 && maxCols < 20) {
+        // ASYCUDA 18-Column Format
         defaultMapping = {
           year: 0,
           ainName: 2,
@@ -537,7 +596,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           regNo: 6,
           date: 7,
           type: 8,
-          totalTax: 15,
+          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : 15,
         };
       } else if (maxCols >= 26) {
         // Extended 31-Column Structure
@@ -555,12 +614,12 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         defaultMapping = {
           year: 0,
           ainName: sampleRow[3] && /[a-zA-Z]{3,}/.test(sampleRow[3]) ? 3 : 2,
-          ainNo: 4 < maxCols ? 4 : 5,
-          ref: 5 < maxCols ? 5 : 6,
-          regNo: 7 < maxCols ? 7 : 8,
-          date: 8 < maxCols ? 8 : 9,
-          type: 9 < maxCols ? 9 : 7,
-          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : (15 < maxCols ? 15 : maxCols - 2),
+          ainNo: 4 < maxCols ? 4 : 3,
+          ref: 5 < maxCols ? 5 : 4,
+          regNo: 7 < maxCols ? 7 : 6,
+          date: 8 < maxCols ? 8 : 7,
+          type: 9 < maxCols ? 9 : 8,
+          totalTax: matched00TaxCol >= 0 ? matched00TaxCol : (16 < maxCols ? 16 : maxCols - 2),
         };
       }
 
@@ -1097,19 +1156,77 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     [isBn]
   );
 
+  // Reset page to 1 whenever search, filters, or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, yearFilter, typeFilter, statusFilter, pageSize]);
+
+  // Pagination Calculations
+  const totalFilteredCount = filteredRows.length;
+  const numericPageSize = pageSize === "all" ? totalFilteredCount || 1 : pageSize;
+  const totalPages = pageSize === "all" ? 1 : Math.ceil(totalFilteredCount / numericPageSize) || 1;
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+
+  const startIndex = pageSize === "all" ? 0 : (safeCurrentPage - 1) * numericPageSize;
+  const endIndex =
+    pageSize === "all"
+      ? totalFilteredCount
+      : Math.min(startIndex + numericPageSize, totalFilteredCount);
+
+  const paginatedRows = useMemo(() => {
+    if (pageSize === "all") return filteredRows;
+    return filteredRows.slice(startIndex, endIndex);
+  }, [filteredRows, startIndex, endIndex, pageSize]);
+
+  const isCurrentPageAllSelected =
+    paginatedRows.length > 0 && paginatedRows.every((r) => selectedIds.includes(r.id));
+  const isCurrentPagePartiallySelected =
+    paginatedRows.some((r) => selectedIds.includes(r.id)) && !isCurrentPageAllSelected;
+
   // Selection handlers
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelectCurrentPage = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(filteredRows.map((r) => r.id));
+      const pageIds = paginatedRows.map((r) => r.id);
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
     } else {
-      setSelectedIds([]);
+      const pageIds = new Set(paginatedRows.map((r) => r.id));
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.has(id)));
     }
+  };
+
+  const handleSelectAllFiltered = () => {
+    setSelectedIds(filteredRows.map((r) => r.id));
   };
 
   const handleToggleSelectRow = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (safeCurrentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, "...", totalPages);
+      } else if (safeCurrentPage >= totalPages - 3) {
+        pages.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, "...", totalPages);
+      }
+    }
+    return pages;
+  };
+
+  const handleJumpToPage = (e: React.FormEvent) => {
+    e.preventDefault();
+    const p = parseInt(jumpPageInput, 10);
+    if (!Number.isNaN(p) && p >= 1 && p <= totalPages) {
+      setCurrentPage(p);
+      setJumpPageInput("");
+    }
   };
 
   // Exporting Data to Excel
@@ -1143,6 +1260,384 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       printElement(tableRef.current, isBn ? "AIN ট্যাক্স বকেয়া বিবরণী" : "AIN Tax Due Statement", {
         autoExcludeControls: true,
       });
+    }
+  };
+
+  // Distinct Column Keys when Pivot Column Dimension is selected
+  const pivotColKeys = useMemo(() => {
+    if (pivotColDim === "none") return [];
+    const keys = new Set<string>();
+    history.forEach((r) => {
+      if (pivotColDim === "paymentStatus") keys.add(r.paymentStatus || "Unpaid");
+      else if (pivotColDim === "type") keys.add(r.type || "N/A");
+      else if (pivotColDim === "year") keys.add(r.year || "N/A");
+    });
+    return Array.from(keys).sort();
+  }, [history, pivotColDim]);
+
+  // Pivot Table Computed Rows & Aggregates
+  const pivotData = useMemo(() => {
+    // 1. Date range filter
+    const records = history.filter((r) => {
+      if (pivotStartDate && r.date && r.date < pivotStartDate) return false;
+      if (pivotEndDate && r.date && r.date > pivotEndDate) return false;
+      return true;
+    });
+
+    const grandTotal = {
+      count: records.length,
+      totalTax: records.reduce((s, r) => s + (r.totalTax || 0), 0),
+      paidTax: records
+        .filter((r) => r.paymentStatus === "Paid")
+        .reduce((s, r) => s + (r.totalTax || 0), 0),
+      unpaidTax: records
+        .filter((r) => (r.paymentStatus || "Unpaid") !== "Paid")
+        .reduce((s, r) => s + (r.totalTax || 0), 0),
+      paidCount: records.filter((r) => r.paymentStatus === "Paid").length,
+      unpaidCount: records.filter((r) => (r.paymentStatus || "Unpaid") !== "Paid").length,
+      colBreakdown: {} as Record<
+        string,
+        { count: number; totalTax: number; paidTax: number; unpaidTax: number }
+      >,
+    };
+
+    if (pivotColDim !== "none") {
+      pivotColKeys.forEach((k) => {
+        grandTotal.colBreakdown[k] = { count: 0, totalTax: 0, paidTax: 0, unpaidTax: 0 };
+      });
+      records.forEach((r) => {
+        let ck = "N/A";
+        if (pivotColDim === "paymentStatus") ck = r.paymentStatus || "Unpaid";
+        else if (pivotColDim === "type") ck = r.type || "N/A";
+        else if (pivotColDim === "year") ck = r.year || "N/A";
+
+        if (!grandTotal.colBreakdown[ck]) {
+          grandTotal.colBreakdown[ck] = { count: 0, totalTax: 0, paidTax: 0, unpaidTax: 0 };
+        }
+        grandTotal.colBreakdown[ck].count += 1;
+        grandTotal.colBreakdown[ck].totalTax += r.totalTax || 0;
+        if (r.paymentStatus === "Paid") {
+          grandTotal.colBreakdown[ck].paidTax += r.totalTax || 0;
+        } else {
+          grandTotal.colBreakdown[ck].unpaidTax += r.totalTax || 0;
+        }
+      });
+    }
+
+    // 2. Group records by row dimension
+    const groupMap = new Map<string, { label: string; records: AinTaxRecord[] }>();
+
+    records.forEach((r) => {
+      let key = "";
+      let label = "";
+
+      if (pivotRowDim === "ainName") {
+        key = (r.ainName || "").trim() || (isBn ? "অজ্ঞাত প্রতিষ্ঠান" : "Unknown Client");
+        label = key;
+      } else if (pivotRowDim === "ainNo") {
+        key = (r.ainNo || "").trim() || "N/A";
+        label = key;
+      } else if (pivotRowDim === "year") {
+        key = (r.year || "").trim() || "N/A";
+        label = key;
+      } else if (pivotRowDim === "type") {
+        key = (r.type || "").trim().toUpperCase() || "N/A";
+        label = key;
+      } else if (pivotRowDim === "paymentStatus") {
+        key = (r.paymentStatus || "Unpaid").trim();
+        label = key;
+      } else if (pivotRowDim === "month") {
+        key = r.date ? r.date.substring(0, 7) : (isBn ? "তারিখবিহীন" : "No Date");
+        label = key;
+      } else if (pivotRowDim === "date") {
+        key = r.date || (isBn ? "তারিখবিহীন" : "No Date");
+        label = key;
+      }
+
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { label, records: [] });
+      }
+      groupMap.get(key)!.records.push(r);
+    });
+
+    // 3. Compute group statistics
+    const rows: {
+      key: string;
+      label: string;
+      count: number;
+      totalTax: number;
+      paidTax: number;
+      unpaidTax: number;
+      paidCount: number;
+      unpaidCount: number;
+      minTax: number;
+      maxTax: number;
+      avgTax: number;
+      sharePercent: number;
+      colBreakdown: Record<
+        string,
+        { count: number; totalTax: number; paidTax: number; unpaidTax: number }
+      >;
+      records: AinTaxRecord[];
+    }[] = [];
+
+    groupMap.forEach((val, key) => {
+      const recs = val.records;
+      const count = recs.length;
+      const totalTax = recs.reduce((s, r) => s + (r.totalTax || 0), 0);
+      const paidTax = recs
+        .filter((r) => r.paymentStatus === "Paid")
+        .reduce((s, r) => s + (r.totalTax || 0), 0);
+      const unpaidTax = recs
+        .filter((r) => (r.paymentStatus || "Unpaid") !== "Paid")
+        .reduce((s, r) => s + (r.totalTax || 0), 0);
+      const paidCount = recs.filter((r) => r.paymentStatus === "Paid").length;
+      const unpaidCount = recs.filter((r) => (r.paymentStatus || "Unpaid") !== "Paid").length;
+      const minTax = count > 0 ? Math.min(...recs.map((r) => r.totalTax || 0)) : 0;
+      const maxTax = count > 0 ? Math.max(...recs.map((r) => r.totalTax || 0)) : 0;
+      const avgTax = count > 0 ? totalTax / count : 0;
+      const sharePercent = grandTotal.totalTax > 0 ? (totalTax / grandTotal.totalTax) * 100 : 0;
+
+      const colBreakdown: Record<
+        string,
+        { count: number; totalTax: number; paidTax: number; unpaidTax: number }
+      > = {};
+      if (pivotColDim !== "none") {
+        pivotColKeys.forEach((k) => {
+          colBreakdown[k] = { count: 0, totalTax: 0, paidTax: 0, unpaidTax: 0 };
+        });
+        recs.forEach((r) => {
+          let ck = "N/A";
+          if (pivotColDim === "paymentStatus") ck = r.paymentStatus || "Unpaid";
+          else if (pivotColDim === "type") ck = r.type || "N/A";
+          else if (pivotColDim === "year") ck = r.year || "N/A";
+
+          if (!colBreakdown[ck]) {
+            colBreakdown[ck] = { count: 0, totalTax: 0, paidTax: 0, unpaidTax: 0 };
+          }
+          colBreakdown[ck].count += 1;
+          colBreakdown[ck].totalTax += r.totalTax || 0;
+          if (r.paymentStatus === "Paid") {
+            colBreakdown[ck].paidTax += r.totalTax || 0;
+          } else {
+            colBreakdown[ck].unpaidTax += r.totalTax || 0;
+          }
+        });
+      }
+
+      rows.push({
+        key,
+        label: val.label,
+        count,
+        totalTax,
+        paidTax,
+        unpaidTax,
+        paidCount,
+        unpaidCount,
+        minTax,
+        maxTax,
+        avgTax,
+        sharePercent,
+        colBreakdown,
+        records: recs,
+      });
+    });
+
+    // 4. Search Filter
+    const filtered = rows.filter((r) =>
+      !pivotSearch || r.label.toLowerCase().includes(pivotSearch.toLowerCase())
+    );
+
+    // 5. Sort
+    filtered.sort((a, b) => {
+      if (pivotSortBy === "tax_desc") return b.totalTax - a.totalTax;
+      if (pivotSortBy === "tax_asc") return a.totalTax - b.totalTax;
+      if (pivotSortBy === "count_desc") return b.count - a.count;
+      if (pivotSortBy === "label_asc") return a.label.localeCompare(b.label);
+      if (pivotSortBy === "label_desc") return b.label.localeCompare(a.label);
+      return 0;
+    });
+
+    return { rows: filtered, grandTotal };
+  }, [
+    history,
+    pivotStartDate,
+    pivotEndDate,
+    pivotRowDim,
+    pivotColDim,
+    pivotColKeys,
+    pivotSearch,
+    pivotSortBy,
+    isBn,
+  ]);
+
+  const handleTogglePivotGroup = (key: string) => {
+    setPivotExpandedGroups((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  const handleExportPivotExcel = () => {
+    if (pivotData.rows.length === 0) {
+      showError(isBn ? "এক্সপোর্ট করার জন্য কোন ডাটা নেই।" : "No pivot data to export.");
+      return;
+    }
+
+    const rowDimLabel =
+      pivotRowDim === "ainName"
+        ? isBn ? "প্রতিষ্ঠান / AIN নাম" : "Client / AIN Name"
+        : pivotRowDim === "ainNo"
+        ? isBn ? "AIN নং" : "AIN No"
+        : pivotRowDim === "year"
+        ? isBn ? "বছর" : "Year"
+        : pivotRowDim === "type"
+        ? isBn ? "টাইপ" : "Type"
+        : pivotRowDim === "paymentStatus"
+        ? isBn ? "স্ট্যাটাস" : "Payment Status"
+        : pivotRowDim === "month"
+        ? isBn ? "মাস" : "Month"
+        : isBn ? "তারিখ" : "Date";
+
+    let headers: string[] = [];
+    let aoaRows: (string | number)[][] = [];
+
+    if (pivotColDim === "none") {
+      headers = [
+        rowDimLabel,
+        "Total Records",
+        "Total Tax (BDT)",
+        "Paid Tax (BDT)",
+        "Unpaid Tax (BDT)",
+        "Paid Count",
+        "Unpaid Count",
+        "Average Tax (BDT)",
+        "% Share of Tax",
+      ];
+
+      aoaRows = pivotData.rows.map((r) => [
+        r.label,
+        r.count,
+        r.totalTax,
+        r.paidTax,
+        r.unpaidTax,
+        r.paidCount,
+        r.unpaidCount,
+        Math.round(r.avgTax * 100) / 100,
+        `${r.sharePercent.toFixed(2)}%`,
+      ]);
+
+      // Add Grand Total row
+      aoaRows.push([
+        "GRAND TOTAL",
+        pivotData.grandTotal.count,
+        pivotData.grandTotal.totalTax,
+        pivotData.grandTotal.paidTax,
+        pivotData.grandTotal.unpaidTax,
+        pivotData.grandTotal.paidCount,
+        pivotData.grandTotal.unpaidCount,
+        pivotData.grandTotal.count > 0
+          ? Math.round((pivotData.grandTotal.totalTax / pivotData.grandTotal.count) * 100) / 100
+          : 0,
+        "100.00%",
+      ]);
+    } else {
+      headers = [rowDimLabel, "Total Records", "Total Tax (BDT)"];
+      pivotColKeys.forEach((ck) => {
+        headers.push(`${ck} (Count)`);
+        headers.push(`${ck} (Tax BDT)`);
+      });
+
+      aoaRows = pivotData.rows.map((r) => {
+        const rowArr: (string | number)[] = [r.label, r.count, r.totalTax];
+        pivotColKeys.forEach((ck) => {
+          const colData = r.colBreakdown[ck] || { count: 0, totalTax: 0 };
+          rowArr.push(colData.count);
+          rowArr.push(colData.totalTax);
+        });
+        return rowArr;
+      });
+
+      // Add Grand Total row
+      const grandArr: (string | number)[] = [
+        "GRAND TOTAL",
+        pivotData.grandTotal.count,
+        pivotData.grandTotal.totalTax,
+      ];
+      pivotColKeys.forEach((ck) => {
+        const colData = pivotData.grandTotal.colBreakdown[ck] || { count: 0, totalTax: 0 };
+        grandArr.push(colData.count);
+        grandArr.push(colData.totalTax);
+      });
+      aoaRows.push(grandArr);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...aoaRows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Pivot_Summary");
+    XLSX.writeFile(
+      wb,
+      `AIN_Tax_Pivot_${pivotRowDim}_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
+    showSuccess(isBn ? "পিভট এক্সেল ফাইল তৈরি হয়েছে!" : "Pivot Excel generated successfully!");
+  };
+
+  const handleCopyPivotClipboard = () => {
+    if (pivotData.rows.length === 0) return;
+    const rowDimLabel =
+      pivotRowDim === "ainName"
+        ? "Client / AIN Name"
+        : pivotRowDim === "ainNo"
+        ? "AIN No"
+        : pivotRowDim === "year"
+        ? "Year"
+        : pivotRowDim === "type"
+        ? "Type"
+        : pivotRowDim === "paymentStatus"
+        ? "Payment Status"
+        : pivotRowDim === "month"
+        ? "Month"
+        : "Date";
+
+    let tsv = "";
+    if (pivotColDim === "none") {
+      tsv = `${rowDimLabel}\tTotal Records\tTotal Tax\tPaid Tax\tUnpaid Tax\tPaid Count\tUnpaid Count\t% Share\n`;
+      pivotData.rows.forEach((r) => {
+        tsv += `${r.label}\t${r.count}\t${r.totalTax}\t${r.paidTax}\t${r.unpaidTax}\t${r.paidCount}\t${r.unpaidCount}\t${r.sharePercent.toFixed(2)}%\n`;
+      });
+      tsv += `GRAND TOTAL\t${pivotData.grandTotal.count}\t${pivotData.grandTotal.totalTax}\t${pivotData.grandTotal.paidTax}\t${pivotData.grandTotal.unpaidTax}\t${pivotData.grandTotal.paidCount}\t${pivotData.grandTotal.unpaidCount}\t100%\n`;
+    } else {
+      tsv =
+        `${rowDimLabel}\tTotal Records\tTotal Tax\t` +
+        pivotColKeys.map((k) => `${k} Count\t${k} Tax`).join("\t") +
+        "\n";
+      pivotData.rows.forEach((r) => {
+        tsv +=
+          `${r.label}\t${r.count}\t${r.totalTax}\t` +
+          pivotColKeys
+            .map((k) => `${r.colBreakdown[k]?.count || 0}\t${r.colBreakdown[k]?.totalTax || 0}`)
+            .join("\t") +
+          "\n";
+      });
+    }
+    navigator.clipboard.writeText(tsv);
+    showSuccess(isBn ? "পিভট ডাটা ক্লিপবোর্ডে কপি করা হয়েছে!" : "Pivot copied to clipboard!");
+  };
+
+  const handlePrintPivot = () => {
+    if (pivotTableRef.current) {
+      printElement(
+        pivotTableRef.current,
+        isBn ? "কলাম ভিত্তিক পিভট ও সামারি রিপোর্ট" : "Pivot & Summary Report",
+        {
+          header: {
+            organization: systemConfig.agencyName || "Customs Clearance & Tax Management",
+            subtext: `Grouped by: ${pivotRowDim.toUpperCase()} ${
+              pivotColDim !== "none" ? `| Sub-column: ${pivotColDim.toUpperCase()}` : ""
+            }`,
+          },
+          autoExcludeControls: true,
+        }
+      );
     }
   };
 
@@ -1379,6 +1874,15 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Pivot Table & Summary Report Button */}
+            <button
+              onClick={() => setIsPivotModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all active:scale-95 border border-indigo-500/30"
+            >
+              <i className="fa-solid fa-table-cells-large text-sm"></i>
+              <span>{isBn ? "পিভট ও সামারি রিপোর্ট" : "Pivot & Summary Report"}</span>
+            </button>
+
             {/* Quick Paste Raw Excel Data Button */}
             <button
               onClick={() => {
@@ -1517,12 +2021,17 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   >
                     <input
                       type="checkbox"
-                      checked={
-                        filteredRows.length > 0 &&
-                        selectedIds.length === filteredRows.length
+                      checked={isCurrentPageAllSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isCurrentPagePartiallySelected;
+                      }}
+                      onChange={handleSelectCurrentPage}
+                      className="rounded border-slate-400 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      title={
+                        isCurrentPageAllSelected
+                          ? isBn ? "বর্তমান পেজের সবগুলো আনচেক করুন" : "Unselect all on this page"
+                          : isBn ? "বর্তমান পেজের সবগুলো সিলেক্ট করুন" : "Select all on this page"
                       }
-                      onChange={handleSelectAll}
-                      className="rounded border-slate-400 text-blue-600 focus:ring-blue-500"
                     />
                   </th>
                 )}
@@ -1657,8 +2166,6 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   </th>
                 )}
 
-
-
                 {isColumnVisible("actions") && (
                   <th
                     className="p-3.5 text-center relative select-none"
@@ -1671,7 +2178,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
             </thead>
 
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs">
-              {filteredRows.length === 0 ? (
+              {paginatedRows.length === 0 ? (
                 <tr>
                   <td
                     colSpan={12}
@@ -1688,8 +2195,9 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredRows.map((r, idx) => {
+                paginatedRows.map((r, idx) => {
                   const isSelected = selectedIds.includes(r.id);
+                  const displayIndex = startIndex + idx + 1;
                   return (
                     <tr
                       key={r.id}
@@ -1709,14 +2217,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleToggleSelectRow(r.id)}
-                            className="rounded border-slate-400 text-blue-600 focus:ring-blue-500"
+                            className="rounded border-slate-400 text-blue-600 focus:ring-blue-500 cursor-pointer"
                           />
                         </td>
                       )}
 
                       {isColumnVisible("sl") && (
                         <td className="p-3.5 font-bold text-slate-400">
-                          {idx + 1}
+                          {displayIndex}
                         </td>
                       )}
 
@@ -1912,6 +2420,187 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               </tfoot>
             )}
           </table>
+        </div>
+
+        {/* Modern Pagination & Rows-Per-Page Control Bar */}
+        <div
+          className={`px-4 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold ${
+            isDark
+              ? "bg-slate-900/90 border-slate-800 text-slate-300"
+              : "bg-slate-50/90 border-slate-200 text-slate-700"
+          }`}
+        >
+          {/* Left: Rows Per Page & Record Info */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-400">
+                {isBn ? "প্রতি পেজে:" : "Rows per page:"}
+              </span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPageSize(val === "all" ? "all" : Number(val));
+                }}
+                className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition-all outline-none ${
+                  isDark
+                    ? "bg-slate-800 border-slate-700 text-white"
+                    : "bg-white border-slate-300 text-slate-800 shadow-sm"
+                }`}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={250}>250</option>
+                <option value="all">{isBn ? "সবগুলো (All)" : "All"}</option>
+              </select>
+            </div>
+
+            <span className="text-[11px] font-bold text-slate-400 border-l pl-3 border-slate-700/40">
+              {totalFilteredCount === 0
+                ? isBn
+                  ? "০ টি রেকর্ড"
+                  : "0 records"
+                : isBn
+                ? `মোট ${totalFilteredCount} টির মধ্যে ${startIndex + 1}–${endIndex} টি দেখানো হচ্ছে`
+                : `Showing ${startIndex + 1}–${endIndex} of ${totalFilteredCount} records`}
+            </span>
+          </div>
+
+          {/* Right: Page Navigation & Jump to Page */}
+          {pageSize !== "all" && totalPages > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* First Page */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage(1)}
+                disabled={safeCurrentPage <= 1}
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
+                  safeCurrentPage <= 1
+                    ? "opacity-30 cursor-not-allowed border-transparent text-slate-500"
+                    : isDark
+                    ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm"
+                }`}
+                title={isBn ? "প্রথম পেজ" : "First Page"}
+              >
+                <i className="fa-solid fa-angles-left"></i>
+              </button>
+
+              {/* Prev Page */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={safeCurrentPage <= 1}
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
+                  safeCurrentPage <= 1
+                    ? "opacity-30 cursor-not-allowed border-transparent text-slate-500"
+                    : isDark
+                    ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm"
+                }`}
+                title={isBn ? "পূর্ববর্তী পেজ" : "Previous Page"}
+              >
+                <i className="fa-solid fa-chevron-left"></i>
+              </button>
+
+              {/* Numbered Page Buttons */}
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((num, pIdx) => {
+                  if (num === "...") {
+                    return (
+                      <span
+                        key={`ellipsis_${pIdx}`}
+                        className="px-2 text-slate-400 font-bold text-xs"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  const isActive = num === safeCurrentPage;
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setCurrentPage(num)}
+                      className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-black transition-all ${
+                        isActive
+                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 scale-105"
+                          : isDark
+                          ? "bg-slate-800/80 border border-slate-700 text-slate-300 hover:bg-slate-700"
+                          : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm"
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Next Page */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={safeCurrentPage >= totalPages}
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
+                  safeCurrentPage >= totalPages
+                    ? "opacity-30 cursor-not-allowed border-transparent text-slate-500"
+                    : isDark
+                    ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm"
+                }`}
+                title={isBn ? "পরবর্তী পেজ" : "Next Page"}
+              >
+                <i className="fa-solid fa-chevron-right"></i>
+              </button>
+
+              {/* Last Page */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={safeCurrentPage >= totalPages}
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
+                  safeCurrentPage >= totalPages
+                    ? "opacity-30 cursor-not-allowed border-transparent text-slate-500"
+                    : isDark
+                    ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm"
+                }`}
+                title={isBn ? "সর্বশেষ পেজ" : "Last Page"}
+              >
+                <i className="fa-solid fa-angles-right"></i>
+              </button>
+
+              {/* Quick Jump Input */}
+              {totalPages > 5 && (
+                <form
+                  onSubmit={handleJumpToPage}
+                  className="flex items-center gap-1 ml-2 pl-2 border-l border-slate-700/40"
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    placeholder={String(safeCurrentPage)}
+                    value={jumpPageInput}
+                    onChange={(e) => setJumpPageInput(e.target.value)}
+                    className={`w-12 h-8 px-1.5 text-center text-xs font-black rounded-lg border outline-none ${
+                      isDark
+                        ? "bg-slate-800 border-slate-700 text-white"
+                        : "bg-white border-slate-300 text-slate-900"
+                    }`}
+                  />
+                  <button
+                    type="submit"
+                    className="h-8 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold"
+                  >
+                    Go
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -2851,6 +3540,721 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               >
                 {isBn ? "হ্যাঁ, সবকয়টি মুছুন" : "Yes, Delete Selected"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pivot Table & Summary Report Modal */}
+      {isPivotModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div
+            className={`w-full max-w-7xl max-h-[94vh] flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all ${
+              isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
+            }`}
+          >
+            {/* Modal Header */}
+            <div
+              className={`px-6 py-4 border-b flex items-center justify-between gap-4 shrink-0 ${
+                isDark
+                  ? "bg-slate-900/90 border-slate-800"
+                  : "bg-slate-50 border-slate-200"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-lg font-black shadow-lg shadow-indigo-500/25">
+                  <i className="fa-solid fa-table-cells-large"></i>
+                </div>
+                <div>
+                  <h3 className="text-base md:text-lg font-black tracking-tight flex items-center gap-2">
+                    <span>{isBn ? "কলাম ভিত্তিক পিভট ও সামারি রিপোর্ট" : "Pivot Table & Summary Report"}</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                      Interactive Analytics
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium">
+                    {isBn
+                      ? "বিভিন্ন কলাম অনুযায়ী ডাটা গ্রুপিং, পরিশোধ/বকেয়া বিভাজন ও কাস্টম সামারি রিপোর্ট।"
+                      : "Group, cross-tabulate, and analyze tax data by any column dimension."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyPivotClipboard}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all active:scale-95 flex items-center gap-1.5 ${
+                    isDark
+                      ? "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm"
+                  }`}
+                  title={isBn ? "ক্লিপবোর্ডে কপি করুন" : "Copy to Clipboard"}
+                >
+                  <i className="fa-regular fa-copy text-indigo-400"></i>
+                  <span className="hidden sm:inline">{isBn ? "কপি" : "Copy"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportPivotExcel}
+                  className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-md shadow-emerald-600/20 active:scale-95 flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-file-excel"></i>
+                  <span>{isBn ? "এক্সেল ডাউনলোড" : "Export Excel"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePrintPivot}
+                  className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-md shadow-indigo-600/20 active:scale-95 flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-print"></i>
+                  <span>{isBn ? "প্রিন্ট" : "Print"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPivotModalOpen(false)}
+                  className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-rose-50 hover:text-rose-500 transition-all flex items-center justify-center ml-2"
+                >
+                  <i className="fas fa-times text-sm"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Pivot Controls & Configuration Toolbar */}
+            <div
+              className={`p-4 border-b space-y-3 shrink-0 ${
+                isDark ? "bg-slate-900/60 border-slate-800" : "bg-slate-50/70 border-slate-200"
+              }`}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {/* Row Group Dimension */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-indigo-500 mb-1">
+                    <i className="fa-solid fa-arrows-up-down mr-1"></i>
+                    {isBn ? "রো গ্রুপিং কলাম" : "Row Dimension"}
+                  </label>
+                  <select
+                    value={pivotRowDim}
+                    onChange={(e) => setPivotRowDim(e.target.value as any)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-extrabold border transition-all outline-none ${
+                      isDark
+                        ? "bg-slate-800 border-indigo-500/50 text-white"
+                        : "bg-white border-indigo-300 text-slate-900 shadow-sm"
+                    }`}
+                  >
+                    <option value="ainName">{isBn ? "প্রতিষ্ঠান / AIN Name" : "Client / AIN Name"}</option>
+                    <option value="ainNo">{isBn ? "AIN নম্বর (AIN No)" : "AIN Number"}</option>
+                    <option value="year">{isBn ? "বছর (Year)" : "Year"}</option>
+                    <option value="type">{isBn ? "ধরন (Type: EX / IM)" : "Type (EX / IM)"}</option>
+                    <option value="paymentStatus">{isBn ? "পেমেন্ট স্ট্যাটাস (Paid/Unpaid)" : "Payment Status"}</option>
+                    <option value="month">{isBn ? "মাসিক (Month YYYY-MM)" : "Monthly (YYYY-MM)"}</option>
+                    <option value="date">{isBn ? "তারিখ (Exact Date)" : "Exact Date"}</option>
+                  </select>
+                </div>
+
+                {/* Column Pivot Dimension */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-purple-500 mb-1">
+                    <i className="fa-solid fa-arrows-left-right mr-1"></i>
+                    {isBn ? "কলাম বিভাজন (ঐচ্ছিক)" : "Column Dimension"}
+                  </label>
+                  <select
+                    value={pivotColDim}
+                    onChange={(e) => setPivotColDim(e.target.value as any)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-extrabold border transition-all outline-none ${
+                      isDark
+                        ? "bg-slate-800 border-purple-500/50 text-white"
+                        : "bg-white border-purple-300 text-slate-900 shadow-sm"
+                    }`}
+                  >
+                    <option value="none">{isBn ? "কোনটি নয় (Single Dimension)" : "None (Single Dimension)"}</option>
+                    <option value="paymentStatus">{isBn ? "পেমেন্ট স্ট্যাটাস (Paid vs Unpaid)" : "Payment Status"}</option>
+                    <option value="type">{isBn ? "টাইপ (EX vs IM)" : "Type (EX vs IM)"}</option>
+                    <option value="year">{isBn ? "বছর (Year-wise)" : "Year-wise"}</option>
+                  </select>
+                </div>
+
+                {/* Metric Calculation */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-blue-500 mb-1">
+                    <i className="fa-solid fa-calculator mr-1"></i>
+                    {isBn ? "হিসাবের ধরন" : "Calculation Metric"}
+                  </label>
+                  <select
+                    value={pivotMetric}
+                    onChange={(e) => setPivotMetric(e.target.value as any)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-extrabold border transition-all outline-none ${
+                      isDark
+                        ? "bg-slate-800 border-slate-700 text-white"
+                        : "bg-white border-slate-200 text-slate-900 shadow-sm"
+                    }`}
+                  >
+                    <option value="financialBreakdown">{isBn ? "পূর্ণ আর্থিক বিবরণী (Full Detail)" : "Full Financial Summary"}</option>
+                    <option value="totalTax">{isBn ? "মোট ট্যাক্স (Sum of Tax)" : "Total Tax Only"}</option>
+                    <option value="count">{isBn ? "রেকর্ড সংখ্যা (Count of Bills)" : "Bill Count Only"}</option>
+                    <option value="average">{isBn ? "গড় ট্যাক্স (Average Tax)" : "Average Tax"}</option>
+                    <option value="minmax">{isBn ? "সর্বনিম্ন ও সর্বোচ্চ (Min & Max)" : "Min & Max Tax"}</option>
+                  </select>
+                </div>
+
+                {/* Sort Order */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    <i className="fa-solid fa-arrow-down-short-wide mr-1"></i>
+                    {isBn ? "সাজানোর ক্রম" : "Sort By"}
+                  </label>
+                  <select
+                    value={pivotSortBy}
+                    onChange={(e) => setPivotSortBy(e.target.value as any)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all outline-none ${
+                      isDark
+                        ? "bg-slate-800 border-slate-700 text-white"
+                        : "bg-white border-slate-200 text-slate-900 shadow-sm"
+                    }`}
+                  >
+                    <option value="tax_desc">{isBn ? "ট্যাক্স: বেশি থেকে কম" : "Tax: High to Low"}</option>
+                    <option value="tax_asc">{isBn ? "ট্যাক্স: কম থেকে বেশি" : "Tax: Low to High"}</option>
+                    <option value="count_desc">{isBn ? "বিল সংখ্যা: বেশি থেকে কম" : "Count: High to Low"}</option>
+                    <option value="label_asc">{isBn ? "নাম: A থেকে Z" : "Label: A to Z"}</option>
+                    <option value="label_desc">{isBn ? "নাম: Z থেকে A" : "Label: Z to A"}</option>
+                  </select>
+                </div>
+
+                {/* Search Filter */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    <i className="fa-solid fa-magnifying-glass mr-1"></i>
+                    {isBn ? "ফিল্টার খুঁজুন" : "Filter Group"}
+                  </label>
+                  <input
+                    type="text"
+                    value={pivotSearch}
+                    onChange={(e) => setPivotSearch(e.target.value)}
+                    placeholder={isBn ? "গ্রুপ খুঁজুন..." : "Filter groups..."}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border transition-all outline-none ${
+                      isDark
+                        ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500"
+                        : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 shadow-sm"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Date Filter & Quick Preset Row */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-400">
+                    <i className="fa-regular fa-calendar mr-1"></i>
+                    {isBn ? "তারিখ সীমা:" : "Date Range:"}
+                  </span>
+                  <input
+                    type="date"
+                    value={pivotStartDate}
+                    onChange={(e) => setPivotStartDate(e.target.value)}
+                    className={`px-2.5 py-1 rounded-lg border text-xs font-medium ${
+                      isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
+                    }`}
+                  />
+                  <span className="text-slate-400 font-bold">-</span>
+                  <input
+                    type="date"
+                    value={pivotEndDate}
+                    onChange={(e) => setPivotEndDate(e.target.value)}
+                    className={`px-2.5 py-1 rounded-lg border text-xs font-medium ${
+                      isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
+                    }`}
+                  />
+                  {(pivotStartDate || pivotEndDate) && (
+                    <button
+                      onClick={() => {
+                        setPivotStartDate("");
+                        setPivotEndDate("");
+                      }}
+                      className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-[11px] font-bold text-slate-500 hover:text-rose-500"
+                    >
+                      {isBn ? "ক্লিয়ার" : "Clear"}
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">
+                  <span>
+                    {isBn
+                      ? `মোট ${pivotData.rows.length} টি গ্রুপ পাওয়া গেছে (${pivotData.grandTotal.count} টি রেকর্ড)`
+                      : `${pivotData.rows.length} groups found (${pivotData.grandTotal.count} records)`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick KPI Stats Summary Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-indigo-500/5 border-b border-indigo-500/10 shrink-0">
+              <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+                  {isBn ? "মোট ট্যাক্স (Grand Total)" : "Grand Total Tax"}
+                </span>
+                <div className="text-lg font-black text-indigo-600 dark:text-indigo-300">
+                  ৳ {pivotData.grandTotal.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400">
+                  {isBn ? "মোট বকেয়া (Unpaid)" : "Total Unpaid Due"}
+                </span>
+                <div className="text-lg font-black text-rose-600 dark:text-rose-400">
+                  ৳ {pivotData.grandTotal.unpaidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                  <span className="text-[10px] font-bold text-rose-400 ml-1.5">
+                    ({pivotData.grandTotal.unpaidCount} bills)
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                  {isBn ? "মোট পরিশোধিত (Paid)" : "Total Paid"}
+                </span>
+                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                  ৳ {pivotData.grandTotal.paidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                  <span className="text-[10px] font-bold text-emerald-400 ml-1.5">
+                    ({pivotData.grandTotal.paidCount} bills)
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                  {isBn ? "মোট চালান / বিল সংখ্যা" : "Total Bills"}
+                </span>
+                <div className="text-lg font-black text-purple-600 dark:text-purple-300">
+                  {pivotData.grandTotal.count.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Scrollable Pivot Table View */}
+            <div ref={pivotTableRef} className="flex-1 overflow-auto p-4">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-10">
+                  <tr
+                    className={`border-b text-[11px] font-black uppercase tracking-wider ${
+                      isDark
+                        ? "bg-slate-800 text-slate-200 border-slate-700 shadow-md"
+                        : "bg-slate-100 text-slate-700 border-slate-200 shadow-sm"
+                    }`}
+                  >
+                    <th className="py-3 px-3 w-10 text-center">#</th>
+                    <th className="py-3 px-4 min-w-[200px]">
+                      {pivotRowDim === "ainName"
+                        ? isBn ? "প্রতিষ্ঠান / AIN Name" : "Client / AIN Name"
+                        : pivotRowDim === "ainNo"
+                        ? isBn ? "AIN নম্বর" : "AIN No"
+                        : pivotRowDim === "year"
+                        ? isBn ? "বছর" : "Year"
+                        : pivotRowDim === "type"
+                        ? isBn ? "টাইপ (EX/IM)" : "Type"
+                        : pivotRowDim === "paymentStatus"
+                        ? isBn ? "পেমেন্ট অবস্থা" : "Payment Status"
+                        : pivotRowDim === "month"
+                        ? isBn ? "মাস" : "Month"
+                        : isBn ? "তারিখ" : "Date"}
+                    </th>
+                    <th className="py-3 px-3 text-center w-24">
+                      {isBn ? "চালান সংখ্যা" : "Records"}
+                    </th>
+
+                    {/* Dynamic Headers based on Pivot Column Dimension */}
+                    {pivotColDim === "none" ? (
+                      <>
+                        <th className="py-3 px-4 text-right">
+                          {isBn ? "মোট ট্যাক্স (Total Tax)" : "Total Tax"}
+                        </th>
+                        {pivotMetric === "financialBreakdown" && (
+                          <>
+                            <th className="py-3 px-4 text-right text-rose-500">
+                              {isBn ? "বকেয়া (Unpaid)" : "Unpaid Tax"}
+                            </th>
+                            <th className="py-3 px-4 text-right text-emerald-500">
+                              {isBn ? "পরিশোধিত (Paid)" : "Paid Tax"}
+                            </th>
+                          </>
+                        )}
+                        {pivotMetric === "average" && (
+                          <th className="py-3 px-4 text-right">
+                            {isBn ? "গড় ট্যাক্স" : "Average Tax"}
+                          </th>
+                        )}
+                        {pivotMetric === "minmax" && (
+                          <>
+                            <th className="py-3 px-4 text-right">
+                              {isBn ? "সর্বনিম্ন" : "Min Tax"}
+                            </th>
+                            <th className="py-3 px-4 text-right">
+                              {isBn ? "সর্বোচ্চ" : "Max Tax"}
+                            </th>
+                          </>
+                        )}
+                        <th className="py-3 px-4 min-w-[140px]">
+                          {isBn ? "ট্যাক্স শেয়ার (% Share)" : "% Share"}
+                        </th>
+                      </>
+                    ) : (
+                      <>
+                        {pivotColKeys.map((ck) => (
+                          <th key={ck} className="py-3 px-3 text-right border-l border-slate-700/30">
+                            <span className="font-extrabold text-indigo-400">{ck}</span>
+                            <span className="block text-[9px] text-slate-400 font-normal">
+                              Tax (BDT)
+                            </span>
+                          </th>
+                        ))}
+                        <th className="py-3 px-4 text-right border-l border-slate-700/50">
+                          {isBn ? "মোট ট্যাক্স" : "Total Tax"}
+                        </th>
+                        <th className="py-3 px-4 min-w-[120px]">
+                          {isBn ? "শেয়ার (%)" : "% Share"}
+                        </th>
+                      </>
+                    )}
+
+                    <th className="py-3 px-3 text-center w-20">
+                      {isBn ? "বিবরণ" : "Drilldown"}
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-800/40">
+                  {pivotData.rows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={12}
+                        className="py-12 text-center text-slate-400 font-semibold"
+                      >
+                        <i className="fa-solid fa-inbox text-3xl mb-2 block opacity-40"></i>
+                        {isBn ? "কোন ডাটা পাওয়া যায়নি।" : "No data matching criteria."}
+                      </td>
+                    </tr>
+                  ) : (
+                    pivotData.rows.map((row, idx) => {
+                      const isExpanded = pivotExpandedGroups.includes(row.key);
+                      return (
+                        <React.Fragment key={row.key}>
+                          <tr
+                            className={`transition-colors hover:bg-indigo-500/5 ${
+                              idx % 2 === 0
+                                ? isDark
+                                  ? "bg-slate-900/30"
+                                  : "bg-slate-50/50"
+                                : ""
+                            }`}
+                          >
+                            <td className="py-3 px-3 text-center font-bold text-slate-400">
+                              {idx + 1}
+                            </td>
+
+                            <td className="py-3 px-4">
+                              <div className="font-extrabold text-slate-200 dark:text-white flex items-center gap-2">
+                                <span
+                                  onClick={() => handleTogglePivotGroup(row.key)}
+                                  className="cursor-pointer hover:text-indigo-400 transition-colors"
+                                >
+                                  {row.label}
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-3 text-center font-black">
+                              <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
+                                {row.count}
+                              </span>
+                            </td>
+
+                            {pivotColDim === "none" ? (
+                              <>
+                                <td className="py-3 px-4 text-right font-black text-indigo-400 text-sm">
+                                  ৳ {row.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                </td>
+
+                                {pivotMetric === "financialBreakdown" && (
+                                  <>
+                                    <td className="py-3 px-4 text-right font-bold text-rose-500">
+                                      ৳ {row.unpaidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                      <span className="block text-[10px] text-slate-400">
+                                        ({row.unpaidCount} unpaid)
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-bold text-emerald-500">
+                                      ৳ {row.paidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                      <span className="block text-[10px] text-slate-400">
+                                        ({row.paidCount} paid)
+                                      </span>
+                                    </td>
+                                  </>
+                                )}
+
+                                {pivotMetric === "average" && (
+                                  <td className="py-3 px-4 text-right font-bold text-slate-300">
+                                    ৳ {row.avgTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                  </td>
+                                )}
+
+                                {pivotMetric === "minmax" && (
+                                  <>
+                                    <td className="py-3 px-4 text-right font-medium text-slate-400">
+                                      ৳ {row.minTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-extrabold text-slate-200">
+                                      ৳ {row.maxTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                    </td>
+                                  </>
+                                )}
+
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                                      <div
+                                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
+                                        style={{ width: `${Math.min(row.sharePercent, 100)}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[11px] font-black text-slate-400 w-12 text-right">
+                                      {row.sharePercent.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                {pivotColKeys.map((ck) => {
+                                  const colData = row.colBreakdown[ck] || { count: 0, totalTax: 0 };
+                                  return (
+                                    <td key={ck} className="py-3 px-3 text-right font-bold border-l border-slate-800/40">
+                                      <div>
+                                        ৳ {colData.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                      </div>
+                                      <span className="text-[10px] text-slate-400">
+                                        ({colData.count})
+                                      </span>
+                                    </td>
+                                  );
+                                })}
+
+                                <td className="py-3 px-4 text-right font-black text-indigo-400 text-sm border-l border-slate-700/50">
+                                  ৳ {row.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                                      <div
+                                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full"
+                                        style={{ width: `${Math.min(row.sharePercent, 100)}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[11px] font-black text-slate-400 w-12 text-right">
+                                      {row.sharePercent.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </td>
+                              </>
+                            )}
+
+                            <td className="py-3 px-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleTogglePivotGroup(row.key)}
+                                className={`p-1.5 rounded-lg border text-xs font-bold transition-all ${
+                                  isExpanded
+                                    ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                                    : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"
+                                }`}
+                                title={isExpanded ? "Collapse" : "Expand Drilldown"}
+                              >
+                                <i className={`fa-solid ${isExpanded ? "fa-chevron-up" : "fa-chevron-down"}`}></i>
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Nested Drilldown Table */}
+                          {isExpanded && (
+                            <tr className="bg-indigo-950/20 border-y border-indigo-500/20 animate-in fade-in">
+                              <td colSpan={12} className="p-4">
+                                <div className="rounded-2xl border border-indigo-500/20 bg-slate-900/80 p-4 space-y-3 shadow-inner">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="font-extrabold text-xs text-indigo-400 flex items-center gap-2 uppercase tracking-wider">
+                                      <i className="fa-solid fa-list-ol"></i>
+                                      <span>
+                                        {isBn
+                                          ? `${row.label} এর বিস্তারিত বিল তালিকা (${row.records.length} টি)`
+                                          : `Detailed Bills for: ${row.label} (${row.records.length} items)`}
+                                      </span>
+                                    </h5>
+                                    <button
+                                      onClick={() => handleTogglePivotGroup(row.key)}
+                                      className="text-xs text-slate-400 hover:text-slate-200"
+                                    >
+                                      {isBn ? "লুকান" : "Close"}
+                                    </button>
+                                  </div>
+
+                                  <div className="overflow-x-auto max-h-60 rounded-xl border border-slate-800">
+                                    <table className="w-full text-left text-[11px]">
+                                      <thead className="bg-slate-800/90 text-slate-300 font-extrabold sticky top-0">
+                                        <tr>
+                                          <th className="p-2">#</th>
+                                          <th className="p-2">Ref</th>
+                                          <th className="p-2">Reg No</th>
+                                          <th className="p-2">Date</th>
+                                          <th className="p-2">Type</th>
+                                          <th className="p-2">Status</th>
+                                          <th className="p-2 text-right">Tax (BDT)</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-800/60 font-medium">
+                                        {row.records.map((sub, sIdx) => (
+                                          <tr key={sub.id || sIdx} className="hover:bg-indigo-500/10">
+                                            <td className="p-2 text-slate-500 font-bold">{sIdx + 1}</td>
+                                            <td className="p-2 font-mono font-bold text-slate-300">{sub.ref || "-"}</td>
+                                            <td className="p-2 font-mono font-bold text-slate-200">{sub.regNo || "-"}</td>
+                                            <td className="p-2 text-slate-400">{sub.date || "-"}</td>
+                                            <td className="p-2">
+                                              <span className="px-1.5 py-0.5 rounded bg-slate-800 font-bold text-[10px]">
+                                                {sub.type || "N/A"}
+                                              </span>
+                                            </td>
+                                            <td className="p-2">
+                                              <span
+                                                className={`px-2 py-0.5 rounded-full font-black text-[10px] ${
+                                                  sub.paymentStatus === "Paid"
+                                                    ? "bg-emerald-500/20 text-emerald-400"
+                                                    : "bg-rose-500/20 text-rose-400"
+                                                }`}
+                                              >
+                                                {sub.paymentStatus || "Unpaid"}
+                                              </span>
+                                            </td>
+                                            <td className="p-2 text-right font-black text-indigo-300">
+                                              ৳ {sub.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+
+                {/* Grand Total Sticky Footer */}
+                {pivotData.rows.length > 0 && (
+                  <tfoot className="sticky bottom-0 z-10">
+                    <tr
+                      className={`border-t-2 text-xs font-black uppercase ${
+                        isDark
+                          ? "bg-slate-800 text-white border-indigo-500 shadow-2xl"
+                          : "bg-slate-200 text-slate-900 border-indigo-600 shadow-md"
+                      }`}
+                    >
+                      <td className="py-3 px-3 text-center">∑</td>
+                      <td className="py-3 px-4 font-black tracking-wider text-indigo-400">
+                        {isBn ? "সর্বমোট (GRAND TOTAL)" : "GRAND TOTAL"}
+                      </td>
+                      <td className="py-3 px-3 text-center font-black">
+                        {pivotData.grandTotal.count.toLocaleString()}
+                      </td>
+
+                      {pivotColDim === "none" ? (
+                        <>
+                          <td className="py-3 px-4 text-right font-black text-indigo-300 text-sm">
+                            ৳ {pivotData.grandTotal.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                          </td>
+
+                          {pivotMetric === "financialBreakdown" && (
+                            <>
+                              <td className="py-3 px-4 text-right text-rose-400 font-black">
+                                ৳ {pivotData.grandTotal.unpaidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                              </td>
+                              <td className="py-3 px-4 text-right text-emerald-400 font-black">
+                                ৳ {pivotData.grandTotal.paidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                              </td>
+                            </>
+                          )}
+
+                          {pivotMetric === "average" && (
+                            <td className="py-3 px-4 text-right text-slate-200 font-black">
+                              ৳{" "}
+                              {(pivotData.grandTotal.count > 0
+                                ? pivotData.grandTotal.totalTax / pivotData.grandTotal.count
+                                : 0
+                              ).toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                            </td>
+                          )}
+
+                          {pivotMetric === "minmax" && (
+                            <>
+                              <td className="py-3 px-4 text-right">-</td>
+                              <td className="py-3 px-4 text-right">-</td>
+                            </>
+                          )}
+
+                          <td className="py-3 px-4 font-black text-slate-400">100.0%</td>
+                        </>
+                      ) : (
+                        <>
+                          {pivotColKeys.map((ck) => {
+                            const colData = pivotData.grandTotal.colBreakdown[ck] || { count: 0, totalTax: 0 };
+                            return (
+                              <td key={ck} className="py-3 px-3 text-right font-black border-l border-slate-700">
+                                ৳ {colData.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                              </td>
+                            );
+                          })}
+
+                          <td className="py-3 px-4 text-right font-black text-indigo-300 text-sm border-l border-slate-700">
+                            ৳ {pivotData.grandTotal.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                          </td>
+
+                          <td className="py-3 px-4 font-black text-slate-400">100.0%</td>
+                        </>
+                      )}
+
+                      <td className="py-3 px-3 text-center">-</td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              className={`p-4 border-t flex flex-wrap items-center justify-between gap-3 shrink-0 ${
+                isDark ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"
+              }`}
+            >
+              <div className="text-xs text-slate-400">
+                {isBn ? "টিপস: যে কোন রো-এর ডানে Drilldown বাটনে ক্লিক করে বিস্তারিত বিল দেখা যাবে।" : "Tip: Click the drilldown arrow to view all bills under any category."}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPivotModalOpen(false)}
+                  className={`px-5 py-2.5 rounded-xl font-bold text-xs border ${
+                    isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  {isBn ? "বন্ধ করুন" : "Close"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
