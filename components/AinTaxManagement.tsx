@@ -265,6 +265,33 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         totalTax = parseTaxAmount(cells[mapping.totalTax]);
       }
 
+      // If totalTax is <= 1 (e.g. selected column has 0 or empty for this row), search other row tax columns for real tax amount > 1
+      if (totalTax <= 1) {
+        for (let i = cells.length - 1; i >= 10; i--) {
+          const cellVal = (cells[i] || "").trim();
+          const num = parseTaxAmount(cellVal);
+          if (
+            num > 1 &&
+            i !== mapping.ainNo &&
+            i !== mapping.regNo &&
+            i !== mapping.year &&
+            i !== mapping.aNo &&
+            cellVal !== regNo &&
+            cellVal !== ainNo &&
+            cellVal !== year &&
+            !/^\d{4}$/.test(cellVal) &&
+            !/^\d{4}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal) &&
+            !/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal)
+          ) {
+            totalTax = num;
+            break;
+          }
+        }
+        if (totalTax <= 1) {
+          totalTax = 0;
+        }
+      }
+
       // 9. Sanitize A No (Assessment No): 4-8 digit numeric assessment number like 12345 or 13479 (MUST NOT be 000437789-0403 ref format)
       let rawANo = mapping.aNo >= 0 ? (cells[mapping.aNo] || "").trim() : "";
       const taxNumStr = totalTax > 0 ? totalTax.toString() : "";
