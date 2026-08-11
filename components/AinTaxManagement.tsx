@@ -245,20 +245,51 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       }
       const type = rawType;
 
-      // 8. Total Tax: DIRECT VALUE FROM USER MAPPED COLUMN (e.g. Col 28 or Col 26)
+      // 8. Total Tax: Primary mapped column value with smart fallback if 0/empty/1
       let totalTax = 0;
       if (mapping.totalTax >= 0 && cells[mapping.totalTax] !== undefined) {
         const rawTax = cells[mapping.totalTax].replace(/[^0-9.-]/g, "");
         totalTax = Number(rawTax) || 0;
-      } else {
-        for (let i = cells.length - 1; i >= 12; i--) {
-          const cellVal = (cells[i] || "").trim();
-          const rawTax = cellVal.replace(/[^0-9.-]/g, "");
-          const num = Number(rawTax);
-          if (num > 1) {
-            totalTax = num;
-            break;
+      }
+
+      // If totalTax is <= 1 (e.g. Col 26 has 0, 0.00 or empty for this row), search Col 28 / Col 27 / tax columns for real tax amount
+      if (totalTax <= 1) {
+        if (cells[27]) {
+          const rawTax27 = cells[27].replace(/[^0-9.-]/g, "");
+          if (Number(rawTax27) > 1) {
+            totalTax = Number(rawTax27);
           }
+        }
+        if (totalTax <= 1 && cells[26]) {
+          const rawTax26 = cells[26].replace(/[^0-9.-]/g, "");
+          if (Number(rawTax26) > 1) {
+            totalTax = Number(rawTax26);
+          }
+        }
+        if (totalTax <= 1) {
+          for (let i = cells.length - 1; i >= 12; i--) {
+            const cellVal = (cells[i] || "").trim();
+            const rawTax = cellVal.replace(/[^0-9.-]/g, "");
+            const num = Number(rawTax);
+            if (
+              num > 1 &&
+              i !== mapping.ainNo &&
+              i !== mapping.regNo &&
+              i !== mapping.year &&
+              cellVal !== regNo &&
+              cellVal !== ainNo &&
+              cellVal !== year &&
+              !/^\d{4}$/.test(cellVal) &&
+              !/^\d{4}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal) &&
+              !/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(cellVal)
+            ) {
+              totalTax = num;
+              break;
+            }
+          }
+        }
+        if (totalTax <= 1) {
+          totalTax = 0;
         }
       }
 
@@ -444,7 +475,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         let typeCol = 9 < maxCols ? 9 : (7 < maxCols ? 7 : 6);
         let regNoCol = 7 < maxCols ? 7 : 8;
         let dateCol = 8 < maxCols ? 8 : 9;
-        let taxCol = 27 < maxCols ? 27 : (25 < maxCols ? 25 : (16 < maxCols ? 16 : maxCols - 2));
+        let taxCol = 25 < maxCols ? 25 : (27 < maxCols ? 27 : (16 < maxCols ? 16 : maxCols - 2));
         let aNoCol = 18 < maxCols ? 18 : maxCols - 1;
 
         // Dynamic inspection override if sample row cells vary
