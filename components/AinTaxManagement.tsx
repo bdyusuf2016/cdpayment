@@ -1165,13 +1165,13 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     return history.filter((r) => {
       const matchSearch =
         !searchTerm ||
-        r.ainName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.ainNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.ref.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.regNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.year.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (r.paymentStatus || "Unpaid").toLowerCase().includes(searchTerm.toLowerCase());
+        String(r.ainName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(r.ainNo || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(r.ref || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(r.regNo || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(r.year || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(r.type || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(r.paymentStatus || "Unpaid").toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchYear = yearFilter === "all" || r.year === yearFilter;
       const matchType = typeFilter === "all" || r.type === typeFilter;
@@ -1482,7 +1482,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         const t = String(r.type ?? "").trim().toUpperCase() || "N/A";
         keys.add(`${y}-${t}`);
       }
-      else if (pivotColDim === "month") keys.add(r.date ? r.date.substring(0, 7) : "N/A");
+      else if (pivotColDim === "month") keys.add(r.date ? String(r.date).substring(0, 7) : "N/A");
       else if (pivotColDim === "ainNo") keys.add(String(r.ainNo || "N/A").trim() || "N/A");
       else if (pivotColDim === "ainName") keys.add(String(r.ainName || "").trim() || "N/A");
     });
@@ -1529,7 +1529,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         const t = String(r.type ?? "").trim().toUpperCase() || "N/A";
           ck = `${y}-${t}`;
         }
-        else if (pivotColDim === "month") ck = r.date ? r.date.substring(0, 7) : "N/A";
+        else if (pivotColDim === "month") ck = r.date ? String(r.date).substring(0, 7) : "N/A";
         else if (pivotColDim === "ainNo") ck = String(r.ainNo || "N/A").trim() || "N/A";
         else if (pivotColDim === "ainName") ck = String(r.ainName || "").trim() || "N/A";
 
@@ -1580,7 +1580,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         key = String(r.paymentStatus || "Unpaid").trim();
         label = key;
       } else if (pivotRowDim === "month") {
-        key = r.date ? r.date.substring(0, 7) : (isBn ? "তারিখবিহীন" : "No Date");
+        key = r.date ? String(r.date).substring(0, 7) : (isBn ? "তারিখবিহীন" : "No Date");
         label = key;
       } else if (pivotRowDim === "date") {
         key = r.date || (isBn ? "তারিখবিহীন" : "No Date");
@@ -1666,7 +1666,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         const t = String(r.type ?? "").trim().toUpperCase() || "N/A";
           ck = `${y}-${t}`;
           }
-          else if (pivotColDim === "month") ck = r.date ? r.date.substring(0, 7) : "N/A";
+        else if (pivotColDim === "month") ck = r.date ? String(r.date).substring(0, 7) : "N/A";
         else if (pivotColDim === "ainNo") ck = String(r.ainNo || "N/A").trim() || "N/A";
         else if (pivotColDim === "ainName") ck = String(r.ainName || "").trim() || "N/A";
 
