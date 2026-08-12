@@ -89,10 +89,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   // Pivot Table & Summary Report State
   const [isPivotModalOpen, setIsPivotModalOpen] = useState(false);
   const [pivotRowDim, setPivotRowDim] = useState<
-    "ainName" | "ainNo" | "year" | "ref" | "regNo" | "type" | "paymentStatus" | "month" | "date"
+    "ainName" | "ainNo" | "year" | "yearType" | "ref" | "regNo" | "type" | "paymentStatus" | "month" | "date"
   >("ainName");
   const [pivotColDim, setPivotColDim] = useState<
-    "none" | "paymentStatus" | "type" | "year" | "month" | "ainNo" | "ainName"
+    "none" | "paymentStatus" | "type" | "year" | "yearType" | "month" | "ainNo" | "ainName"
   >("none");
   const [pivotMetric, setPivotMetric] = useState<
     "financialBreakdown" | "totalTax" | "count" | "average" | "minmax" | "custom"
@@ -1473,6 +1473,11 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       if (pivotColDim === "paymentStatus") keys.add(r.paymentStatus || "Unpaid");
       else if (pivotColDim === "type") keys.add(r.type || "N/A");
       else if (pivotColDim === "year") keys.add(r.year || "N/A");
+      else if (pivotColDim === "yearType") {
+        const y = (r.year || "").trim() || "N/A";
+        const t = (r.type || "").trim().toUpperCase() || "N/A";
+        keys.add(`${y}-${t}`);
+      }
       else if (pivotColDim === "month") keys.add(r.date ? r.date.substring(0, 7) : "N/A");
       else if (pivotColDim === "ainNo") keys.add(r.ainNo || "N/A");
       else if (pivotColDim === "ainName") keys.add((r.ainName || "").trim() || "N/A");
@@ -1515,6 +1520,11 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         if (pivotColDim === "paymentStatus") ck = r.paymentStatus || "Unpaid";
         else if (pivotColDim === "type") ck = r.type || "N/A";
         else if (pivotColDim === "year") ck = r.year || "N/A";
+        else if (pivotColDim === "yearType") {
+          const y = (r.year || "").trim() || "N/A";
+          const t = (r.type || "").trim().toUpperCase() || "N/A";
+          ck = `${y}-${t}`;
+        }
         else if (pivotColDim === "month") ck = r.date ? r.date.substring(0, 7) : "N/A";
         else if (pivotColDim === "ainNo") ck = r.ainNo || "N/A";
         else if (pivotColDim === "ainName") ck = (r.ainName || "").trim() || "N/A";
@@ -1547,6 +1557,11 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         label = key;
       } else if (pivotRowDim === "year") {
         key = (r.year || "").trim() || "N/A";
+        label = key;
+      } else if (pivotRowDim === "yearType") {
+        const y = (r.year || "").trim() || "N/A";
+        const t = (r.type || "").trim().toUpperCase() || "N/A";
+        key = `${y}-${t}`;
         label = key;
       } else if (pivotRowDim === "ref") {
         key = (r.ref || "").trim() || "N/A";
@@ -1642,6 +1657,11 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           if (pivotColDim === "paymentStatus") ck = r.paymentStatus || "Unpaid";
           else if (pivotColDim === "type") ck = r.type || "N/A";
           else if (pivotColDim === "year") ck = r.year || "N/A";
+          else if (pivotColDim === "yearType") {
+            const y = (r.year || "").trim() || "N/A";
+            const t = (r.type || "").trim().toUpperCase() || "N/A";
+            ck = `${y}-${t}`;
+          }
           else if (pivotColDim === "month") ck = r.date ? r.date.substring(0, 7) : "N/A";
           else if (pivotColDim === "ainNo") ck = r.ainNo || "N/A";
           else if (pivotColDim === "ainName") ck = (r.ainName || "").trim() || "N/A";
@@ -1730,6 +1750,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         ? isBn ? "AIN নং" : "AIN No"
         : pivotRowDim === "year"
         ? isBn ? "বছর" : "Year"
+        : pivotRowDim === "yearType"
+        ? isBn ? "বছর ও টাইপ (Year-Type)" : "Year-Type"
         : pivotRowDim === "ref"
         ? isBn ? "রেফারেন্স" : "Reference"
         : pivotRowDim === "regNo"
@@ -1852,6 +1874,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         ? "AIN No"
         : pivotRowDim === "year"
         ? "Year"
+        : pivotRowDim === "yearType"
+        ? "Year-Type"
         : pivotRowDim === "ref"
         ? "Reference"
         : pivotRowDim === "regNo"
@@ -4203,6 +4227,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     <option value="ainName">{isBn ? "প্রতিষ্ঠান / AIN Name" : "Client / AIN Name"}</option>
                     <option value="ainNo">{isBn ? "AIN নম্বর (AIN No)" : "AIN Number"}</option>
                     <option value="year">{isBn ? "বছর (Year)" : "Year"}</option>
+                    <option value="yearType">{isBn ? "বছর ও টাইপ (Year-Type: 2022-EX, 2022-IM...)" : "Year-Type (e.g. 2022-EX, 2022-IM...)"}</option>
                     <option value="ref">{isBn ? "রেফারেন্স নং (Ref No)" : "Reference (Ref)"}</option>
                     <option value="regNo">{isBn ? "রেজিঃ নং (Reg No)" : "Registration (Reg No)"}</option>
                     <option value="type">{isBn ? "ধরন (Type: EX / IM)" : "Type (EX / IM)"}</option>
@@ -4231,6 +4256,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     <option value="paymentStatus">{isBn ? "পেমেন্ট স্ট্যাটাস (Paid vs Unpaid)" : "Payment Status"}</option>
                     <option value="type">{isBn ? "টাইপ (EX vs IM)" : "Type (EX vs IM)"}</option>
                     <option value="year">{isBn ? "বছর (Year-wise)" : "Year-wise"}</option>
+                    <option value="yearType">{isBn ? "বছর ও টাইপ (Year-Type: 2022-EX, 2022-IM...)" : "Year-Type (e.g. 2022-EX, 2022-IM...)"}</option>
                     <option value="month">{isBn ? "মাস (Month-wise)" : "Month-wise"}</option>
                     <option value="ainNo">{isBn ? "AIN নম্বর (AIN No-wise)" : "AIN No-wise"}</option>
                     <option value="ainName">{isBn ? "প্রতিষ্ঠান (Client-wise)" : "Client-wise"}</option>
@@ -4764,6 +4790,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                         ? isBn ? "AIN নম্বর" : "AIN No"
                         : pivotRowDim === "year"
                         ? isBn ? "বছর" : "Year"
+                        : pivotRowDim === "yearType"
+                        ? isBn ? "বছর ও টাইপ (Year-Type)" : "Year-Type"
                         : pivotRowDim === "ref"
                         ? isBn ? "রেফারেন্স নং" : "Ref No"
                         : pivotRowDim === "regNo"
