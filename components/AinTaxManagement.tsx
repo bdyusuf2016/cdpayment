@@ -2420,38 +2420,74 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
         {/* Selected Rows Bulk Actions */}
         {selectedIds.length > 0 && (
-          <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-blue-600 dark:text-blue-400 animate-in fade-in">
-            <span className="flex items-center gap-2">
-              <i className="fa-solid fa-list-check text-sm"></i>
-              {isBn
-                ? `${selectedIds.length} টি রো সিলেক্ট করা হয়েছে`
-                : `${selectedIds.length} rows selected`}
-            </span>
+          <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-blue-700 dark:text-blue-300 animate-in fade-in shadow-md">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-2 font-black">
+                <i className="fa-solid fa-list-check text-base text-blue-600"></i>
+                {isBn
+                  ? `${selectedIds.length} টি রেকর্ড সিলেক্ট করা হয়েছে`
+                  : `${selectedIds.length} records selected`}
+              </span>
+              {selectedIds.length < filteredRows.length && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(filteredRows.map((r) => r.id || "").filter(Boolean))}
+                  className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                >
+                  {isBn
+                    ? `(ফিল্টার করা সব ${filteredRows.length} টি সিলেক্ট করুন)`
+                    : `(Select all ${filteredRows.length} filtered)`}
+                </button>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
+              {/* Prominent Send Selected to Duty Button */}
+              {onTransferToDutyPayment && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const recsToTransfer = history.filter((r) => selectedIds.includes(r.id || ""));
+                    if (recsToTransfer.length > 0) {
+                      onTransferToDutyPayment(recsToTransfer);
+                      setSelectedIds([]);
+                      showSuccess(
+                        isBn
+                          ? `সিলেক্টেড ${recsToTransfer.length} টি রেকর্ড Duty Payment এ পাঠানো হয়েছে!`
+                          : `Transferred ${recsToTransfer.length} selected records to Duty Payment!`
+                      );
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition-all shadow-md active:scale-95 flex items-center gap-2"
+                  title={isBn ? "সিলেক্টেড রেকর্ডগুলো Duty Payment এ পাঠান" : "Send Selected Records to Duty Payment"}
+                >
+                  <i className="fa-solid fa-paper-plane"></i>
+                  <span>{isBn ? `সিলেক্টেড তালিকা Duty Payment এ পাঠান (${selectedIds.length})` : `Send Selected to Duty (${selectedIds.length})`}</span>
+                </button>
+              )}
               <button
                 onClick={() => handleBulkMarkStatus("Paid")}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
               >
                 <i className="fa-solid fa-circle-check"></i>
-                <span>{isBn ? "সিলেক্টেডগুলো Paid করুন" : "Mark Selected Paid"}</span>
+                <span>{isBn ? "Paid করুন" : "Mark Paid"}</span>
               </button>
               <button
                 onClick={() => handleBulkMarkStatus("Unpaid")}
-                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold transition-all active:scale-95 flex items-center gap-1.5"
+                className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition-all active:scale-95 flex items-center gap-1.5"
               >
                 <i className="fa-solid fa-undo"></i>
                 <span>{isBn ? "Unpaid করুন" : "Mark Unpaid"}</span>
               </button>
               <button
                 onClick={() => setIsBulkDeleteConfirmOpen(true)}
-                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-extrabold transition-all active:scale-95 flex items-center gap-1.5"
+                className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold transition-all active:scale-95 flex items-center gap-1.5"
               >
                 <i className="fa-solid fa-trash"></i>
-                <span>{isBn ? "সিলেক্টেডগুলো মুছুন" : "Delete Selected"}</span>
+                <span>{isBn ? "মুছুন" : "Delete"}</span>
               </button>
               <button
                 onClick={() => setSelectedIds([])}
-                className="px-2.5 py-1.5 rounded-lg border border-blue-500/40 hover:bg-blue-500/20 text-xs"
+                className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all"
               >
                 {isBn ? "ক্লিয়ার" : "Clear"}
               </button>
