@@ -275,6 +275,130 @@ const DailyReport: React.FC<DailyReportProps> = ({
     [dailyAssessment, groupByStatus],
   );
 
+  // Sorting for Duty Table in Daily Report
+  const [dutySortKey, setDutySortKey] = useState<
+    "date" | "clientName" | "ain" | "beYear" | "duty" | "received" | "status"
+  >("date");
+  const [dutySortDir, setDutySortDir] = useState<"asc" | "desc">("desc");
+
+  const sortedVisibleDuty = useMemo(() => {
+    const rows = [...visibleDuty];
+    rows.sort((a, b) => {
+      let left: any = "";
+      let right: any = "";
+
+      if (dutySortKey === "date") {
+        left = parseDate(a.date).getTime();
+        right = parseDate(b.date).getTime();
+      } else if (dutySortKey === "clientName") {
+        left = (a.clientName || "").toLowerCase();
+        right = (b.clientName || "").toLowerCase();
+      } else if (dutySortKey === "ain") {
+        left = (a.ain || "").toLowerCase();
+        right = (b.ain || "").toLowerCase();
+      } else if (dutySortKey === "beYear") {
+        left = (a.beYear || "").toLowerCase();
+        right = (b.beYear || "").toLowerCase();
+      } else if (dutySortKey === "duty") {
+        left = a.duty || 0;
+        right = b.duty || 0;
+      } else if (dutySortKey === "received") {
+        left = a.received || 0;
+        right = b.received || 0;
+      } else if (dutySortKey === "status") {
+        left = (a.status || "").toLowerCase();
+        right = (b.status || "").toLowerCase();
+      }
+
+      if (left < right) return dutySortDir === "asc" ? -1 : 1;
+      if (left > right) return dutySortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [visibleDuty, dutySortKey, dutySortDir]);
+
+  const toggleDutySort = (
+    key: "date" | "clientName" | "ain" | "beYear" | "duty" | "received" | "status"
+  ) => {
+    if (dutySortKey === key) {
+      setDutySortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setDutySortKey(key);
+    setDutySortDir(key === "date" ? "desc" : "asc");
+  };
+
+  const getDutySortIcon = (
+    key: "date" | "clientName" | "ain" | "beYear" | "duty" | "received" | "status"
+  ) => {
+    if (dutySortKey !== key) return "fa-sort text-slate-400 opacity-60";
+    return dutySortDir === "asc"
+      ? "fa-sort-up text-blue-600 dark:text-blue-400"
+      : "fa-sort-down text-blue-600 dark:text-blue-400";
+  };
+
+  // Sorting for Assessment Table in Daily Report
+  const [assessmentSortKey, setAssessmentSortKey] = useState<
+    "date" | "clientName" | "ain" | "nosOfBe" | "amount" | "received" | "status"
+  >("date");
+  const [assessmentSortDir, setAssessmentSortDir] = useState<"asc" | "desc">("desc");
+
+  const sortedExportAssessmentRows = useMemo(() => {
+    const rows = [...exportAssessmentRows];
+    rows.sort((a, b) => {
+      let left: any = "";
+      let right: any = "";
+
+      if (assessmentSortKey === "date") {
+        left = parseDate(a.date).getTime();
+        right = parseDate(b.date).getTime();
+      } else if (assessmentSortKey === "clientName") {
+        left = (a.clientName || "").toLowerCase();
+        right = (b.clientName || "").toLowerCase();
+      } else if (assessmentSortKey === "ain") {
+        left = (a.ain || "").toLowerCase();
+        right = (b.ain || "").toLowerCase();
+      } else if (assessmentSortKey === "nosOfBe") {
+        left = a.nosOfBe || 0;
+        right = b.nosOfBe || 0;
+      } else if (assessmentSortKey === "amount") {
+        left = a.net && a.net > 0 ? a.net : a.amount || 0;
+        right = b.net && b.net > 0 ? b.net : b.amount || 0;
+      } else if (assessmentSortKey === "received") {
+        left = a.received || 0;
+        right = b.received || 0;
+      } else if (assessmentSortKey === "status") {
+        left = (a.status || "").toLowerCase();
+        right = (b.status || "").toLowerCase();
+      }
+
+      if (left < right) return assessmentSortDir === "asc" ? -1 : 1;
+      if (left > right) return assessmentSortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [exportAssessmentRows, assessmentSortKey, assessmentSortDir]);
+
+  const toggleAssessmentSort = (
+    key: "date" | "clientName" | "ain" | "nosOfBe" | "amount" | "received" | "status"
+  ) => {
+    if (assessmentSortKey === key) {
+      setAssessmentSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setAssessmentSortKey(key);
+    setAssessmentSortDir(key === "date" ? "desc" : "asc");
+  };
+
+  const getAssessmentSortIcon = (
+    key: "date" | "clientName" | "ain" | "nosOfBe" | "amount" | "received" | "status"
+  ) => {
+    if (assessmentSortKey !== key) return "fa-sort text-slate-400 opacity-60";
+    return assessmentSortDir === "asc"
+      ? "fa-sort-up text-purple-600 dark:text-purple-400"
+      : "fa-sort-down text-purple-600 dark:text-purple-400";
+  };
+
   const dutySummary = useMemo(() => {
     const totalAmount = dailyDuty.reduce((sum, rec) => sum + (rec.duty || 0), 0);
     const totalReceived = dailyDuty.reduce(
@@ -1656,30 +1780,79 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       >
                         <tr>
                           <th className="px-4 py-2 font-black uppercase tracking-widest">
-                            Date
+                            <button
+                              type="button"
+                              onClick={() => toggleDutySort("date")}
+                              className="inline-flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-black"
+                            >
+                              <span>Date</span>
+                              <i className={`fas ${getDutySortIcon("date")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest">
-                            Client
+                            <button
+                              type="button"
+                              onClick={() => toggleDutySort("clientName")}
+                              className="inline-flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-black"
+                            >
+                              <span>Client</span>
+                              <i className={`fas ${getDutySortIcon("clientName")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest">
-                            AIN
+                            <button
+                              type="button"
+                              onClick={() => toggleDutySort("ain")}
+                              className="inline-flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-black"
+                            >
+                              <span>AIN</span>
+                              <i className={`fas ${getDutySortIcon("ain")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest">
-                            B/E
+                            <button
+                              type="button"
+                              onClick={() => toggleDutySort("beYear")}
+                              className="inline-flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-black"
+                            >
+                              <span>B/E</span>
+                              <i className={`fas ${getDutySortIcon("beYear")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                            Amount
+                            <button
+                              type="button"
+                              onClick={() => toggleDutySort("duty")}
+                              className="inline-flex items-center justify-end gap-1 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-black w-full"
+                            >
+                              <span>Amount</span>
+                              <i className={`fas ${getDutySortIcon("duty")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                            Received
+                            <button
+                              type="button"
+                              onClick={() => toggleDutySort("received")}
+                              className="inline-flex items-center justify-end gap-1 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-black w-full"
+                            >
+                              <span>Received</span>
+                              <i className={`fas ${getDutySortIcon("received")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
-                            Status
+                            <button
+                              type="button"
+                              onClick={() => toggleDutySort("status")}
+                              className="inline-flex items-center justify-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-black w-full"
+                            >
+                              <span>Status</span>
+                              <i className={`fas ${getDutySortIcon("status")}`}></i>
+                            </button>
                           </th>
                         </tr>
                       </thead>
                       <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                        {visibleDuty.map((rec) => (
+                        {sortedVisibleDuty.map((rec) => (
                           <tr key={rec.id}>
                             <td className="px-4 py-2">{rec.date}</td>
                             <td className="px-4 py-2">{rec.clientName}</td>
@@ -1892,30 +2065,79 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       >
                         <tr>
                           <th className="px-4 py-2 font-black uppercase tracking-widest">
-                            Date
+                            <button
+                              type="button"
+                              onClick={() => toggleAssessmentSort("date")}
+                              className="inline-flex items-center gap-1 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer font-black"
+                            >
+                              <span>Date</span>
+                              <i className={`fas ${getAssessmentSortIcon("date")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest">
-                            Client
+                            <button
+                              type="button"
+                              onClick={() => toggleAssessmentSort("clientName")}
+                              className="inline-flex items-center gap-1 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer font-black"
+                            >
+                              <span>Client</span>
+                              <i className={`fas ${getAssessmentSortIcon("clientName")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest">
-                            AIN
+                            <button
+                              type="button"
+                              onClick={() => toggleAssessmentSort("ain")}
+                              className="inline-flex items-center gap-1 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer font-black"
+                            >
+                              <span>AIN</span>
+                              <i className={`fas ${getAssessmentSortIcon("ain")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                            B/E
+                            <button
+                              type="button"
+                              onClick={() => toggleAssessmentSort("nosOfBe")}
+                              className="inline-flex items-center justify-end gap-1 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer font-black w-full"
+                            >
+                              <span>B/E</span>
+                              <i className={`fas ${getAssessmentSortIcon("nosOfBe")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                            Amount
+                            <button
+                              type="button"
+                              onClick={() => toggleAssessmentSort("amount")}
+                              className="inline-flex items-center justify-end gap-1 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer font-black w-full"
+                            >
+                              <span>Amount</span>
+                              <i className={`fas ${getAssessmentSortIcon("amount")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest text-right">
-                            Received
+                            <button
+                              type="button"
+                              onClick={() => toggleAssessmentSort("received")}
+                              className="inline-flex items-center justify-end gap-1 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer font-black w-full"
+                            >
+                              <span>Received</span>
+                              <i className={`fas ${getAssessmentSortIcon("received")}`}></i>
+                            </button>
                           </th>
                           <th className="px-4 py-2 font-black uppercase tracking-widest text-center">
-                            Status
+                            <button
+                              type="button"
+                              onClick={() => toggleAssessmentSort("status")}
+                              className="inline-flex items-center justify-center gap-1 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer font-black w-full"
+                            >
+                              <span>Status</span>
+                              <i className={`fas ${getAssessmentSortIcon("status")}`}></i>
+                            </button>
                           </th>
                         </tr>
                       </thead>
                       <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-                        {exportAssessmentRows.map((rec) => (
+                        {sortedExportAssessmentRows.map((rec) => (
                           <tr key={rec.id}>
                             <td className="px-4 py-2">{rec.date}</td>
                             <td className="px-4 py-2">{rec.clientName}</td>

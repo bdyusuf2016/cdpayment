@@ -104,6 +104,9 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
       } else if (sortKey === "name") {
         left = (a.name || "").toLowerCase();
         right = (b.name || "").toLowerCase();
+      } else if (sortKey === "circle") {
+        left = (a.circle || "").toLowerCase();
+        right = (b.circle || "").toLowerCase();
       } else {
         left = getPrimaryClientPhone(a).toLowerCase();
         right = getPrimaryClientPhone(b).toLowerCase();
@@ -116,7 +119,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
     return rows;
   }, [filteredClients, sortKey, sortDir]);
 
-  const toggleSort = (key: "latest" | "ain" | "name" | "phone") => {
+  const toggleSort = (key: "latest" | "ain" | "name" | "circle" | "phone") => {
     if (sortKey === key) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
       return;
@@ -125,7 +128,7 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
     setSortDir(key === "latest" ? "desc" : "asc");
   };
 
-  const getSortIcon = (key: "latest" | "ain" | "name" | "phone") => {
+  const getSortIcon = (key: "latest" | "ain" | "name" | "circle" | "phone") => {
     if (sortKey !== key) return "fa-sort text-slate-400";
     return sortDir === "asc"
       ? "fa-sort-up text-blue-600"
@@ -636,7 +639,13 @@ const AinDatabase: React.FC<AinDatabaseProps> = ({
                     style={{ width: columnWidths.circle, minWidth: columnWidths.circle }}
                     className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    <span className="truncate block">Circle</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("circle")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Circle <i className={`fas ${getSortIcon("circle")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("circle", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"

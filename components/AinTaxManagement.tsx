@@ -1257,13 +1257,88 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     [isBn]
   );
 
+  // Sorting State
+  const [sortKey, setSortKey] = useState<
+    "year" | "ainName" | "ainNo" | "ref" | "regNo" | "date" | "type" | "status" | "totalTax"
+  >("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const sortedRows = useMemo(() => {
+    const rows = [...filteredRows];
+    rows.sort((a, b) => {
+      let left: any = "";
+      let right: any = "";
+
+      if (sortKey === "date") {
+        left = a.date || "";
+        right = b.date || "";
+      } else if (sortKey === "year") {
+        left = Number(a.year) || a.year || "";
+        right = Number(b.year) || b.year || "";
+      } else if (sortKey === "ainName") {
+        left = (a.ainName || "").toLowerCase();
+        right = (b.ainName || "").toLowerCase();
+      } else if (sortKey === "ainNo") {
+        left = (a.ainNo || "").toLowerCase();
+        right = (b.ainNo || "").toLowerCase();
+      } else if (sortKey === "ref") {
+        left = (a.ref || "").toLowerCase();
+        right = (b.ref || "").toLowerCase();
+      } else if (sortKey === "regNo") {
+        const numA = Number(a.regNo);
+        const numB = Number(b.regNo);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          left = numA;
+          right = numB;
+        } else {
+          left = (a.regNo || "").toLowerCase();
+          right = (b.regNo || "").toLowerCase();
+        }
+      } else if (sortKey === "type") {
+        left = (a.type || "").toLowerCase();
+        right = (b.type || "").toLowerCase();
+      } else if (sortKey === "status") {
+        left = (a.paymentStatus || "Unpaid").toLowerCase();
+        right = (b.paymentStatus || "Unpaid").toLowerCase();
+      } else if (sortKey === "totalTax") {
+        left = a.totalTax || 0;
+        right = b.totalTax || 0;
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredRows, sortKey, sortDir]);
+
+  const toggleSort = (
+    key: "year" | "ainName" | "ainNo" | "ref" | "regNo" | "date" | "type" | "status" | "totalTax"
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "date" || key === "year" || key === "totalTax" ? "desc" : "asc");
+  };
+
+  const getSortIcon = (
+    key: "year" | "ainName" | "ainNo" | "ref" | "regNo" | "date" | "type" | "status" | "totalTax"
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400 opacity-60";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-600 dark:text-blue-400"
+      : "fa-sort-down text-blue-600 dark:text-blue-400";
+  };
+
   // Reset page to 1 whenever search, filters, or pageSize change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, yearFilter, typeFilter, statusFilter, pageSize]);
+  }, [searchTerm, yearFilter, typeFilter, statusFilter, pageSize, sortKey, sortDir]);
 
   // Pagination Calculations
-  const totalFilteredCount = filteredRows.length;
+  const totalFilteredCount = sortedRows.length;
   const numericPageSize = pageSize === "all" ? totalFilteredCount || 1 : pageSize;
   const totalPages = pageSize === "all" ? 1 : Math.ceil(totalFilteredCount / numericPageSize) || 1;
   const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
@@ -1275,9 +1350,9 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       : Math.min(startIndex + numericPageSize, totalFilteredCount);
 
   const paginatedRows = useMemo(() => {
-    if (pageSize === "all") return filteredRows;
-    return filteredRows.slice(startIndex, endIndex);
-  }, [filteredRows, startIndex, endIndex, pageSize]);
+    if (pageSize === "all") return sortedRows;
+    return sortedRows.slice(startIndex, endIndex);
+  }, [sortedRows, startIndex, endIndex, pageSize]);
 
   const isCurrentPageAllSelected =
     paginatedRows.length > 0 && paginatedRows.every((r) => selectedIds.includes(r.id));
@@ -2220,7 +2295,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     className="p-3.5 relative select-none"
                     style={{ width: columnWidths["year"] }}
                   >
-                    Year
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("year")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors cursor-pointer"
+                    >
+                      <span>{isBn ? "Year (বছর)" : "Year"}</span>
+                      <i className={`fas ${getSortIcon("year")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("year", e)}
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50"
@@ -2233,7 +2315,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     className="p-3.5 relative select-none"
                     style={{ width: columnWidths["ainName"] }}
                   >
-                    AIN Name
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("ainName")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors cursor-pointer"
+                    >
+                      <span>{isBn ? "AIN Name (নাম)" : "AIN Name"}</span>
+                      <i className={`fas ${getSortIcon("ainName")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("ainName", e)}
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50"
@@ -2246,7 +2335,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     className="p-3.5 relative select-none"
                     style={{ width: columnWidths["ainNo"] }}
                   >
-                    AIN No
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("ainNo")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors cursor-pointer"
+                    >
+                      <span>{isBn ? "AIN No (নং)" : "AIN No"}</span>
+                      <i className={`fas ${getSortIcon("ainNo")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("ainNo", e)}
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50"
@@ -2259,7 +2355,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     className="p-3.5 relative select-none"
                     style={{ width: columnWidths["ref"] }}
                   >
-                    Ref
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("ref")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors cursor-pointer"
+                    >
+                      <span>{isBn ? "Ref (রেফ)" : "Ref"}</span>
+                      <i className={`fas ${getSortIcon("ref")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("ref", e)}
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50"
@@ -2272,7 +2375,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     className="p-3.5 relative select-none"
                     style={{ width: columnWidths["regNo"] }}
                   >
-                    Reg No
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("regNo")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors cursor-pointer"
+                    >
+                      <span>{isBn ? "Reg No (রেজিঃ)" : "Reg No"}</span>
+                      <i className={`fas ${getSortIcon("regNo")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("regNo", e)}
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50"
@@ -2285,7 +2395,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     className="p-3.5 relative select-none"
                     style={{ width: columnWidths["date"] }}
                   >
-                    Date
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("date")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors cursor-pointer"
+                    >
+                      <span>{isBn ? "Date (তারিখ)" : "Date"}</span>
+                      <i className={`fas ${getSortIcon("date")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("date", e)}
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50"
@@ -2298,7 +2415,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     className="p-3.5 relative select-none"
                     style={{ width: columnWidths["type"] }}
                   >
-                    Type
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("type")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors cursor-pointer"
+                    >
+                      <span>{isBn ? "Type (ধরন)" : "Type"}</span>
+                      <i className={`fas ${getSortIcon("type")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("type", e)}
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50"
@@ -2311,7 +2435,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     className="p-3.5 relative select-none"
                     style={{ width: columnWidths["status"] }}
                   >
-                    Status
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("status")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors cursor-pointer"
+                    >
+                      <span>{isBn ? "Status (অবস্থা)" : "Status"}</span>
+                      <i className={`fas ${getSortIcon("status")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("status", e)}
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50"
@@ -2324,7 +2455,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     className="p-3.5 text-right relative select-none"
                     style={{ width: columnWidths["totalTax"] }}
                   >
-                    Total Tax
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("totalTax")}
+                      className="inline-flex items-center justify-end gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors cursor-pointer w-full text-right"
+                    >
+                      <span>{isBn ? "Total Tax (ট্যাক্স)" : "Total Tax"}</span>
+                      <i className={`fas ${getSortIcon("totalTax")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("totalTax", e)}
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50"

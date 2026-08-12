@@ -59,6 +59,53 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
     ],
     []
   );
+
+  // Sorting State
+  const [sortKey, setSortKey] = useState<"name" | "phone" | "circle" | "status">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const sortedCompanies = useMemo(() => {
+    const rows = [...companies];
+    rows.sort((a, b) => {
+      let left: any = "";
+      let right: any = "";
+
+      if (sortKey === "name") {
+        left = (a.name || "").toLowerCase();
+        right = (b.name || "").toLowerCase();
+      } else if (sortKey === "phone") {
+        left = (a.phone || "").toLowerCase();
+        right = (b.phone || "").toLowerCase();
+      } else if (sortKey === "circle") {
+        left = (a.address || "").toLowerCase();
+        right = (b.address || "").toLowerCase();
+      } else if (sortKey === "status") {
+        left = a.active ? 1 : 0;
+        right = b.active ? 1 : 0;
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [companies, sortKey, sortDir]);
+
+  const toggleSort = (key: "name" | "phone" | "circle" | "status") => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir("asc");
+  };
+
+  const getSortIcon = (key: "name" | "phone" | "circle" | "status") => {
+    if (sortKey !== key) return "fa-sort text-slate-400 opacity-60";
+    return sortDir === "asc"
+      ? "fa-sort-up text-blue-600"
+      : "fa-sort-down text-blue-600";
+  };
   const [companyName, setCompanyName] = useState("");
   const [companyPhone, setCompanyPhone] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
@@ -376,7 +423,14 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
                     style={{ width: columnWidths.name, minWidth: columnWidths.name }}
                     className="px-4 py-3 font-black uppercase tracking-widest relative group"
                   >
-                    Company
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("name")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 cursor-pointer font-black"
+                    >
+                      <span>Company</span>
+                      <i className={`fas ${getSortIcon("name")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("name", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -388,7 +442,14 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
                     style={{ width: columnWidths.phone, minWidth: columnWidths.phone }}
                     className="px-4 py-3 font-black uppercase tracking-widest relative group"
                   >
-                    Phone
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("phone")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 cursor-pointer font-black"
+                    >
+                      <span>Phone</span>
+                      <i className={`fas ${getSortIcon("phone")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("phone", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -400,7 +461,14 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
                     style={{ width: columnWidths.circle, minWidth: columnWidths.circle }}
                     className="px-4 py-3 font-black uppercase tracking-widest relative group"
                   >
-                    Circle
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("circle")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 cursor-pointer font-black"
+                    >
+                      <span>Circle</span>
+                      <i className={`fas ${getSortIcon("circle")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("circle", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -412,7 +480,14 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
                     style={{ width: columnWidths.status, minWidth: columnWidths.status }}
                     className="px-4 py-3 font-black uppercase tracking-widest relative group"
                   >
-                    Status
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("status")}
+                      className="inline-flex items-center gap-1.5 hover:text-blue-600 cursor-pointer font-black"
+                    >
+                      <span>Status</span>
+                      <i className={`fas ${getSortIcon("status")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("status", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -430,9 +505,7 @@ const WasteCompanySetup: React.FC<WasteCompanySetupProps> = ({
               </tr>
             </thead>
             <tbody className={`${isDark ? "divide-slate-700" : "divide-slate-200"} divide-y`}>
-              {companies
-                .slice()
-                .sort((a, b) => a.name.localeCompare(b.name))
+              {sortedCompanies
                 .map((company) => (
                   <tr key={company.id}>
                     {isColumnVisible("name") && (

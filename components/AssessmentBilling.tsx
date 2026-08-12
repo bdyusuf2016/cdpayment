@@ -213,6 +213,9 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
       } else if (sortKey === "net") {
         left = a.net || 0;
         right = b.net || 0;
+      } else if (sortKey === "received") {
+        left = a.received || 0;
+        right = b.received || 0;
       } else {
         left = (a.status || "").toLowerCase();
         right = (b.status || "").toLowerCase();
@@ -226,7 +229,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   }, [filteredHistory, sortKey, sortDir]);
 
   const toggleSort = (
-    key: "date" | "clientName" | "nosOfBe" | "net" | "status",
+    key: "date" | "clientName" | "nosOfBe" | "net" | "status" | "received",
   ) => {
     if (sortKey === key) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -237,7 +240,7 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
   };
 
   const getSortIcon = (
-    key: "date" | "clientName" | "nosOfBe" | "net" | "status",
+    key: "date" | "clientName" | "nosOfBe" | "net" | "status" | "received",
   ) => {
     if (sortKey !== key) return "fa-sort text-slate-400";
     return sortDir === "asc"
@@ -1728,7 +1731,13 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
                     style={{ width: columnWidths.received, minWidth: columnWidths.received }}
                     className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right relative group"
                   >
-                    <span className="truncate block">Receive Amount</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("received")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Receive Amount <i className={`fas ${getSortIcon("received")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("received", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"

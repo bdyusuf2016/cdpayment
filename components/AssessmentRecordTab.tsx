@@ -882,6 +882,24 @@ ${tableStr}
       } else if (sortKey === "dutyTax") {
         left = Number(a.dutyTax) || 0;
         right = Number(b.dutyTax) || 0;
+      } else if (sortKey === "cd") {
+        left = Number(a.cd) || 0;
+        right = Number(b.cd) || 0;
+      } else if (sortKey === "rd") {
+        left = Number(a.rd) || 0;
+        right = Number(b.rd) || 0;
+      } else if (sortKey === "vat") {
+        left = Number(a.vat) || 0;
+        right = Number(b.vat) || 0;
+      } else if (sortKey === "ait") {
+        left = Number(a.ait) || 0;
+        right = Number(b.ait) || 0;
+      } else if (sortKey === "atv") {
+        left = Number(a.atv) || 0;
+        right = Number(b.atv) || 0;
+      } else if (sortKey === "chalan") {
+        left = (a.chalan || "").toLowerCase();
+        right = (b.chalan || "").toLowerCase();
       } else if (sortKey === "paymentStatus") {
         left = (a.paymentStatus || "").toLowerCase();
         right = (b.paymentStatus || "").toLowerCase();
@@ -898,18 +916,18 @@ ${tableStr}
   }, [filteredHistory, sortKey, sortDir]);
 
   const toggleSort = (
-    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle",
+    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "cd" | "rd" | "vat" | "ait" | "atv" | "chalan" | "paymentStatus" | "circle",
   ) => {
     if (sortKey === key) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
       return;
     }
     setSortKey(key);
-    setSortDir(key === "date" || key === "slNo" ? "desc" : "asc");
+    setSortDir(key === "date" || key === "slNo" || key === "dutyTax" || key === "assessableValue" ? "desc" : "asc");
   };
 
   const getSortIcon = (
-    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "paymentStatus" | "circle",
+    key: "slNo" | "date" | "clientName" | "assessableValue" | "dutyTax" | "cd" | "rd" | "vat" | "ait" | "atv" | "chalan" | "paymentStatus" | "circle",
   ) => {
     if (sortKey !== key) return "fa-sort text-slate-400 ml-1.5";
     return sortDir === "asc"
@@ -2036,9 +2054,10 @@ ${tableStr}
                 {isColumnVisible("cd") && (
                   <th
                     style={{ width: columnWidths.cd, minWidth: columnWidths.cd }}
-                    className="px-3 py-3 text-right relative group"
+                    onClick={() => toggleSort("cd")}
+                    className="px-3 py-3 text-right cursor-pointer hover:text-blue-600 relative group"
                   >
-                    CD
+                    CD <i className={`fas ${getSortIcon("cd")}`}></i>
                     <div
                       onMouseDown={(e) => startResizing("cd", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -2049,9 +2068,10 @@ ${tableStr}
                 {isColumnVisible("rd") && (
                   <th
                     style={{ width: columnWidths.rd, minWidth: columnWidths.rd }}
-                    className="px-3 py-3 text-right relative group"
+                    onClick={() => toggleSort("rd")}
+                    className="px-3 py-3 text-right cursor-pointer hover:text-blue-600 relative group"
                   >
-                    RD
+                    RD <i className={`fas ${getSortIcon("rd")}`}></i>
                     <div
                       onMouseDown={(e) => startResizing("rd", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -2062,9 +2082,10 @@ ${tableStr}
                 {isColumnVisible("vat") && (
                   <th
                     style={{ width: columnWidths.vat, minWidth: columnWidths.vat }}
-                    className="px-3 py-3 text-right relative group"
+                    onClick={() => toggleSort("vat")}
+                    className="px-3 py-3 text-right cursor-pointer hover:text-blue-600 relative group"
                   >
-                    VAT
+                    VAT <i className={`fas ${getSortIcon("vat")}`}></i>
                     <div
                       onMouseDown={(e) => startResizing("vat", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -2075,9 +2096,10 @@ ${tableStr}
                 {isColumnVisible("ait") && (
                   <th
                     style={{ width: columnWidths.ait, minWidth: columnWidths.ait }}
-                    className="px-3 py-3 text-right relative group"
+                    onClick={() => toggleSort("ait")}
+                    className="px-3 py-3 text-right cursor-pointer hover:text-blue-600 relative group"
                   >
-                    AIT
+                    AIT <i className={`fas ${getSortIcon("ait")}`}></i>
                     <div
                       onMouseDown={(e) => startResizing("ait", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -2088,9 +2110,10 @@ ${tableStr}
                 {isColumnVisible("atv") && (
                   <th
                     style={{ width: columnWidths.atv, minWidth: columnWidths.atv }}
-                    className="px-3 py-3 text-right relative group"
+                    onClick={() => toggleSort("atv")}
+                    className="px-3 py-3 text-right cursor-pointer hover:text-blue-600 relative group"
                   >
-                    ATV/AT
+                    ATV/AT <i className={`fas ${getSortIcon("atv")}`}></i>
                     <div
                       onMouseDown={(e) => startResizing("atv", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -2115,9 +2138,10 @@ ${tableStr}
                 {isColumnVisible("chalan") && (
                   <th
                     style={{ width: columnWidths.chalan, minWidth: columnWidths.chalan }}
-                    className="px-4 py-3 relative group"
+                    onClick={() => toggleSort("chalan")}
+                    className="px-4 py-3 cursor-pointer hover:text-blue-600 relative group"
                   >
-                    চালান নং
+                    চালান নং <i className={`fas ${getSortIcon("chalan")}`}></i>
                     <div
                       onMouseDown={(e) => startResizing("chalan", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"

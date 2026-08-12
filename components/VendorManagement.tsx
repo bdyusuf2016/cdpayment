@@ -276,6 +276,12 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
     }
   };
 
+  // Sorting State
+  const [sortKey, setSortKey] = useState<
+    "vendorName" | "ownerName" | "phone" | "binNo" | "eTinNo" | "address" | "status"
+  >("vendorName");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
   // Filtered Vendors
   const filteredVendors = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -296,6 +302,63 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
       );
     });
   }, [vendors, searchTerm, statusFilter]);
+
+  // Sorted Vendors
+  const sortedVendors = useMemo(() => {
+    const rows = [...filteredVendors];
+    rows.sort((a, b) => {
+      let left: any = "";
+      let right: any = "";
+
+      if (sortKey === "vendorName") {
+        left = (a.vendorName || "").toLowerCase();
+        right = (b.vendorName || "").toLowerCase();
+      } else if (sortKey === "ownerName") {
+        left = (a.ownerName || "").toLowerCase();
+        right = (b.ownerName || "").toLowerCase();
+      } else if (sortKey === "phone") {
+        left = (a.phone || "").toLowerCase();
+        right = (b.phone || "").toLowerCase();
+      } else if (sortKey === "binNo") {
+        left = (a.binNo || "").toLowerCase();
+        right = (b.binNo || "").toLowerCase();
+      } else if (sortKey === "eTinNo") {
+        left = (a.eTinNo || "").toLowerCase();
+        right = (b.eTinNo || "").toLowerCase();
+      } else if (sortKey === "address") {
+        left = (a.address || "").toLowerCase();
+        right = (b.address || "").toLowerCase();
+      } else if (sortKey === "status") {
+        left = a.active ? 1 : 0;
+        right = b.active ? 1 : 0;
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [filteredVendors, sortKey, sortDir]);
+
+  const toggleSort = (
+    key: "vendorName" | "ownerName" | "phone" | "binNo" | "eTinNo" | "address" | "status"
+  ) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir("asc");
+  };
+
+  const getSortIcon = (
+    key: "vendorName" | "ownerName" | "phone" | "binNo" | "eTinNo" | "address" | "status"
+  ) => {
+    if (sortKey !== key) return "fa-sort text-slate-400 opacity-60";
+    return sortDir === "asc"
+      ? "fa-sort-up text-indigo-500 dark:text-indigo-400"
+      : "fa-sort-down text-indigo-500 dark:text-indigo-400";
+  };
 
   // Statistics
   const stats = useMemo(() => {
@@ -714,7 +777,14 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                     style={{ width: columnWidths.vendorName, minWidth: columnWidths.vendorName }}
                     className="py-3.5 px-4 relative group"
                   >
-                    <span className="truncate block">{t.vendorName}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("vendorName")}
+                      className="inline-flex items-center gap-1.5 hover:text-indigo-500 transition-colors cursor-pointer font-bold"
+                    >
+                      <span className="truncate block">{t.vendorName}</span>
+                      <i className={`fas ${getSortIcon("vendorName")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("vendorName", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -727,7 +797,14 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                     style={{ width: columnWidths.ownerName, minWidth: columnWidths.ownerName }}
                     className="py-3.5 px-4 relative group"
                   >
-                    <span className="truncate block">{t.ownerName}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("ownerName")}
+                      className="inline-flex items-center gap-1.5 hover:text-indigo-500 transition-colors cursor-pointer font-bold"
+                    >
+                      <span className="truncate block">{t.ownerName}</span>
+                      <i className={`fas ${getSortIcon("ownerName")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("ownerName", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -740,7 +817,14 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                     style={{ width: columnWidths.phone, minWidth: columnWidths.phone }}
                     className="py-3.5 px-4 relative group"
                   >
-                    <span className="truncate block">{t.phone}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("phone")}
+                      className="inline-flex items-center gap-1.5 hover:text-indigo-500 transition-colors cursor-pointer font-bold"
+                    >
+                      <span className="truncate block">{t.phone}</span>
+                      <i className={`fas ${getSortIcon("phone")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("phone", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -753,7 +837,14 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                     style={{ width: columnWidths.binNo, minWidth: columnWidths.binNo }}
                     className="py-3.5 px-4 relative group"
                   >
-                    <span className="truncate block">{t.binNo}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("binNo")}
+                      className="inline-flex items-center gap-1.5 hover:text-indigo-500 transition-colors cursor-pointer font-bold"
+                    >
+                      <span className="truncate block">{t.binNo}</span>
+                      <i className={`fas ${getSortIcon("binNo")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("binNo", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -766,7 +857,14 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                     style={{ width: columnWidths.eTinNo, minWidth: columnWidths.eTinNo }}
                     className="py-3.5 px-4 relative group"
                   >
-                    <span className="truncate block">{t.eTinNo}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("eTinNo")}
+                      className="inline-flex items-center gap-1.5 hover:text-indigo-500 transition-colors cursor-pointer font-bold"
+                    >
+                      <span className="truncate block">{t.eTinNo}</span>
+                      <i className={`fas ${getSortIcon("eTinNo")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("eTinNo", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -779,7 +877,14 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                     style={{ width: columnWidths.address, minWidth: columnWidths.address }}
                     className="py-3.5 px-4 relative group"
                   >
-                    <span className="truncate block">{t.address}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("address")}
+                      className="inline-flex items-center gap-1.5 hover:text-indigo-500 transition-colors cursor-pointer font-bold"
+                    >
+                      <span className="truncate block">{t.address}</span>
+                      <i className={`fas ${getSortIcon("address")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("address", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -792,7 +897,14 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                     style={{ width: columnWidths.status, minWidth: columnWidths.status }}
                     className="py-3.5 px-4 text-center relative group"
                   >
-                    <span className="truncate block">{t.status}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("status")}
+                      className="inline-flex items-center justify-center gap-1.5 hover:text-indigo-500 transition-colors cursor-pointer font-bold w-full"
+                    >
+                      <span className="truncate block">{t.status}</span>
+                      <i className={`fas ${getSortIcon("status")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("status", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -815,7 +927,7 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                 isDark ? "divide-slate-800 text-slate-300" : "divide-slate-200 text-slate-700"
               }`}
             >
-              {filteredVendors.length === 0 ? (
+              {sortedVendors.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-500">
                     <i className="fa-solid fa-store-slash text-4xl mb-3 block opacity-40"></i>
@@ -823,7 +935,7 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredVendors.map((vendor, index) => (
+                sortedVendors.map((vendor, index) => (
                   <tr
                     key={vendor.id}
                     className={`transition-colors ${

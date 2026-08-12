@@ -526,6 +526,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       } else if (sortKey === "received") {
         left = a.received || 0;
         right = b.received || 0;
+      } else if (sortKey === "receiveDate") {
+        left = parseDate(a.receiveDate || "").getTime();
+        right = parseDate(b.receiveDate || "").getTime();
       } else if (sortKey === "status") {
         left = (a.status || "").toLowerCase();
         right = (b.status || "").toLowerCase();
@@ -542,18 +545,18 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   }, [filteredHistory, sortKey, sortDir]);
 
   const toggleSort = (
-    key: "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit",
+    key: "date" | "clientName" | "beYear" | "duty" | "received" | "receiveDate" | "status" | "profit",
   ) => {
     if (sortKey === key) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
       return;
     }
     setSortKey(key);
-    setSortDir(key === "date" ? "desc" : "asc");
+    setSortDir(key === "date" || key === "receiveDate" ? "desc" : "asc");
   };
 
   const getSortIcon = (
-    key: "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit",
+    key: "date" | "clientName" | "beYear" | "duty" | "received" | "receiveDate" | "status" | "profit",
   ) => {
     if (sortKey !== key) return "fa-sort text-slate-400";
     return sortDir === "asc"
@@ -2555,7 +2558,13 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     style={{ width: columnWidths.receiveDate, minWidth: columnWidths.receiveDate }}
                     className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest relative group"
                   >
-                    <span className="truncate block">Receive Date</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("receiveDate")}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      Receive Date <i className={`fas ${getSortIcon("receiveDate")}`}></i>
+                    </button>
                     <div
                       onMouseDown={(e) => startResizing("receiveDate", e)}
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"
