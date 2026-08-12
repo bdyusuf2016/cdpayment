@@ -2055,7 +2055,7 @@ const App: React.FC = () => {
                       status: item.status,
                       profit: item.profit || 0,
                     }));
-                    await supabase.from("duty_records").insert(payload);
+                    await supabase.from("duty_payments").insert(payload);
                   } catch (err) {
                     console.error("Failed to insert transferred duty records to Supabase:", err);
                   }
