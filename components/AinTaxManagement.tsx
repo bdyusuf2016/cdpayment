@@ -2010,28 +2010,61 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
       {/* Summary KPI Cards Header */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {/* Total Tax Due Card */}
+        {/* Total Tax Due Card (Click to View Due List & Send to Duty Payment) */}
         <div
-          className={`p-5 rounded-2xl border transition-all shadow-sm ${
-            isDark
+          onClick={() => setStatusFilter((prev) => (prev === "Unpaid" ? "all" : "Unpaid"))}
+          className={`p-5 rounded-2xl border transition-all shadow-sm cursor-pointer hover:border-rose-400 dark:hover:border-rose-600 group relative overflow-hidden ${
+            statusFilter === "Unpaid"
+              ? "bg-rose-50/80 dark:bg-rose-950/40 border-rose-500 ring-2 ring-rose-400/40"
+              : isDark
               ? "bg-slate-900/70 border-slate-800 text-slate-100"
               : "bg-white border-slate-200 text-slate-900"
           }`}
+          title={isBn ? "ক্লিক করে শুধু বকেয়া তালিকা (Due List) ফিল্টার করুন" : "Click to filter Due List"}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-              {isBn ? "মোট ট্যাক্স বাকী (Unpaid)" : "Total Tax Due"}
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+              <span>{isBn ? "মোট ট্যাক্স বাকী (Due List)" : "Total Tax Due"}</span>
+              {statusFilter === "Unpaid" && (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-600 text-white">
+                  Active
+                </span>
+              )}
             </span>
-            <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
               <i className="fa-solid fa-triangle-exclamation text-base"></i>
             </div>
           </div>
           <div className="text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400">
-            {unpaidTaxAmount.toLocaleString("en-BD")}
+            ৳ {unpaidTaxAmount.toLocaleString("en-BD")}
           </div>
-          <p className="text-[11px] font-medium text-slate-400 mt-1">
-            {isBn ? `${unpaidCount} টি রেকর্ডের মোট বকেয়া` : `${unpaidCount} unpaid records`}
-          </p>
+          <div className="flex items-center justify-between mt-1 pt-1">
+            <p className="text-[11px] font-medium text-slate-400">
+              {isBn ? `${unpaidCount} টি বকেয়া রেকর্ড` : `${unpaidCount} unpaid records`}
+            </p>
+            {onTransferToDutyPayment && unpaidCount > 0 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const dueRecords = history.filter((r) => (r.paymentStatus || "Unpaid") !== "Paid");
+                  if (dueRecords.length > 0) {
+                    onTransferToDutyPayment(dueRecords);
+                    showSuccess(
+                      isBn
+                        ? `সব বকেয়া (${dueRecords.length} টি) রেকর্ড Duty Payment এ পাঠানো হয়েছে!`
+                        : `Transferred all ${dueRecords.length} due records to Duty Payment!`
+                    );
+                  }
+                }}
+                className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-extrabold transition-all shadow-xs active:scale-95 flex items-center gap-1 z-10"
+                title={isBn ? "সব বকেয়া রেকর্ড Duty Payment এ পাঠান" : "Send all Due records to Duty Payment"}
+              >
+                <i className="fa-solid fa-paper-plane text-[9px]"></i>
+                <span>{isBn ? "সব পাঠান" : "Send All"}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Total Paid Tax Card */}
@@ -2275,6 +2308,33 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               resetColumns={resetColumns}
               systemConfig={systemConfig}
             />
+
+            {/* Quick Button to Send Current Filtered Due Records to Duty Payment */}
+            {onTransferToDutyPayment && (statusFilter === "Unpaid" || filteredRows.some((r) => r.paymentStatus !== "Paid")) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const dueToTransfer = filteredRows.filter((r) => (r.paymentStatus || "Unpaid") !== "Paid");
+                  if (dueToTransfer.length > 0) {
+                    onTransferToDutyPayment(dueToTransfer);
+                    showSuccess(
+                      isBn
+                        ? `ফিল্টার করা ${dueToTransfer.length} টি বকেয়া রেকর্ড Duty Payment এ পাঠানো হয়েছে!`
+                        : `Transferred ${dueToTransfer.length} due records to Duty Payment!`
+                    );
+                  }
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/20 transition-all active:scale-95"
+                title={isBn ? "ফিল্টার করা বকেয়া রেকর্ডগুলো Duty Payment এ পাঠান" : "Send filtered Due records to Duty Payment"}
+              >
+                <i className="fa-solid fa-paper-plane"></i>
+                <span>
+                  {isBn
+                    ? `বকেয়া তালিকা পাঠান (${filteredRows.filter((r) => (r.paymentStatus || "Unpaid") !== "Paid").length})`
+                    : `Send Due List (${filteredRows.filter((r) => (r.paymentStatus || "Unpaid") !== "Paid").length})`}
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -2797,6 +2857,23 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                       {isColumnVisible("actions") && (
                         <td className="p-3.5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
+                            {r.paymentStatus !== "Paid" && onTransferToDutyPayment && (
+                              <button
+                                onClick={() => {
+                                  onTransferToDutyPayment([r]);
+                                  showSuccess(
+                                    isBn
+                                      ? "রেকর্ডটি Duty Payment এ পাঠানো হয়েছে!"
+                                      : "Record transferred to Duty Payment!"
+                                  );
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md shadow-blue-600/20 transition-all active:scale-95 flex items-center gap-1"
+                                title={isBn ? "এই বকেয়া বিলটি Duty Payment এ পাঠান" : "Send this Due record to Duty Payment"}
+                              >
+                                <i className="fa-solid fa-paper-plane"></i>
+                                <span>{isBn ? "Duty" : "Duty"}</span>
+                              </button>
+                            )}
                             {r.paymentStatus !== "Paid" ? (
                               <button
                                 onClick={() => handleTogglePaymentStatus(r, "Paid")}
