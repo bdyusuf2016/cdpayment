@@ -1474,17 +1474,17 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     if (pivotColDim === "none") return [];
     const keys = new Set<string>();
     history.forEach((r) => {
-      if (pivotColDim === "paymentStatus") keys.add(r.paymentStatus || "Unpaid");
-      else if (pivotColDim === "type") keys.add(r.type || "N/A");
-      else if (pivotColDim === "year") keys.add(r.year || "N/A");
+      if (pivotColDim === "paymentStatus") keys.add(String(r.paymentStatus || "Unpaid").trim());
+      else if (pivotColDim === "type") keys.add(String(r.type || "N/A").trim().toUpperCase() || "N/A");
+      else if (pivotColDim === "year") keys.add(String(r.year || "N/A").trim() || "N/A");
       else if (pivotColDim === "yearType") {
-        const y = (r.year || "").trim() || "N/A";
-        const t = (r.type || "").trim().toUpperCase() || "N/A";
+        const y = String(r.year ?? "").trim() || "N/A";
+        const t = String(r.type ?? "").trim().toUpperCase() || "N/A";
         keys.add(`${y}-${t}`);
       }
       else if (pivotColDim === "month") keys.add(r.date ? r.date.substring(0, 7) : "N/A");
-      else if (pivotColDim === "ainNo") keys.add(r.ainNo || "N/A");
-      else if (pivotColDim === "ainName") keys.add((r.ainName || "").trim() || "N/A");
+      else if (pivotColDim === "ainNo") keys.add(String(r.ainNo || "N/A").trim() || "N/A");
+      else if (pivotColDim === "ainName") keys.add(String(r.ainName || "").trim() || "N/A");
     });
     return Array.from(keys).sort();
   }, [history, pivotColDim]);
@@ -1521,17 +1521,17 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       });
       records.forEach((r) => {
         let ck = "N/A";
-        if (pivotColDim === "paymentStatus") ck = r.paymentStatus || "Unpaid";
-        else if (pivotColDim === "type") ck = r.type || "N/A";
-        else if (pivotColDim === "year") ck = r.year || "N/A";
+        if (pivotColDim === "paymentStatus") ck = String(r.paymentStatus || "Unpaid").trim();
+        else if (pivotColDim === "type") ck = String(r.type || "N/A").trim().toUpperCase() || "N/A";
+        else if (pivotColDim === "year") ck = String(r.year || "N/A").trim() || "N/A";
         else if (pivotColDim === "yearType") {
-          const y = (r.year || "").trim() || "N/A";
-          const t = (r.type || "").trim().toUpperCase() || "N/A";
+        const y = String(r.year ?? "").trim() || "N/A";
+        const t = String(r.type ?? "").trim().toUpperCase() || "N/A";
           ck = `${y}-${t}`;
         }
         else if (pivotColDim === "month") ck = r.date ? r.date.substring(0, 7) : "N/A";
-        else if (pivotColDim === "ainNo") ck = r.ainNo || "N/A";
-        else if (pivotColDim === "ainName") ck = (r.ainName || "").trim() || "N/A";
+        else if (pivotColDim === "ainNo") ck = String(r.ainNo || "N/A").trim() || "N/A";
+        else if (pivotColDim === "ainName") ck = String(r.ainName || "").trim() || "N/A";
 
         if (!grandTotal.colBreakdown[ck]) {
           grandTotal.colBreakdown[ck] = { count: 0, totalTax: 0, paidTax: 0, unpaidTax: 0 };
@@ -1554,30 +1554,30 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       let label = "";
 
       if (pivotRowDim === "ainName") {
-        key = (r.ainName || "").trim() || (isBn ? "অজ্ঞাত প্রতিষ্ঠান" : "Unknown Client");
+        key = String(r.ainName || "").trim() || (isBn ? "অজ্ঞাত প্রতিষ্ঠান" : "Unknown Client");
         label = key;
       } else if (pivotRowDim === "ainNo") {
-        key = (r.ainNo || "").trim() || "N/A";
+        key = String(r.ainNo || "").trim() || "N/A";
         label = key;
       } else if (pivotRowDim === "year") {
-        key = (r.year || "").trim() || "N/A";
+        key = String(r.year || "").trim() || "N/A";
         label = key;
       } else if (pivotRowDim === "yearType") {
-        const y = (r.year || "").trim() || "N/A";
-        const t = (r.type || "").trim().toUpperCase() || "N/A";
+        const y = String(r.year ?? "").trim() || "N/A";
+        const t = String(r.type ?? "").trim().toUpperCase() || "N/A";
         key = `${y}-${t}`;
         label = key;
       } else if (pivotRowDim === "ref") {
-        key = (r.ref || "").trim() || "N/A";
+        key = String(r.ref || "").trim() || "N/A";
         label = key;
       } else if (pivotRowDim === "regNo") {
-        key = (r.regNo || "").trim() || "N/A";
+        key = String(r.regNo || "").trim() || "N/A";
         label = key;
       } else if (pivotRowDim === "type") {
-        key = (r.type || "").trim().toUpperCase() || "N/A";
+        key = String(r.type || "").trim().toUpperCase() || "N/A";
         label = key;
       } else if (pivotRowDim === "paymentStatus") {
-        key = (r.paymentStatus || "Unpaid").trim();
+        key = String(r.paymentStatus || "Unpaid").trim();
         label = key;
       } else if (pivotRowDim === "month") {
         key = r.date ? r.date.substring(0, 7) : (isBn ? "তারিখবিহীন" : "No Date");
@@ -1658,17 +1658,17 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         });
         recs.forEach((r) => {
           let ck = "N/A";
-          if (pivotColDim === "paymentStatus") ck = r.paymentStatus || "Unpaid";
-          else if (pivotColDim === "type") ck = r.type || "N/A";
-          else if (pivotColDim === "year") ck = r.year || "N/A";
+        if (pivotColDim === "paymentStatus") ck = String(r.paymentStatus || "Unpaid").trim();
+        else if (pivotColDim === "type") ck = String(r.type || "N/A").trim().toUpperCase() || "N/A";
+        else if (pivotColDim === "year") ck = String(r.year || "N/A").trim() || "N/A";
           else if (pivotColDim === "yearType") {
-            const y = (r.year || "").trim() || "N/A";
-            const t = (r.type || "").trim().toUpperCase() || "N/A";
-            ck = `${y}-${t}`;
+        const y = String(r.year ?? "").trim() || "N/A";
+        const t = String(r.type ?? "").trim().toUpperCase() || "N/A";
+          ck = `${y}-${t}`;
           }
           else if (pivotColDim === "month") ck = r.date ? r.date.substring(0, 7) : "N/A";
-          else if (pivotColDim === "ainNo") ck = r.ainNo || "N/A";
-          else if (pivotColDim === "ainName") ck = (r.ainName || "").trim() || "N/A";
+        else if (pivotColDim === "ainNo") ck = String(r.ainNo || "N/A").trim() || "N/A";
+        else if (pivotColDim === "ainName") ck = String(r.ainName || "").trim() || "N/A";
 
           if (!colBreakdown[ck]) {
             colBreakdown[ck] = { count: 0, totalTax: 0, paidTax: 0, unpaidTax: 0 };
