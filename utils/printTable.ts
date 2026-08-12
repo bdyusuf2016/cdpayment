@@ -289,13 +289,18 @@ export function printElement(
         <meta charset="utf-8" />
         <title>${title || "Print"}</title>
         <style>
-          @page { margin: 14mm; }
+          @page { 
+            margin: 15mm; 
+            size: auto;
+          }
           * { box-sizing: border-box; }
           body {
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
             color: #0f172a;
             background: #ffffff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           .sheet {
             width: 100%;
@@ -327,35 +332,56 @@ export function printElement(
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 11px;
           }
           thead { display: table-header-group; }
           tr { page-break-inside: avoid; }
           th, td {
-            padding: 9px 10px;
-            border: 1px solid #cbd5e1;
-            vertical-align: top;
+            padding: 8px 10px;
+            border: 1px solid #475569; /* Darker border for print clarity */
+            vertical-align: middle;
+            line-height: 1.3;
           }
           th {
-            background: #e2e8f0;
+            background: #f1f5f9;
             color: #0f172a;
             font-weight: 800;
             text-align: left;
-            white-space: nowrap;
+            white-space: normal; /* Enables wrapping */
+            word-wrap: break-word;
           }
           tbody tr:nth-child(even) td {
             background: #f8fafc;
           }
           tfoot td {
-            background: #eef2ff;
+            background: #f1f5f9;
             font-weight: 800;
+            border-top: 2px solid #0f172a;
           }
           span {
             font: inherit;
           }
+          .print-footer {
+            display: none;
+          }
+          @media print {
+            .print-footer {
+              display: block;
+              position: fixed;
+              bottom: -10mm;
+              right: 0;
+              font-size: 9px;
+              color: #64748b;
+              font-family: 'Segoe UI', Arial, sans-serif;
+            }
+            .print-footer::after {
+              content: "Page " counter(page);
+            }
+          }
         </style>
       </head>
       <body>
+        <div class="print-footer"></div>
         <div class="sheet">
           ${options.header?.organization ? `<div class="brand">${options.header.organization}</div>` : ""}
           ${title ? `<div class="title">${title}</div>` : ""}
