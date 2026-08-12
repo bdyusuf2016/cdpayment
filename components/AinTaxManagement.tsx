@@ -1578,6 +1578,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     const rows: {
       key: string;
       label: string;
+      subLabel?: string;
       count: number;
       totalTax: number;
       paidTax: number;
@@ -1612,6 +1613,22 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       const avgTax = count > 0 ? totalTax / count : 0;
       const sharePercent = grandTotal.totalTax > 0 ? (totalTax / grandTotal.totalTax) * 100 : 0;
 
+      let subLabel = "";
+      if (pivotRowDim === "ainName") {
+        subLabel = Array.from(
+          new Set(recs.map((r) => (r.ainNo || "").trim()).filter(Boolean))
+        ).join(", ");
+      } else if (pivotRowDim === "ainNo") {
+        subLabel = Array.from(
+          new Set(recs.map((r) => (r.ainName || "").trim()).filter(Boolean))
+        ).join(", ");
+      } else if (pivotRowDim === "ref" || pivotRowDim === "regNo") {
+        const clients = Array.from(
+          new Set(recs.map((r) => (r.ainName || "").trim()).filter(Boolean))
+        ).join(", ");
+        subLabel = clients;
+      }
+
       const colBreakdown: Record<
         string,
         { count: number; totalTax: number; paidTax: number; unpaidTax: number }
@@ -1625,6 +1642,9 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           if (pivotColDim === "paymentStatus") ck = r.paymentStatus || "Unpaid";
           else if (pivotColDim === "type") ck = r.type || "N/A";
           else if (pivotColDim === "year") ck = r.year || "N/A";
+          else if (pivotColDim === "month") ck = r.date ? r.date.substring(0, 7) : "N/A";
+          else if (pivotColDim === "ainNo") ck = r.ainNo || "N/A";
+          else if (pivotColDim === "ainName") ck = (r.ainName || "").trim() || "N/A";
 
           if (!colBreakdown[ck]) {
             colBreakdown[ck] = { count: 0, totalTax: 0, paidTax: 0, unpaidTax: 0 };
@@ -1642,6 +1662,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       rows.push({
         key,
         label: val.label,
+        subLabel: subLabel || undefined,
         count,
         totalTax,
         paidTax,
@@ -1658,9 +1679,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     });
 
     // 4. Search Filter
-    const filtered = rows.filter((r) =>
-      !pivotSearch || r.label.toLowerCase().includes(pivotSearch.toLowerCase())
-    );
+    const filtered = rows.filter((r) => {
+      if (!pivotSearch) return true;
+      const q = pivotSearch.toLowerCase();
+      return (
+        r.label.toLowerCase().includes(q) ||
+        (r.subLabel && r.subLabel.toLowerCase().includes(q))
+      );
+    });
 
     // 5. Sort
     filtered.sort((a, b) => {
@@ -1733,7 +1759,12 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       if (pivotVisibleCols.sharePercent) headers.push("% Share of Tax");
 
       aoaRows = pivotData.rows.map((r) => {
-        const rowArr: (string | number)[] = [r.label];
+        const labelText = r.subLabel
+          ? pivotRowDim === "ainName"
+            ? `${r.label} (AIN: ${r.subLabel})`
+            : `${r.label} (${r.subLabel})`
+          : r.label;
+        const rowArr: (string | number)[] = [labelText];
         if (pivotVisibleCols.count) rowArr.push(r.count);
         if (pivotVisibleCols.totalTax) rowArr.push(r.totalTax);
         if (pivotVisibleCols.unpaidTax) rowArr.push(r.unpaidTax);
@@ -1774,7 +1805,12 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       });
 
       aoaRows = pivotData.rows.map((r) => {
-        const rowArr: (string | number)[] = [r.label, r.count, r.totalTax];
+        const labelText = r.subLabel
+          ? pivotRowDim === "ainName"
+            ? `${r.label} (AIN: ${r.subLabel})`
+            : `${r.label} (${r.subLabel})`
+          : r.label;
+        const rowArr: (string | number)[] = [labelText, r.count, r.totalTax];
         pivotColKeys.forEach((ck) => {
           const colData = r.colBreakdown[ck] || { count: 0, totalTax: 0 };
           rowArr.push(colData.count);
@@ -1844,7 +1880,12 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       tsv = headerParts.join("\t") + "\n";
 
       pivotData.rows.forEach((r) => {
-        const rowParts: (string | number)[] = [r.label];
+        const labelText = r.subLabel
+          ? pivotRowDim === "ainName"
+            ? `${r.label} (AIN: ${r.subLabel})`
+            : `${r.label} (${r.subLabel})`
+          : r.label;
+        const rowParts: (string | number)[] = [labelText];
         if (pivotVisibleCols.count) rowParts.push(r.count);
         if (pivotVisibleCols.totalTax) rowParts.push(r.totalTax);
         if (pivotVisibleCols.unpaidTax) rowParts.push(r.unpaidTax);
@@ -4848,13 +4889,18 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             </td>
 
                             <td className="py-3 px-4">
-                              <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                              <div className="font-bold text-slate-800 dark:text-slate-100 flex flex-wrap items-center gap-2">
                                 <span
                                   onClick={() => handleTogglePivotGroup(row.key)}
                                   className="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                 >
                                   {row.label}
                                 </span>
+                                {row.subLabel && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700">
+                                    {pivotRowDim === "ainName" ? `AIN: ${row.subLabel}` : row.subLabel}
+                                  </span>
+                                )}
                               </div>
                             </td>
 
