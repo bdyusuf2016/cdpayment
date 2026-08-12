@@ -1489,6 +1489,11 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     return Array.from(keys).sort();
   }, [history, pivotColDim]);
 
+  // Active (non-hidden) Column Keys for Pivot Table cross-tabulation
+  const activePivotColKeys = useMemo(() => {
+    return pivotColKeys.filter((k) => !pivotHiddenColKeys.includes(k));
+  }, [pivotColKeys, pivotHiddenColKeys]);
+
   // Pivot Table Computed Rows & Aggregates
   const pivotData = useMemo(() => {
     // 1. Date range filter
