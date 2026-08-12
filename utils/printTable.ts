@@ -369,7 +369,9 @@ export function printElement(
               display: block;
               position: fixed;
               bottom: -10mm;
+              left: 0;
               right: 0;
+              text-align: center;
               font-size: 9px;
               color: #64748b;
               font-family: 'Segoe UI', Arial, sans-serif;
