@@ -1943,18 +1943,18 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {/* Total Tax Due Card */}
         <div
-          className={`p-5 rounded-2xl border backdrop-blur-xl transition-all shadow-sm ${
+          className={`p-5 rounded-2xl border transition-all shadow-sm ${
             isDark
-              ? "bg-slate-900/60 border-slate-800 text-white"
-              : "bg-white/80 border-slate-200 text-slate-900"
+              ? "bg-slate-900/70 border-slate-800 text-slate-100"
+              : "bg-white border-slate-200 text-slate-900"
           }`}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
               {isBn ? "মোট ট্যাক্স বাকী (Unpaid)" : "Total Tax Due"}
             </span>
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center font-bold">
-              <i className="fa-solid fa-triangle-exclamation text-lg"></i>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+              <i className="fa-solid fa-triangle-exclamation text-base"></i>
             </div>
           </div>
           <div className="text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400">
@@ -1967,18 +1967,18 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
         {/* Total Paid Tax Card */}
         <div
-          className={`p-5 rounded-2xl border backdrop-blur-xl transition-all shadow-sm ${
+          className={`p-5 rounded-2xl border transition-all shadow-sm ${
             isDark
-              ? "bg-slate-900/60 border-slate-800 text-white"
-              : "bg-white/80 border-slate-200 text-slate-900"
+              ? "bg-slate-900/70 border-slate-800 text-slate-100"
+              : "bg-white border-slate-200 text-slate-900"
           }`}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
               {isBn ? "পরিশোধিত ট্যাক্স (Paid)" : "Total Tax Paid"}
             </span>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
-              <i className="fa-solid fa-circle-check text-lg"></i>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+              <i className="fa-solid fa-circle-check text-base"></i>
             </div>
           </div>
           <div className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
@@ -1991,21 +1991,21 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
         {/* Total Records Card */}
         <div
-          className={`p-5 rounded-2xl border backdrop-blur-xl transition-all shadow-sm ${
+          className={`p-5 rounded-2xl border transition-all shadow-sm ${
             isDark
-              ? "bg-slate-900/60 border-slate-800 text-white"
-              : "bg-white/80 border-slate-200 text-slate-900"
+              ? "bg-slate-900/70 border-slate-800 text-slate-100"
+              : "bg-white border-slate-200 text-slate-900"
           }`}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
               {isBn ? "মোট রেকর্ড সংখ্যা" : "Total Entries"}
             </span>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold">
-              <i className="fa-solid fa-file-invoice text-lg"></i>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+              <i className="fa-solid fa-file-invoice text-base"></i>
             </div>
           </div>
-          <div className="text-2xl font-black tracking-tight text-blue-600 dark:text-blue-400">
+          <div className="text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">
             {filteredRows.length.toLocaleString()}
           </div>
           <p className="text-[11px] font-medium text-slate-400 mt-1">
@@ -2015,21 +2015,21 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
         {/* Unique AIN Count Card */}
         <div
-          className={`p-5 rounded-2xl border backdrop-blur-xl transition-all shadow-sm ${
+          className={`p-5 rounded-2xl border transition-all shadow-sm ${
             isDark
-              ? "bg-slate-900/60 border-slate-800 text-white"
-              : "bg-white/80 border-slate-200 text-slate-900"
+              ? "bg-slate-900/70 border-slate-800 text-slate-100"
+              : "bg-white border-slate-200 text-slate-900"
           }`}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
               {isBn ? "ইউনিক AIN সংখ্যা" : "Unique AIN Count"}
             </span>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
-              <i className="fa-solid fa-building-user text-lg"></i>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+              <i className="fa-solid fa-building-user text-base"></i>
             </div>
           </div>
-          <div className="text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400">
+          <div className="text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">
             {uniqueAinCount.toLocaleString()}
           </div>
           <p className="text-[11px] font-medium text-slate-400 mt-1">
@@ -2040,32 +2040,32 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
         {/* Duplicate Records Card */}
         <div
           onClick={() => setDuplicateFilter((prev) => (prev === "duplicates" ? "all" : "duplicates"))}
-          className={`p-5 rounded-2xl border backdrop-blur-xl transition-all shadow-sm cursor-pointer group hover:scale-[1.02] ${
+          className={`p-5 rounded-2xl border transition-all shadow-sm cursor-pointer group hover:border-slate-400 dark:hover:border-slate-600 ${
             duplicateFilter === "duplicates"
-              ? "ring-2 ring-rose-500 bg-rose-500/10 border-rose-500/50"
+              ? "ring-2 ring-rose-500/60 bg-rose-50/50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800"
               : isDark
-              ? "bg-slate-900/60 border-slate-800 text-white"
-              : "bg-white/80 border-slate-200 text-slate-900"
+              ? "bg-slate-900/70 border-slate-800 text-slate-100"
+              : "bg-white border-slate-200 text-slate-900"
           }`}
           title={isBn ? "ক্লিক করে শুধু ডুপ্লিকেট রেকর্ড ফিল্টার করুন" : "Click to toggle duplicate records view"}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-purple-500 dark:text-purple-400 flex items-center gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
               <span>{isBn ? "ডুপ্লিকেট রেকর্ড" : "Duplicate Records"}</span>
               {totalDuplicateRecordCount > 0 && (
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
               )}
             </span>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold transition-all ${
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold transition-all ${
               totalDuplicateRecordCount > 0
-                ? "bg-rose-500/15 text-rose-500 group-hover:bg-rose-500 group-hover:text-white"
-                : "bg-purple-500/10 text-purple-500"
+                ? "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500"
             }`}>
-              <i className="fa-solid fa-clone text-lg"></i>
+              <i className="fa-solid fa-clone text-base"></i>
             </div>
           </div>
           <div className={`text-2xl font-black tracking-tight ${
-            totalDuplicateRecordCount > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-500 dark:text-slate-400"
+            totalDuplicateRecordCount > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-400"
           }`}>
             {totalDuplicateRecordCount.toLocaleString()}
           </div>
@@ -2075,7 +2075,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 ? `${totalDuplicateGroupCount} টি গ্রুপে বিদ্যমান`
                 : `${totalDuplicateGroupCount} duplicate group(s)`}
             </span>
-            <span className="text-[10px] text-blue-500 dark:text-blue-400 font-bold group-hover:underline">
+            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold group-hover:underline">
               {duplicateFilter === "duplicates" ? (isBn ? "রিসেট" : "Reset") : (isBn ? "ফিল্টার" : "Filter")}
             </span>
           </p>
@@ -2213,7 +2213,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
             {/* Pivot Table & Summary Report Button */}
             <button
               onClick={() => setIsPivotModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all active:scale-95 border border-indigo-500/30"
+              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 transition-all active:scale-95 border border-indigo-500/30"
             >
               <i className="fa-solid fa-table-cells-large text-sm"></i>
               <span>{isBn ? "পিভট ও সামারি রিপোর্ট" : "Pivot & Summary Report"}</span>
@@ -4071,19 +4071,19 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
             <div
               className={`px-6 py-4 border-b flex items-center justify-between gap-4 shrink-0 ${
                 isDark
-                  ? "bg-slate-900/90 border-slate-800"
+                  ? "bg-slate-900 border-slate-800"
                   : "bg-slate-50 border-slate-200"
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-lg font-black shadow-lg shadow-indigo-500/25">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-base font-bold">
                   <i className="fa-solid fa-table-cells-large"></i>
                 </div>
                 <div>
-                  <h3 className="text-base md:text-lg font-black tracking-tight flex items-center gap-2">
+                  <h3 className="text-base font-extrabold tracking-tight flex items-center gap-2">
                     <span>{isBn ? "কলাম ভিত্তিক পিভট ও সামারি রিপোর্ট" : "Pivot Table & Summary Report"}</span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                      Interactive Analytics
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                      Analytics
                     </span>
                   </h3>
                   <p className="text-xs text-slate-400 font-medium">
@@ -4105,14 +4105,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   }`}
                   title={isBn ? "ক্লিপবোর্ডে কপি করুন" : "Copy to Clipboard"}
                 >
-                  <i className="fa-regular fa-copy text-indigo-400"></i>
+                  <i className="fa-regular fa-copy text-slate-400"></i>
                   <span className="hidden sm:inline">{isBn ? "কপি" : "Copy"}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleExportPivotExcel}
-                  className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-md shadow-emerald-600/20 active:scale-95 flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
                 >
                   <i className="fa-solid fa-file-excel"></i>
                   <span>{isBn ? "এক্সেল ডাউনলোড" : "Export Excel"}</span>
@@ -4121,7 +4121,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 <button
                   type="button"
                   onClick={handlePrintPivot}
-                  className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-md shadow-indigo-600/20 active:scale-95 flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
                 >
                   <i className="fa-solid fa-print"></i>
                   <span>{isBn ? "প্রিন্ট" : "Print"}</span>
@@ -4130,9 +4130,9 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsPivotModalOpen(false)}
-                  className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-rose-50 hover:text-rose-500 transition-all flex items-center justify-center ml-2"
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-rose-50 hover:text-rose-500 transition-all flex items-center justify-center ml-2"
                 >
-                  <i className="fas fa-times text-sm"></i>
+                  <i className="fas fa-times text-xs"></i>
                 </button>
               </div>
             </div>
@@ -4146,17 +4146,17 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 {/* Row Group Dimension */}
                 <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-indigo-500 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
                     <i className="fa-solid fa-arrows-up-down mr-1"></i>
                     {isBn ? "রো গ্রুপিং কলাম" : "Row Dimension"}
                   </label>
                   <select
                     value={pivotRowDim}
                     onChange={(e) => setPivotRowDim(e.target.value as any)}
-                    className={`w-full px-3 py-2 rounded-xl text-xs font-extrabold border transition-all outline-none ${
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all outline-none ${
                       isDark
-                        ? "bg-slate-800 border-indigo-500/50 text-white"
-                        : "bg-white border-indigo-300 text-slate-900 shadow-sm"
+                        ? "bg-slate-800 border-slate-700 text-slate-100"
+                        : "bg-white border-slate-300 text-slate-900 shadow-sm"
                     }`}
                   >
                     <option value="ainName">{isBn ? "প্রতিষ্ঠান / AIN Name" : "Client / AIN Name"}</option>
@@ -4173,17 +4173,17 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
                 {/* Column Pivot Dimension */}
                 <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-purple-500 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
                     <i className="fa-solid fa-arrows-left-right mr-1"></i>
                     {isBn ? "কলাম বিভাজন (ঐচ্ছিক)" : "Column Dimension"}
                   </label>
                   <select
                     value={pivotColDim}
                     onChange={(e) => setPivotColDim(e.target.value as any)}
-                    className={`w-full px-3 py-2 rounded-xl text-xs font-extrabold border transition-all outline-none ${
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all outline-none ${
                       isDark
-                        ? "bg-slate-800 border-purple-500/50 text-white"
-                        : "bg-white border-purple-300 text-slate-900 shadow-sm"
+                        ? "bg-slate-800 border-slate-700 text-slate-100"
+                        : "bg-white border-slate-300 text-slate-900 shadow-sm"
                     }`}
                   >
                     <option value="none">{isBn ? "কোনটি নয় (Single Dimension)" : "None (Single Dimension)"}</option>
@@ -4198,7 +4198,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
                 {/* Metric Calculation / Columns */}
                 <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-blue-500 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
                     <i className="fa-solid fa-calculator mr-1"></i>
                     {isBn ? "হিসাবের ধরন / প্রিসেট" : "Metric Preset"}
                   </label>
@@ -4274,10 +4274,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                         });
                       }
                     }}
-                    className={`w-full px-3 py-2 rounded-xl text-xs font-extrabold border transition-all outline-none ${
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all outline-none ${
                       isDark
-                        ? "bg-slate-800 border-slate-700 text-white"
-                        : "bg-white border-slate-200 text-slate-900 shadow-sm"
+                        ? "bg-slate-800 border-slate-700 text-slate-100"
+                        : "bg-white border-slate-300 text-slate-900 shadow-sm"
                     }`}
                   >
                     <option value="financialBreakdown">{isBn ? "পূর্ণ আর্থিক বিবরণী (Full Detail)" : "Full Financial Summary"}</option>
@@ -4291,7 +4291,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
                 {/* Sort Order */}
                 <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
                     <i className="fa-solid fa-arrow-down-short-wide mr-1"></i>
                     {isBn ? "সাজানোর ক্রম" : "Sort By"}
                   </label>
@@ -4300,8 +4300,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     onChange={(e) => setPivotSortBy(e.target.value as any)}
                     className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all outline-none ${
                       isDark
-                        ? "bg-slate-800 border-slate-700 text-white"
-                        : "bg-white border-slate-200 text-slate-900 shadow-sm"
+                        ? "bg-slate-800 border-slate-700 text-slate-100"
+                        : "bg-white border-slate-300 text-slate-900 shadow-sm"
                     }`}
                   >
                     <option value="tax_desc">{isBn ? "ট্যাক্স: বেশি থেকে কম" : "Tax: High to Low"}</option>
@@ -4314,7 +4314,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
                 {/* Search Filter */}
                 <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
                     <i className="fa-solid fa-magnifying-glass mr-1"></i>
                     {isBn ? "ফিল্টার খুঁজুন" : "Filter Group"}
                   </label>
@@ -4325,8 +4325,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     placeholder={isBn ? "গ্রুপ খুঁজুন..." : "Filter groups..."}
                     className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border transition-all outline-none ${
                       isDark
-                        ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500"
-                        : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 shadow-sm"
+                        ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500"
+                        : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 shadow-sm"
                     }`}
                   />
                 </div>
@@ -4335,7 +4335,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               {/* Date Filter & Column Customizer Trigger Row */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-bold text-slate-400">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                     <i className="fa-regular fa-calendar mr-1"></i>
                     {isBn ? "তারিখ সীমা:" : "Date Range:"}
                   </span>
@@ -4344,7 +4344,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     value={pivotStartDate}
                     onChange={(e) => setPivotStartDate(e.target.value)}
                     className={`px-2.5 py-1 rounded-lg border text-xs font-medium ${
-                      isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
+                      isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-300 text-slate-800"
                     }`}
                   />
                   <span className="text-slate-400 font-bold">-</span>
@@ -4353,7 +4353,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     value={pivotEndDate}
                     onChange={(e) => setPivotEndDate(e.target.value)}
                     className={`px-2.5 py-1 rounded-lg border text-xs font-medium ${
-                      isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
+                      isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-300 text-slate-800"
                     }`}
                   />
                   {(pivotStartDate || pivotEndDate) && (
@@ -4362,7 +4362,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                         setPivotStartDate("");
                         setPivotEndDate("");
                       }}
-                      className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-[11px] font-bold text-slate-500 hover:text-rose-500"
+                      className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-rose-500"
                     >
                       {isBn ? "ক্লিয়ার" : "Clear"}
                     </button>
@@ -4375,15 +4375,15 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     onClick={() => setIsColumnConfigOpen((prev) => !prev)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
                       isColumnConfigOpen
-                        ? "bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/30"
+                        ? "bg-slate-800 dark:bg-slate-700 text-white border-slate-600"
                         : isDark
                         ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100 shadow-sm"
                     }`}
                   >
-                    <i className="fa-solid fa-columns text-indigo-400"></i>
+                    <i className="fa-solid fa-columns text-slate-400"></i>
                     <span>{isBn ? "কলাম যোগ / কনফিগার করুন" : "Add / Configure Columns"}</span>
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
                       {Object.values(pivotVisibleCols).filter(Boolean).length}
                     </span>
                     <i className={`fa-solid ${isColumnConfigOpen ? "fa-chevron-up" : "fa-chevron-down"} text-[10px]`}></i>
@@ -4399,10 +4399,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
               {/* Expandable Column Chooser Drawer */}
               {isColumnConfigOpen && (
-                <div className="p-3.5 rounded-2xl border border-indigo-500/30 bg-indigo-950/20 dark:bg-slate-900/90 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-500/20 pb-2">
+                <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black uppercase tracking-wider text-indigo-400">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                         <i className="fa-solid fa-sliders mr-1.5"></i>
                         {isBn ? "রিপোর্টে যে যে কলাম প্রদর্শন করবেন তা সিলেক্ট করুন:" : "Choose Columns to display in Pivot Report:"}
                       </span>
@@ -4426,7 +4426,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             sharePercent: true,
                           });
                         }}
-                        className="px-2 py-1 rounded-lg text-[11px] font-extrabold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 transition-all"
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition-all hover:bg-slate-300 dark:hover:bg-slate-700"
                       >
                         {isBn ? "সব কলাম (Select All)" : "Select All"}
                       </button>
@@ -4448,7 +4448,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             sharePercent: true,
                           });
                         }}
-                        className="px-2 py-1 rounded-lg text-[11px] font-extrabold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition-all hover:bg-slate-300 dark:hover:bg-slate-700"
                       >
                         {isBn ? "ডিফল্ট (Default)" : "Default"}
                       </button>
@@ -4456,7 +4456,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                       <button
                         type="button"
                         onClick={() => setIsColumnConfigOpen(false)}
-                        className="text-slate-400 hover:text-slate-200 text-xs ml-1"
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs ml-1"
                       >
                         <i className="fa-solid fa-times"></i>
                       </button>
@@ -4466,10 +4466,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   {/* Checkbox pills */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 pt-1">
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.count
-                          ? "bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4479,16 +4479,16 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                           setPivotMetric("custom");
                           setPivotVisibleCols((prev) => ({ ...prev, count: !prev.count }));
                         }}
-                        className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+                        className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
                       />
                       <span>{isBn ? "মোট বিল সংখ্যা" : "Bill Count"}</span>
                     </label>
 
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.totalTax
-                          ? "bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4498,16 +4498,16 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                           setPivotMetric("custom");
                           setPivotVisibleCols((prev) => ({ ...prev, totalTax: !prev.totalTax }));
                         }}
-                        className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+                        className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
                       />
                       <span>{isBn ? "মোট ট্যাক্স (Total Tax)" : "Total Tax"}</span>
                     </label>
 
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.unpaidTax
-                          ? "bg-rose-500/20 border-rose-500 text-rose-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4523,10 +4523,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     </label>
 
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.paidTax
-                          ? "bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4542,10 +4542,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     </label>
 
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.unpaidCount
-                          ? "bg-rose-500/20 border-rose-500 text-rose-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4561,10 +4561,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     </label>
 
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.paidCount
-                          ? "bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4580,10 +4580,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     </label>
 
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.avgTax
-                          ? "bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4599,10 +4599,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     </label>
 
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.minTax
-                          ? "bg-purple-600/20 border-purple-500 text-purple-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4612,16 +4612,16 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                           setPivotMetric("custom");
                           setPivotVisibleCols((prev) => ({ ...prev, minTax: !prev.minTax }));
                         }}
-                        className="w-4 h-4 rounded accent-purple-600 cursor-pointer"
+                        className="w-4 h-4 rounded accent-slate-600 cursor-pointer"
                       />
                       <span>{isBn ? "সর্বনিম্ন ট্যাক্স (Min)" : "Min Tax"}</span>
                     </label>
 
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.maxTax
-                          ? "bg-purple-600/20 border-purple-500 text-purple-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4631,16 +4631,16 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                           setPivotMetric("custom");
                           setPivotVisibleCols((prev) => ({ ...prev, maxTax: !prev.maxTax }));
                         }}
-                        className="w-4 h-4 rounded accent-purple-600 cursor-pointer"
+                        className="w-4 h-4 rounded accent-slate-600 cursor-pointer"
                       />
                       <span>{isBn ? "সর্বোচ্চ ট্যাক্স (Max)" : "Max Tax"}</span>
                     </label>
 
                     <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-extrabold cursor-pointer transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                         pivotVisibleCols.sharePercent
-                          ? "bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-sm"
-                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       <input
@@ -4650,7 +4650,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                           setPivotMetric("custom");
                           setPivotVisibleCols((prev) => ({ ...prev, sharePercent: !prev.sharePercent }));
                         }}
-                        className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+                        className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
                       />
                       <span>{isBn ? "ট্যাক্স শেয়ার (% Share)" : "% Share"}</span>
                     </label>
@@ -4660,45 +4660,45 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
             </div>
 
             {/* Quick KPI Stats Summary Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-indigo-500/5 border-b border-indigo-500/10 shrink-0">
-              <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   {isBn ? "মোট ট্যাক্স (Grand Total)" : "Grand Total Tax"}
                 </span>
-                <div className="text-lg font-black text-indigo-600 dark:text-indigo-300">
+                <div className="text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5">
                   ৳ {pivotData.grandTotal.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400">
+              <div className="p-3.5 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 shadow-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
                   {isBn ? "মোট বকেয়া (Unpaid)" : "Total Unpaid Due"}
                 </span>
-                <div className="text-lg font-black text-rose-600 dark:text-rose-400">
+                <div className="text-lg font-black text-rose-600 dark:text-rose-400 mt-0.5">
                   ৳ {pivotData.grandTotal.unpaidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
-                  <span className="text-[10px] font-bold text-rose-400 ml-1.5">
+                  <span className="text-[10px] font-bold text-rose-500/80 dark:text-rose-400/80 ml-1.5 font-normal">
                     ({pivotData.grandTotal.unpaidCount} bills)
                   </span>
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+              <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 shadow-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                   {isBn ? "মোট পরিশোধিত (Paid)" : "Total Paid"}
                 </span>
-                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
                   ৳ {pivotData.grandTotal.paidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
-                  <span className="text-[10px] font-bold text-emerald-400 ml-1.5">
+                  <span className="text-[10px] font-bold text-emerald-500/80 dark:text-emerald-400/80 ml-1.5 font-normal">
                     ({pivotData.grandTotal.paidCount} bills)
                   </span>
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   {isBn ? "মোট চালান / বিল সংখ্যা" : "Total Bills"}
                 </span>
-                <div className="text-lg font-black text-purple-600 dark:text-purple-300">
+                <div className="text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5">
                   {pivotData.grandTotal.count.toLocaleString()}
                 </div>
               </div>
@@ -4709,9 +4709,9 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="sticky top-0 z-10">
                   <tr
-                    className={`border-b text-[11px] font-black uppercase tracking-wider ${
+                    className={`border-b text-[11px] font-bold uppercase tracking-wider ${
                       isDark
-                        ? "bg-slate-800 text-slate-200 border-slate-700 shadow-md"
+                        ? "bg-slate-800 text-slate-200 border-slate-700 shadow-sm"
                         : "bg-slate-100 text-slate-700 border-slate-200 shadow-sm"
                     }`}
                   >
@@ -4750,37 +4750,37 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                           </th>
                         )}
                         {pivotVisibleCols.unpaidTax && (
-                          <th className="py-3 px-4 text-right text-rose-500">
+                          <th className="py-3 px-4 text-right text-rose-600 dark:text-rose-400">
                             {isBn ? "বকেয়া (Unpaid)" : "Unpaid Tax"}
                           </th>
                         )}
                         {pivotVisibleCols.paidTax && (
-                          <th className="py-3 px-4 text-right text-emerald-500">
+                          <th className="py-3 px-4 text-right text-emerald-600 dark:text-emerald-400">
                             {isBn ? "পরিশোধিত (Paid)" : "Paid Tax"}
                           </th>
                         )}
                         {pivotVisibleCols.unpaidCount && (
-                          <th className="py-3 px-3 text-center text-rose-400">
+                          <th className="py-3 px-3 text-center text-rose-600 dark:text-rose-400">
                             {isBn ? "বকেয়া বিল" : "Unpaid Count"}
                           </th>
                         )}
                         {pivotVisibleCols.paidCount && (
-                          <th className="py-3 px-3 text-center text-emerald-400">
+                          <th className="py-3 px-3 text-center text-emerald-600 dark:text-emerald-400">
                             {isBn ? "পরিশোধিত বিল" : "Paid Count"}
                           </th>
                         )}
                         {pivotVisibleCols.avgTax && (
-                          <th className="py-3 px-4 text-right text-blue-400">
+                          <th className="py-3 px-4 text-right text-blue-600 dark:text-blue-400">
                             {isBn ? "গড় ট্যাক্স" : "Average Tax"}
                           </th>
                         )}
                         {pivotVisibleCols.minTax && (
-                          <th className="py-3 px-4 text-right text-purple-400">
+                          <th className="py-3 px-4 text-right">
                             {isBn ? "সর্বনিম্ন" : "Min Tax"}
                           </th>
                         )}
                         {pivotVisibleCols.maxTax && (
-                          <th className="py-3 px-4 text-right text-purple-400">
+                          <th className="py-3 px-4 text-right">
                             {isBn ? "সর্বোচ্চ" : "Max Tax"}
                           </th>
                         )}
@@ -4796,14 +4796,14 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                           {isBn ? "চালান সংখ্যা" : "Records"}
                         </th>
                         {pivotColKeys.map((ck) => (
-                          <th key={ck} className="py-3 px-3 text-right border-l border-slate-700/30">
-                            <span className="font-extrabold text-indigo-400">{ck}</span>
+                          <th key={ck} className="py-3 px-3 text-right border-l border-slate-200 dark:border-slate-700">
+                            <span className="font-bold">{ck}</span>
                             <span className="block text-[9px] text-slate-400 font-normal">
                               Tax (BDT)
                             </span>
                           </th>
                         ))}
-                        <th className="py-3 px-4 text-right border-l border-slate-700/50">
+                        <th className="py-3 px-4 text-right border-l border-slate-200 dark:border-slate-700">
                           {isBn ? "মোট ট্যাক্স" : "Total Tax"}
                         </th>
                         <th className="py-3 px-4 min-w-[120px]">
@@ -4818,7 +4818,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-slate-800/40">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {pivotData.rows.length === 0 ? (
                     <tr>
                       <td
@@ -4835,11 +4835,11 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                       return (
                         <React.Fragment key={row.key}>
                           <tr
-                            className={`transition-colors hover:bg-indigo-500/5 ${
+                            className={`transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
                               idx % 2 === 0
                                 ? isDark
                                   ? "bg-slate-900/30"
-                                  : "bg-slate-50/50"
+                                  : "bg-slate-50/40"
                                 : ""
                             }`}
                           >
@@ -4848,10 +4848,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             </td>
 
                             <td className="py-3 px-4">
-                              <div className="font-extrabold text-slate-200 dark:text-white flex items-center gap-2">
+                              <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                 <span
                                   onClick={() => handleTogglePivotGroup(row.key)}
-                                  className="cursor-pointer hover:text-indigo-400 transition-colors"
+                                  className="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                 >
                                   {row.label}
                                 </span>
@@ -4861,61 +4861,61 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             {pivotColDim === "none" ? (
                               <>
                                 {pivotVisibleCols.count && (
-                                  <td className="py-3 px-3 text-center font-black">
-                                    <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
+                                  <td className="py-3 px-3 text-center font-bold">
+                                    <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px]">
                                       {row.count}
                                     </span>
                                   </td>
                                 )}
 
                                 {pivotVisibleCols.totalTax && (
-                                  <td className="py-3 px-4 text-right font-black text-indigo-400 text-sm">
+                                  <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-slate-100">
                                     ৳ {row.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                                   </td>
                                 )}
 
                                 {pivotVisibleCols.unpaidTax && (
-                                  <td className="py-3 px-4 text-right font-bold text-rose-500">
+                                  <td className="py-3 px-4 text-right font-bold text-rose-600 dark:text-rose-400">
                                     ৳ {row.unpaidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                                   </td>
                                 )}
 
                                 {pivotVisibleCols.paidTax && (
-                                  <td className="py-3 px-4 text-right font-bold text-emerald-500">
+                                  <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
                                     ৳ {row.paidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                                   </td>
                                 )}
 
                                 {pivotVisibleCols.unpaidCount && (
-                                  <td className="py-3 px-3 text-center font-black">
-                                    <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px]">
+                                  <td className="py-3 px-3 text-center font-bold">
+                                    <span className="px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 text-[10px]">
                                       {row.unpaidCount}
                                     </span>
                                   </td>
                                 )}
 
                                 {pivotVisibleCols.paidCount && (
-                                  <td className="py-3 px-3 text-center font-black">
-                                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px]">
+                                  <td className="py-3 px-3 text-center font-bold">
+                                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 text-[10px]">
                                       {row.paidCount}
                                     </span>
                                   </td>
                                 )}
 
                                 {pivotVisibleCols.avgTax && (
-                                  <td className="py-3 px-4 text-right font-bold text-blue-400">
+                                  <td className="py-3 px-4 text-right font-bold text-blue-600 dark:text-blue-400">
                                     ৳ {row.avgTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                                   </td>
                                 )}
 
                                 {pivotVisibleCols.minTax && (
-                                  <td className="py-3 px-4 text-right font-medium text-slate-400">
+                                  <td className="py-3 px-4 text-right font-medium text-slate-500 dark:text-slate-400">
                                     ৳ {row.minTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                                   </td>
                                 )}
 
                                 {pivotVisibleCols.maxTax && (
-                                  <td className="py-3 px-4 text-right font-extrabold text-slate-200">
+                                  <td className="py-3 px-4 text-right font-bold text-slate-700 dark:text-slate-300">
                                     ৳ {row.maxTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                                   </td>
                                 )}
@@ -4923,13 +4923,13 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                                 {pivotVisibleCols.sharePercent && (
                                   <td className="py-3 px-4">
                                     <div className="flex items-center gap-2">
-                                      <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                                      <div className="flex-1 bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                                         <div
-                                          className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
+                                          className="bg-blue-600 dark:bg-blue-500 h-full rounded-full transition-all duration-500"
                                           style={{ width: `${Math.min(row.sharePercent, 100)}%` }}
                                         />
                                       </div>
-                                      <span className="text-[11px] font-black text-slate-400 w-12 text-right">
+                                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-12 text-right">
                                         {row.sharePercent.toFixed(1)}%
                                       </span>
                                     </div>
@@ -4938,8 +4938,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                               </>
                             ) : (
                               <>
-                                <td className="py-3 px-3 text-center font-black">
-                                  <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
+                                <td className="py-3 px-3 text-center font-bold">
+                                  <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px]">
                                     {row.count}
                                   </span>
                                 </td>
@@ -4947,7 +4947,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                                 {pivotColKeys.map((ck) => {
                                   const colData = row.colBreakdown[ck] || { count: 0, totalTax: 0 };
                                   return (
-                                    <td key={ck} className="py-3 px-3 text-right font-bold border-l border-slate-800/40">
+                                    <td key={ck} className="py-3 px-3 text-right font-bold border-l border-slate-200 dark:border-slate-800">
                                       <div>
                                         ৳ {colData.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                                       </div>
@@ -4958,19 +4958,19 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                                   );
                                 })}
 
-                                <td className="py-3 px-4 text-right font-black text-indigo-400 text-sm border-l border-slate-700/50">
+                                <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800">
                                   ৳ {row.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                                 </td>
 
                                 <td className="py-3 px-4">
                                   <div className="flex items-center gap-2">
-                                    <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                                    <div className="flex-1 bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                                       <div
-                                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full"
+                                        className="bg-blue-600 dark:bg-blue-500 h-full rounded-full"
                                         style={{ width: `${Math.min(row.sharePercent, 100)}%` }}
                                       />
                                     </div>
-                                    <span className="text-[11px] font-black text-slate-400 w-12 text-right">
+                                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-12 text-right">
                                       {row.sharePercent.toFixed(1)}%
                                     </span>
                                   </div>
@@ -4984,8 +4984,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                                 onClick={() => handleTogglePivotGroup(row.key)}
                                 className={`p-1.5 rounded-lg border text-xs font-bold transition-all ${
                                   isExpanded
-                                    ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
-                                    : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"
+                                    ? "bg-slate-800 text-white dark:bg-slate-700 border-slate-700"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
                                 }`}
                                 title={isExpanded ? "Collapse" : "Expand Drilldown"}
                               >
@@ -4996,12 +4996,12 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
                           {/* Nested Drilldown Table */}
                           {isExpanded && (
-                            <tr className="bg-indigo-950/20 border-y border-indigo-500/20 animate-in fade-in">
+                            <tr className="bg-slate-50 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 animate-in fade-in">
                               <td colSpan={14} className="p-4">
-                                <div className="rounded-2xl border border-indigo-500/20 bg-slate-900/80 p-4 space-y-3 shadow-inner">
+                                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3 shadow-sm">
                                   <div className="flex items-center justify-between">
-                                    <h5 className="font-extrabold text-xs text-indigo-400 flex items-center gap-2 uppercase tracking-wider">
-                                      <i className="fa-solid fa-list-ol"></i>
+                                    <h5 className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2 uppercase tracking-wider">
+                                      <i className="fa-solid fa-list-ol text-blue-500"></i>
                                       <span>
                                         {isBn
                                           ? `${row.label} এর বিস্তারিত বিল তালিকা (${row.records.length} টি)`
@@ -5010,15 +5010,15 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                                     </h5>
                                     <button
                                       onClick={() => handleTogglePivotGroup(row.key)}
-                                      className="text-xs text-slate-400 hover:text-slate-200"
+                                      className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                                     >
                                       {isBn ? "লুকান" : "Close"}
                                     </button>
                                   </div>
 
-                                  <div className="overflow-x-auto max-h-60 rounded-xl border border-slate-800">
+                                  <div className="overflow-x-auto max-h-60 rounded-xl border border-slate-200 dark:border-slate-800">
                                     <table className="w-full text-left text-[11px]">
-                                      <thead className="bg-slate-800/90 text-slate-300 font-extrabold sticky top-0">
+                                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold sticky top-0">
                                         <tr>
                                           <th className="p-2">#</th>
                                           <th className="p-2">Ref</th>
@@ -5029,30 +5029,30 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                                           <th className="p-2 text-right">Tax (BDT)</th>
                                         </tr>
                                       </thead>
-                                      <tbody className="divide-y divide-slate-800/60 font-medium">
+                                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-medium">
                                         {row.records.map((sub, sIdx) => (
-                                          <tr key={sub.id || sIdx} className="hover:bg-indigo-500/10">
-                                            <td className="p-2 text-slate-500 font-bold">{sIdx + 1}</td>
-                                            <td className="p-2 font-mono font-bold text-slate-300">{sub.ref || "-"}</td>
-                                            <td className="p-2 font-mono font-bold text-slate-200">{sub.regNo || "-"}</td>
-                                            <td className="p-2 text-slate-400">{sub.date || "-"}</td>
+                                          <tr key={sub.id || sIdx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                            <td className="p-2 text-slate-400 font-bold">{sIdx + 1}</td>
+                                            <td className="p-2 font-mono text-slate-700 dark:text-slate-300">{sub.ref || "-"}</td>
+                                            <td className="p-2 font-mono font-bold text-slate-800 dark:text-slate-200">{sub.regNo || "-"}</td>
+                                            <td className="p-2 text-slate-500 dark:text-slate-400">{sub.date || "-"}</td>
                                             <td className="p-2">
-                                              <span className="px-1.5 py-0.5 rounded bg-slate-800 font-bold text-[10px]">
+                                              <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold text-[10px] text-slate-700 dark:text-slate-300">
                                                 {sub.type || "N/A"}
                                               </span>
                                             </td>
                                             <td className="p-2">
                                               <span
-                                                className={`px-2 py-0.5 rounded-full font-black text-[10px] ${
+                                                className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
                                                   sub.paymentStatus === "Paid"
-                                                    ? "bg-emerald-500/20 text-emerald-400"
-                                                    : "bg-rose-500/20 text-rose-400"
+                                                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40"
+                                                    : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40"
                                                 }`}
                                               >
                                                 {sub.paymentStatus || "Unpaid"}
                                               </span>
                                             </td>
-                                            <td className="p-2 text-right font-black text-indigo-300">
+                                            <td className="p-2 text-right font-bold text-slate-900 dark:text-slate-100">
                                               ৳ {sub.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                                             </td>
                                           </tr>
@@ -5074,57 +5074,57 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 {pivotData.rows.length > 0 && (
                   <tfoot className="sticky bottom-0 z-10">
                     <tr
-                      className={`border-t-2 text-xs font-black uppercase ${
+                      className={`border-t-2 text-xs font-bold uppercase ${
                         isDark
-                          ? "bg-slate-800 text-white border-indigo-500 shadow-2xl"
-                          : "bg-slate-200 text-slate-900 border-indigo-600 shadow-md"
+                          ? "bg-slate-800 text-slate-100 border-slate-700 shadow-md"
+                          : "bg-slate-100 text-slate-900 border-slate-300 shadow-sm"
                       }`}
                     >
                       <td className="py-3 px-3 text-center">∑</td>
-                      <td className="py-3 px-4 font-black tracking-wider text-indigo-400">
+                      <td className="py-3 px-4 font-bold tracking-wider text-slate-800 dark:text-slate-100">
                         {isBn ? "সর্বমোট (GRAND TOTAL)" : "GRAND TOTAL"}
                       </td>
 
                       {pivotColDim === "none" ? (
                         <>
                           {pivotVisibleCols.count && (
-                            <td className="py-3 px-3 text-center font-black">
+                            <td className="py-3 px-3 text-center font-bold">
                               {pivotData.grandTotal.count.toLocaleString()}
                             </td>
                           )}
 
                           {pivotVisibleCols.totalTax && (
-                            <td className="py-3 px-4 text-right font-black text-indigo-300 text-sm">
+                            <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-slate-100 text-sm">
                               ৳ {pivotData.grandTotal.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                             </td>
                           )}
 
                           {pivotVisibleCols.unpaidTax && (
-                            <td className="py-3 px-4 text-right text-rose-400 font-black">
+                            <td className="py-3 px-4 text-right text-rose-600 dark:text-rose-400 font-bold">
                               ৳ {pivotData.grandTotal.unpaidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                             </td>
                           )}
 
                           {pivotVisibleCols.paidTax && (
-                            <td className="py-3 px-4 text-right text-emerald-400 font-black">
+                            <td className="py-3 px-4 text-right text-emerald-600 dark:text-emerald-400 font-bold">
                               ৳ {pivotData.grandTotal.paidTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                             </td>
                           )}
 
                           {pivotVisibleCols.unpaidCount && (
-                            <td className="py-3 px-3 text-center text-rose-400 font-black">
+                            <td className="py-3 px-3 text-center text-rose-600 dark:text-rose-400 font-bold">
                               {pivotData.grandTotal.unpaidCount.toLocaleString()}
                             </td>
                           )}
 
                           {pivotVisibleCols.paidCount && (
-                            <td className="py-3 px-3 text-center text-emerald-400 font-black">
+                            <td className="py-3 px-3 text-center text-emerald-600 dark:text-emerald-400 font-bold">
                               {pivotData.grandTotal.paidCount.toLocaleString()}
                             </td>
                           )}
 
                           {pivotVisibleCols.avgTax && (
-                            <td className="py-3 px-4 text-right text-blue-300 font-black">
+                            <td className="py-3 px-4 text-right text-blue-600 dark:text-blue-400 font-bold">
                               ৳{" "}
                               {(pivotData.grandTotal.count > 0
                                 ? pivotData.grandTotal.totalTax / pivotData.grandTotal.count
@@ -5142,29 +5142,29 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                           )}
 
                           {pivotVisibleCols.sharePercent && (
-                            <td className="py-3 px-4 font-black text-slate-400">100.0%</td>
+                            <td className="py-3 px-4 font-bold text-slate-500 dark:text-slate-400">100.0%</td>
                           )}
                         </>
                       ) : (
                         <>
-                          <td className="py-3 px-3 text-center font-black">
+                          <td className="py-3 px-3 text-center font-bold">
                             {pivotData.grandTotal.count.toLocaleString()}
                           </td>
 
                           {pivotColKeys.map((ck) => {
                             const colData = pivotData.grandTotal.colBreakdown[ck] || { count: 0, totalTax: 0 };
                             return (
-                              <td key={ck} className="py-3 px-3 text-right font-black border-l border-slate-700">
+                              <td key={ck} className="py-3 px-3 text-right font-bold border-l border-slate-200 dark:border-slate-700">
                                 ৳ {colData.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                               </td>
                             );
                           })}
 
-                          <td className="py-3 px-4 text-right font-black text-indigo-300 text-sm border-l border-slate-700">
+                          <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-slate-100 text-sm border-l border-slate-200 dark:border-slate-700">
                             ৳ {pivotData.grandTotal.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                           </td>
 
-                          <td className="py-3 px-4 font-black text-slate-400">100.0%</td>
+                          <td className="py-3 px-4 font-bold text-slate-500 dark:text-slate-400">100.0%</td>
                         </>
                       )}
 
