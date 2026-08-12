@@ -39,6 +39,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   const [yearFilter, setYearFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "Unpaid" | "Paid">("all");
+  const [duplicateFilter, setDuplicateFilter] = useState<"all" | "duplicates" | "unique">("all");
+  const [activeDuplicateViewPair, setActiveDuplicateViewPair] = useState<{ year: string; regNo: string } | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -1020,6 +1022,98 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
     }
   };
 
+  // Helper to normalize duplicate key based on Year and Reg No
+  const getDuplicateKey = (year?: string, regNo?: string) => {
+    const yr = (year || "").trim().toLowerCase();
+    const reg = (regNo || "").trim().toLowerCase();
+    if (!yr || !reg) return "";
+    return `${yr}__${reg}`;
+  };
+
+  // Find all duplicates based on Year and Reg No across all records in history
+  const duplicateMap = useMemo(() => {
+    const keyToRecords = new Map<string, AinTaxRecord[]>();
+    history.forEach((rec) => {
+      const key = getDuplicateKey(rec.year, rec.regNo);
+      if (!key) return;
+      const list = keyToRecords.get(key) || [];
+      list.push(rec);
+      keyToRecords.set(key, list);
+    });
+
+    const duplicates = new Map<string, AinTaxRecord[]>();
+    keyToRecords.forEach((records, key) => {
+      if (records.length > 1) {
+        duplicates.set(key, records);
+      }
+    });
+    return duplicates;
+  }, [history]);
+
+  const totalDuplicateGroupCount = duplicateMap.size;
+  const totalDuplicateRecordCount = useMemo(() => {
+    let total = 0;
+    duplicateMap.forEach((recs) => {
+      total += recs.length;
+    });
+    return total;
+  }, [duplicateMap]);
+
+  // Helper to get duplicate sibling records for a given record
+  const getRecordDuplicates = (rec: AinTaxRecord) => {
+    const key = getDuplicateKey(rec.year, rec.regNo);
+    if (!key) return [];
+    const list = duplicateMap.get(key) || [];
+    return list.filter((m) => m.id !== rec.id);
+  };
+
+  // Real-time duplicate matches for Add/Edit Modal form
+  const formDuplicateMatches = useMemo(() => {
+    const key = getDuplicateKey(formYear, formRegNo);
+    if (!key) return [];
+    return history.filter((h) => {
+      if (editingRecord && h.id === editingRecord.id) return false;
+      return getDuplicateKey(h.year, h.regNo) === key;
+    });
+  }, [formYear, formRegNo, history, editingRecord]);
+
+  // Check duplicates within parsed preview rows and against history
+  const previewDuplicateInfo = useMemo(() => {
+    const historyKeys = new Set<string>();
+    history.forEach((h) => {
+      const k = getDuplicateKey(h.year, h.regNo);
+      if (k) historyKeys.add(k);
+    });
+
+    const fileKeyCounts = new Map<string, number>();
+    parsedPreviewRows.forEach((row) => {
+      const k = getDuplicateKey(row.year, row.regNo);
+      if (k) {
+        fileKeyCounts.set(k, (fileKeyCounts.get(k) || 0) + 1);
+      }
+    });
+
+    const rowStatuses = parsedPreviewRows.map((row) => {
+      const k = getDuplicateKey(row.year, row.regNo);
+      if (!k) return { isDuplicate: false, reason: "" };
+      const existsInDb = historyKeys.has(k);
+      const isMultipleInFile = (fileKeyCounts.get(k) || 0) > 1;
+      if (existsInDb && isMultipleInFile) {
+        return { isDuplicate: true, reason: isBn ? "ডাটাবেস ও ফাইলে ডুপ্লিকেট" : "DB & File Dup" };
+      }
+      if (existsInDb) {
+        return { isDuplicate: true, reason: isBn ? "ডাটাবেসে বিদ্যমান" : "In Database" };
+      }
+      if (isMultipleInFile) {
+        return { isDuplicate: true, reason: isBn ? "ফাইলে ডুপ্লিকেট" : "File Duplicate" };
+      }
+      return { isDuplicate: false, reason: "" };
+    });
+
+    const duplicateCount = rowStatuses.filter((s) => s.isDuplicate).length;
+    return { rowStatuses, duplicateCount };
+  }, [parsedPreviewRows, history, isBn]);
+
   // Filter & Search Logic
   const yearsList = useMemo(() => {
     const setYears = new Set<string>();
@@ -1053,9 +1147,16 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       const matchType = typeFilter === "all" || r.type === typeFilter;
       const matchStatus = statusFilter === "all" || (r.paymentStatus || "Unpaid") === statusFilter;
 
-      return matchSearch && matchYear && matchType && matchStatus;
+      const recKey = getDuplicateKey(r.year, r.regNo);
+      const isDuplicateRow = recKey ? duplicateMap.has(recKey) : false;
+      const matchDuplicate =
+        duplicateFilter === "all" ||
+        (duplicateFilter === "duplicates" && isDuplicateRow) ||
+        (duplicateFilter === "unique" && !isDuplicateRow);
+
+      return matchSearch && matchYear && matchType && matchStatus && matchDuplicate;
     });
-  }, [history, searchTerm, yearFilter, typeFilter, statusFilter]);
+  }, [history, searchTerm, yearFilter, typeFilter, statusFilter, duplicateFilter, duplicateMap]);
 
   // Notify parent component of visible rows change for summary calculation
   useEffect(() => {
@@ -1669,7 +1770,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
       )}
 
       {/* Summary KPI Cards Header */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {/* Total Tax Due Card */}
         <div
           className={`p-5 rounded-2xl border backdrop-blur-xl transition-all shadow-sm ${
@@ -1763,6 +1864,50 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
           </div>
           <p className="text-[11px] font-medium text-slate-400 mt-1">
             {isBn ? "পৃথক AIN ধারকের সংখ্যা" : "Distinct AIN holders"}
+          </p>
+        </div>
+
+        {/* Duplicate Records Card */}
+        <div
+          onClick={() => setDuplicateFilter((prev) => (prev === "duplicates" ? "all" : "duplicates"))}
+          className={`p-5 rounded-2xl border backdrop-blur-xl transition-all shadow-sm cursor-pointer group hover:scale-[1.02] ${
+            duplicateFilter === "duplicates"
+              ? "ring-2 ring-rose-500 bg-rose-500/10 border-rose-500/50"
+              : isDark
+              ? "bg-slate-900/60 border-slate-800 text-white"
+              : "bg-white/80 border-slate-200 text-slate-900"
+          }`}
+          title={isBn ? "ক্লিক করে শুধু ডুপ্লিকেট রেকর্ড ফিল্টার করুন" : "Click to toggle duplicate records view"}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-purple-500 dark:text-purple-400 flex items-center gap-1.5">
+              <span>{isBn ? "ডুপ্লিকেট রেকর্ড" : "Duplicate Records"}</span>
+              {totalDuplicateRecordCount > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+              )}
+            </span>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold transition-all ${
+              totalDuplicateRecordCount > 0
+                ? "bg-rose-500/15 text-rose-500 group-hover:bg-rose-500 group-hover:text-white"
+                : "bg-purple-500/10 text-purple-500"
+            }`}>
+              <i className="fa-solid fa-clone text-lg"></i>
+            </div>
+          </div>
+          <div className={`text-2xl font-black tracking-tight ${
+            totalDuplicateRecordCount > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-500 dark:text-slate-400"
+          }`}>
+            {totalDuplicateRecordCount.toLocaleString()}
+          </div>
+          <p className="text-[11px] font-medium text-slate-400 mt-1 flex items-center justify-between">
+            <span>
+              {isBn
+                ? `${totalDuplicateGroupCount} টি গ্রুপে বিদ্যমান`
+                : `${totalDuplicateGroupCount} duplicate group(s)`}
+            </span>
+            <span className="text-[10px] text-blue-500 dark:text-blue-400 font-bold group-hover:underline">
+              {duplicateFilter === "duplicates" ? (isBn ? "রিসেট" : "Reset") : (isBn ? "ফিল্টার" : "Filter")}
+            </span>
           </p>
         </div>
       </div>
@@ -1859,6 +2004,27 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   {tp}
                 </option>
               ))}
+            </select>
+
+            {/* Duplicate Filter */}
+            <select
+              value={duplicateFilter}
+              onChange={(e) => setDuplicateFilter(e.target.value as any)}
+              className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                duplicateFilter === "duplicates"
+                  ? "bg-rose-500/15 border-rose-500/50 text-rose-600 dark:text-rose-400 font-black"
+                  : duplicateFilter === "unique"
+                  ? "bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-400"
+                  : isDark
+                  ? "bg-slate-800 border-slate-700 text-slate-200"
+                  : "bg-slate-50 border-slate-200 text-slate-700"
+              }`}
+            >
+              <option value="all">{isBn ? "সব রেকর্ড (All)" : "All Records"}</option>
+              <option value="duplicates">
+                {isBn ? `⚠️ শুধু ডুপ্লিকেট (${totalDuplicateRecordCount})` : `⚠️ Duplicates (${totalDuplicateRecordCount})`}
+              </option>
+              <option value="unique">{isBn ? "ইউনিক রেকর্ড (Unique Only)" : "Unique Only"}</option>
             </select>
 
             {/* Column Visibility Toggle */}
@@ -2198,14 +2364,22 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 paginatedRows.map((r, idx) => {
                   const isSelected = selectedIds.includes(r.id);
                   const displayIndex = startIndex + idx + 1;
+                  const dups = getRecordDuplicates(r);
+                  const isDup = dups.length > 0;
                   return (
                     <tr
                       key={r.id}
                       className={`transition-colors ${
+                        isDup ? "border-l-4 border-l-rose-500" : ""
+                      } ${
                         isSelected
                           ? isDark
                             ? "bg-blue-900/30"
                             : "bg-blue-50"
+                          : isDup
+                          ? isDark
+                            ? "bg-rose-950/15 hover:bg-rose-900/25"
+                            : "bg-rose-50/60 hover:bg-rose-100/70"
                           : isDark
                           ? "hover:bg-slate-800/40"
                           : "hover:bg-slate-50/80"
@@ -2254,7 +2428,22 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
                       {isColumnVisible("regNo") && (
                         <td className="p-3.5 font-mono text-slate-600 dark:text-slate-300">
-                          {r.regNo || "-"}
+                          <div className="flex flex-col items-start gap-1">
+                            <span className={isDup ? "font-bold text-rose-600 dark:text-rose-400" : ""}>
+                              {r.regNo || "-"}
+                            </span>
+                            {isDup && (
+                              <button
+                                type="button"
+                                onClick={() => setActiveDuplicateViewPair({ year: r.year, regNo: r.regNo })}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                                title={isBn ? `Year ${r.year} ও Reg No ${r.regNo} দিয়ে আরও ${dups.length} টি ডুপ্লিকেট এন্ট্রি আছে (ক্লিক করে বিস্তারিত দেখুন)` : `${dups.length} duplicate record(s) found for Year ${r.year} & Reg No ${r.regNo} (Click to inspect)`}
+                              >
+                                <i className="fa-solid fa-clone text-[9px]"></i>
+                                <span>{isBn ? `ডুপ্লিকেট (${dups.length + 1})` : `Dup (${dups.length + 1})`}</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       )}
 
@@ -2979,6 +3168,12 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     >
                       Selected: {selectedPreviewIndices.length}
                     </span>
+                    {previewDuplicateInfo.duplicateCount > 0 && (
+                      <span className="rounded-full px-3 py-1 text-[11px] font-black bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1.5">
+                        <i className="fa-solid fa-triangle-exclamation"></i>
+                        {isBn ? `ডুপ্লিকেট: ${previewDuplicateInfo.duplicateCount}` : `Duplicates: ${previewDuplicateInfo.duplicateCount}`}
+                      </span>
+                    )}
                     <span
                       className={`rounded-full px-3 py-1 text-[11px] font-bold ${
                         isDark
@@ -2992,6 +3187,38 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                         .reduce((sum, r) => sum + r.totalTax, 0)
                         .toLocaleString("en-BD")}
                     </span>
+                    {parsedPreviewRows.length > 0 && previewDuplicateInfo.duplicateCount > 0 && (
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const uniqueIndices = parsedPreviewRows
+                              .map((_, i) => i)
+                              .filter((i) => !previewDuplicateInfo.rowStatuses[i]?.isDuplicate);
+                            setSelectedPreviewIndices(uniqueIndices);
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/40 flex items-center gap-1 transition-all cursor-pointer"
+                          title={isBn ? "সব ডুপ্লিকেট আনচেক করে শুধু ইউনিক রেকর্ডগুলো রাখুন" : "Deselect all duplicates and keep unique records"}
+                        >
+                          <i className="fa-solid fa-filter-circle-xmark"></i>
+                          <span>{isBn ? "ডুপ্লিকেট বাদ দিন" : "Deselect Duplicates"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const dupIndices = parsedPreviewRows
+                              .map((_, i) => i)
+                              .filter((i) => previewDuplicateInfo.rowStatuses[i]?.isDuplicate);
+                            setSelectedPreviewIndices(dupIndices);
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            isDark ? "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700" : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          <span>{isBn ? "শুধু ডুপ্লিকেট" : "Select Dups"}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -3036,6 +3263,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             />
                           </th>
                           <th className="px-4 py-3 whitespace-nowrap">#</th>
+                          <th className="px-4 py-3 whitespace-nowrap">Status</th>
                           <th className="px-4 py-3 whitespace-nowrap">Year</th>
                           <th className="px-4 py-3 whitespace-nowrap">AIN Name</th>
                           <th className="px-4 py-3 whitespace-nowrap">AIN No</th>
@@ -3047,58 +3275,83 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                        {parsedPreviewRows.map((row, idx) => (
-                          <tr
-                            key={idx}
-                            className={`border-b ${
-                              isDark
-                                ? "border-slate-800 hover:bg-slate-800/40"
-                                : "border-slate-200 hover:bg-slate-100/70"
-                            }`}
-                          >
-                            <td className="px-4 py-3 text-center">
-                              <input
-                                type="checkbox"
-                                checked={selectedPreviewIndices.includes(idx)}
-                                onChange={(e) =>
-                                  setSelectedPreviewIndices((prev) =>
-                                    e.target.checked
-                                      ? [...prev, idx]
-                                      : prev.filter((i) => i !== idx)
-                                  )
-                                }
-                                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                              />
-                            </td>
-                            <td className="px-4 py-3 font-bold text-slate-400 dark:text-slate-500">
-                              {idx + 1}
-                            </td>
-                            <td className="px-4 py-3 font-extrabold text-blue-600 dark:text-blue-400">
-                              {row.year || "-"}
-                            </td>
-                            <td className="px-4 py-3 font-extrabold text-slate-900 dark:text-slate-100 max-w-xs truncate" title={row.ainName}>
-                              {row.ainName || "-"}
-                            </td>
-                            <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-200">
-                              {row.ainNo || "-"}
-                            </td>
-                            <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">
-                              {row.ref || "-"}
-                            </td>
-                            <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">
-                              {row.regNo || "-"}
-                            </td>
-                            <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-400">
-                              {row.date || "-"}
-                            </td>
-                            <td className="px-4 py-3 font-black text-amber-700 dark:text-amber-300">
-                              {row.type || "-"}
-                            </td>
-                            <td className="px-4 py-3 text-right font-black text-rose-600 dark:text-rose-400 text-sm">
-                              {row.totalTax.toLocaleString("en-BD")}
-                            </td>
-                          </tr>
-                        ))}
+                        {parsedPreviewRows.map((row, idx) => {
+                          const status = previewDuplicateInfo.rowStatuses[idx];
+                          const isDup = status?.isDuplicate;
+                          return (
+                            <tr
+                              key={idx}
+                              className={`border-b transition-colors ${
+                                isDup ? "border-l-4 border-l-rose-500" : ""
+                              } ${
+                                isDup
+                                  ? isDark
+                                    ? "bg-rose-950/20 hover:bg-rose-900/30"
+                                    : "bg-rose-50/70 hover:bg-rose-100/80"
+                                  : isDark
+                                  ? "border-slate-800 hover:bg-slate-800/40"
+                                  : "border-slate-200 hover:bg-slate-100/70"
+                              }`}
+                            >
+                              <td className="px-4 py-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPreviewIndices.includes(idx)}
+                                  onChange={(e) =>
+                                    setSelectedPreviewIndices((prev) =>
+                                      e.target.checked
+                                        ? [...prev, idx]
+                                        : prev.filter((i) => i !== idx)
+                                    )
+                                  }
+                                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                              </td>
+                              <td className="px-4 py-3 font-bold text-slate-400 dark:text-slate-500">
+                                {idx + 1}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {isDup ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1 w-fit">
+                                    <i className="fa-solid fa-triangle-exclamation text-[9px]"></i>
+                                    <span>{status.reason}</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1 w-fit">
+                                    <i className="fa-solid fa-check text-[9px]"></i>
+                                    <span>{isBn ? "ইউনিক" : "Unique"}</span>
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 font-extrabold text-blue-600 dark:text-blue-400">
+                                {row.year || "-"}
+                              </td>
+                              <td className="px-4 py-3 font-extrabold text-slate-900 dark:text-slate-100 max-w-xs truncate" title={row.ainName}>
+                                {row.ainName || "-"}
+                              </td>
+                              <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-200">
+                                {row.ainNo || "-"}
+                              </td>
+                              <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">
+                                {row.ref || "-"}
+                              </td>
+                              <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">
+                                <span className={isDup ? "font-bold text-rose-600 dark:text-rose-400" : ""}>
+                                  {row.regNo || "-"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-400">
+                                {row.date || "-"}
+                              </td>
+                              <td className="px-4 py-3 font-black text-amber-700 dark:text-amber-300">
+                                {row.type || "-"}
+                              </td>
+                              <td className="px-4 py-3 text-right font-black text-rose-600 dark:text-rose-400 text-sm">
+                                {row.totalTax.toLocaleString("en-BD")}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
@@ -3305,6 +3558,34 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Real-time Duplicate Warning Box */}
+              {formDuplicateMatches.length > 0 && (
+                <div className="p-3.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs space-y-2 animate-in fade-in">
+                  <div className="flex items-center gap-2 font-extrabold">
+                    <i className="fa-solid fa-triangle-exclamation text-rose-500 text-sm"></i>
+                    <span>
+                      {isBn
+                        ? `সতর্কতা: Year "${formYear}" ও Reg No "${formRegNo}" দিয়ে ইতিমধ্যে ${formDuplicateMatches.length} টি রেকর্ড ডাটাবেসে রয়েছে!`
+                        : `Duplicate Alert: ${formDuplicateMatches.length} record(s) already exist with Year "${formYear}" and Reg No "${formRegNo}"!`}
+                    </span>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto divide-y divide-rose-500/20 text-[11px]">
+                    {formDuplicateMatches.map((dup) => (
+                      <div key={dup.id} className="py-1.5 flex items-center justify-between gap-2">
+                        <div className="truncate">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{dup.ainName || dup.ainNo}</span>
+                          <span className="ml-2 text-slate-500 font-mono">({dup.ainNo})</span>
+                          <span className="ml-2 text-slate-500">{dup.date || "No date"}</span>
+                        </div>
+                        <div className="shrink-0 font-black text-rose-600 dark:text-rose-400">
+                          ৳ {(dup.totalTax || 0).toLocaleString("en-BD")} ({dup.paymentStatus || "Unpaid"})
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Type */}
@@ -4255,6 +4536,189 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   {isBn ? "বন্ধ করুন" : "Close"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Duplicate Records Inspector Modal */}
+      {activeDuplicateViewPair && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
+          <div
+            className={`w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border shadow-2xl overflow-hidden ${
+              isDark
+                ? "bg-slate-900 border-slate-700 text-white"
+                : "bg-white border-slate-300 text-slate-900"
+            }`}
+          >
+            {/* Modal Header */}
+            <div
+              className={`p-5 border-b flex items-center justify-between shrink-0 ${
+                isDark ? "bg-slate-800/80 border-slate-700" : "bg-rose-50/70 border-rose-200"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center font-bold text-lg">
+                  <i className="fa-solid fa-clone"></i>
+                </div>
+                <div>
+                  <h3 className="text-base font-black flex items-center gap-2">
+                    <span>{isBn ? "ডুপ্লিকেট রেকর্ড পর্যবেক্ষণ" : "Duplicate Records Inspector"}</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-500 text-white font-mono">
+                      Year: {activeDuplicateViewPair.year} | Reg No: {activeDuplicateViewPair.regNo}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {isBn
+                      ? "একই Year এবং Reg No বিশিষ্ট ডাটাবেসে সংরক্ষিত সব এন্ট্রি নিচে তালিকাভুক্ত রয়েছে।"
+                      : "All records sharing this identical Year and Reg No are listed below for comparison and management."}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveDuplicateViewPair(null)}
+                className={`p-2.5 rounded-xl transition-all ${
+                  isDark ? "hover:bg-slate-700 text-slate-400 hover:text-white" : "hover:bg-slate-200 text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4">
+              {(() => {
+                const pairKey = getDuplicateKey(activeDuplicateViewPair.year, activeDuplicateViewPair.regNo);
+                const matchingRecords = history.filter(
+                  (h) => getDuplicateKey(h.year, h.regNo) === pairKey
+                );
+                const unpaidTax = matchingRecords
+                  .filter((r) => (r.paymentStatus || "Unpaid") !== "Paid")
+                  .reduce((sum, r) => sum + (r.totalTax || 0), 0);
+                const paidTax = matchingRecords
+                  .filter((r) => r.paymentStatus === "Paid")
+                  .reduce((sum, r) => sum + (r.totalTax || 0), 0);
+
+                return (
+                  <>
+                    {/* Summary KPI for this duplicate group */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className={`p-3.5 rounded-xl border ${isDark ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase">
+                          {isBn ? "মোট রেকর্ড" : "Matching Entries"}
+                        </div>
+                        <div className="text-xl font-black text-rose-500 mt-0.5">
+                          {matchingRecords.length}
+                        </div>
+                      </div>
+                      <div className={`p-3.5 rounded-xl border ${isDark ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase">
+                          {isBn ? "মোট বাকী ট্যাক্স" : "Total Unpaid Tax"}
+                        </div>
+                        <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
+                          ৳ {unpaidTax.toLocaleString("en-BD")}
+                        </div>
+                      </div>
+                      <div className={`p-3.5 rounded-xl border ${isDark ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase">
+                          {isBn ? "মোট পরিশোধিত" : "Total Paid Tax"}
+                        </div>
+                        <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                          ৳ {paidTax.toLocaleString("en-BD")}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table of duplicates */}
+                    <div className={`rounded-2xl border overflow-hidden ${isDark ? "border-slate-700" : "border-slate-200"}`}>
+                      <table className="w-full text-left text-xs border-collapse font-mono">
+                        <thead className={isDark ? "bg-slate-800 text-slate-300 uppercase text-[10px] font-bold" : "bg-slate-100 text-slate-700 uppercase text-[10px] font-black"}>
+                          <tr className={`border-b ${isDark ? "border-slate-700" : "border-slate-300"}`}>
+                            <th className="p-3">#</th>
+                            <th className="p-3">AIN Name</th>
+                            <th className="p-3">AIN No</th>
+                            <th className="p-3">Ref</th>
+                            <th className="p-3">Date</th>
+                            <th className="p-3">Type</th>
+                            <th className="p-3">Status</th>
+                            <th className="p-3 text-right">Total Tax</th>
+                            <th className="p-3 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                          {matchingRecords.map((item, i) => (
+                            <tr
+                              key={item.id}
+                              className={isDark ? "hover:bg-slate-800/50" : "hover:bg-slate-50"}
+                            >
+                              <td className="p-3 font-bold text-slate-400">{i + 1}</td>
+                              <td className="p-3 font-bold text-slate-900 dark:text-slate-100">{item.ainName || "-"}</td>
+                              <td className="p-3 font-mono text-slate-600 dark:text-slate-300">{item.ainNo || "-"}</td>
+                              <td className="p-3 text-slate-500">{item.ref || "-"}</td>
+                              <td className="p-3 text-slate-500">{item.date || "-"}</td>
+                              <td className="p-3 font-bold text-amber-500">{item.type || "-"}</td>
+                              <td className="p-3">
+                                {item.paymentStatus === "Paid" ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-600 dark:text-emerald-300">Paid</span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-500/20 text-rose-600 dark:text-rose-400">Unpaid</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-right font-black text-rose-600 dark:text-rose-400">
+                                {(item.totalTax || 0).toLocaleString("en-BD")}
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveDuplicateViewPair(null);
+                                      handleOpenEditModal(item);
+                                    }}
+                                    className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                                    title="Edit"
+                                  >
+                                    <i className="fa-solid fa-pen-to-square"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleDeleteRecord(item.id);
+                                    }}
+                                    className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400"
+                                    title="Delete"
+                                  >
+                                    <i className="fa-solid fa-trash"></i>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              className={`p-4 px-6 border-t flex items-center justify-end shrink-0 ${
+                isDark ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-200"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => setActiveDuplicateViewPair(null)}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs border ${
+                  isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                {isBn ? "বন্ধ করুন" : "Close"}
+              </button>
             </div>
           </div>
         </div>
