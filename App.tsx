@@ -973,20 +973,27 @@ const App: React.FC = () => {
   const stats = useMemo(() => {
     switch (activeTab) {
       case "ainTax": {
-        const rows = visibleAinTaxRows;
-        const totalTaxSum = rows.reduce((acc, r) => acc + (r.totalTax || 0), 0);
+        const rows = visibleAinTaxRows.length > 0 ? visibleAinTaxRows : ainTaxHistory;
+        const totalTaxDue = rows
+          .filter((r) => (r.paymentStatus || "Unpaid") !== "Paid")
+          .reduce((acc, r) => acc + (r.totalTax || 0), 0);
         const uniqueAins = new Set(
           rows.map((r) => r.ainNo || r.ainName).filter(Boolean),
         ).size;
         const topTax =
           rows.length > 0
-            ? Math.max(...rows.map((r) => r.totalTax || 0))
+            ? Math.max(
+                0,
+                ...rows
+                  .filter((r) => (r.paymentStatus || "Unpaid") !== "Paid")
+                  .map((r) => r.totalTax || 0),
+              )
             : 0;
         return [
           {
             label:
               config.language === "en" ? "Total Tax Due" : "মোট ট্যাক্স বাকী",
-            value: `Tk ${totalTaxSum.toLocaleString("en-BD")}`,
+            value: `Tk ${totalTaxDue.toLocaleString("en-BD", { minimumFractionDigits: 2 })}`,
             color: "#ef4444",
           },
           {
@@ -1004,7 +1011,7 @@ const App: React.FC = () => {
               config.language === "en"
                 ? "Highest Tax Due"
                 : "সর্বোচ্চ একক বাকী",
-            value: `Tk ${topTax.toLocaleString("en-BD")}`,
+            value: `Tk ${topTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}`,
             color: "#10b981",
           },
         ];
@@ -1230,6 +1237,8 @@ const App: React.FC = () => {
     visibleClearanceRows,
     visibleWasteRows,
     visibleAinRows,
+    visibleAinTaxRows,
+    ainTaxHistory,
     wasteCompanies,
     users,
     sortedAuditLogs,
@@ -1473,6 +1482,8 @@ const App: React.FC = () => {
     visibleClearanceRows,
     visibleWasteRows,
     visibleAinRows,
+    visibleAinTaxRows,
+    ainTaxHistory,
     wasteCompanies,
     sortedAuditLogs,
     users,
