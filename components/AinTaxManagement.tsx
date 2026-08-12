@@ -105,6 +105,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   const [pivotEndDate, setPivotEndDate] = useState("");
   const [pivotExpandedGroups, setPivotExpandedGroups] = useState<string[]>([]);
   const [isColumnConfigOpen, setIsColumnConfigOpen] = useState(false);
+  const [pivotHiddenColKeys, setPivotHiddenColKeys] = useState<string[]>([]);
+  const [selectedDrilldownIds, setSelectedDrilldownIds] = useState<string[]>([]);
   const [pivotVisibleCols, setPivotVisibleCols] = useState<{
     count: boolean;
     totalTax: boolean;
@@ -4141,20 +4143,20 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-base font-bold">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-base font-bold shadow-xs">
                   <i className="fa-solid fa-table-cells-large"></i>
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold tracking-tight flex items-center gap-2">
                     <span>{isBn ? "কলাম ভিত্তিক পিভট ও সামারি রিপোর্ট" : "Pivot Table & Summary Report"}</span>
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                      Analytics
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      Analytics & Transfer
                     </span>
                   </h3>
                   <p className="text-xs text-slate-400 font-medium">
                     {isBn
-                      ? "বিভিন্ন কলাম অনুযায়ী ডাটা গ্রুপিং, পরিশোধ/বকেয়া বিভাজন ও কাস্টম সামারি রিপোর্ট।"
-                      : "Group, cross-tabulate, and analyze tax data by any column dimension."}
+                      ? "কলাম অনুযায়ী ডাটা গ্রুপিং, কলাম Hide/Unhide এবং সিলেক্টেড রেকর্ড Duty Payment এ পাঠানোর ব্যবস্থা।"
+                      : "Group tax data, show/hide columns, and seamlessly transfer selected records to Duty Payment."}
                   </p>
                 </div>
               </div>
@@ -4212,7 +4214,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 {/* Row Group Dimension */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                    <i className="fa-solid fa-arrows-up-down mr-1"></i>
+                    <i className="fa-solid fa-arrows-up-down mr-1 text-blue-500"></i>
                     {isBn ? "রো গ্রুপিং কলাম" : "Row Dimension"}
                   </label>
                   <select
@@ -4240,8 +4242,8 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 {/* Column Pivot Dimension */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                    <i className="fa-solid fa-arrows-left-right mr-1"></i>
-                    {isBn ? "কলাম বিভাজন (ঐচ্ছিক)" : "Column Dimension"}
+                    <i className="fa-solid fa-arrows-left-right mr-1 text-purple-500"></i>
+                    {isBn ? "কলাম বিভাজন (ক্রস-ট্যাব)" : "Column Dimension"}
                   </label>
                   <select
                     value={pivotColDim}
@@ -4266,7 +4268,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 {/* Metric Calculation / Columns */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                    <i className="fa-solid fa-calculator mr-1"></i>
+                    <i className="fa-solid fa-calculator mr-1 text-amber-500"></i>
                     {isBn ? "হিসাবের ধরন / প্রিসেট" : "Metric Preset"}
                   </label>
                   <select
@@ -4359,7 +4361,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 {/* Sort Order */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                    <i className="fa-solid fa-arrow-down-short-wide mr-1"></i>
+                    <i className="fa-solid fa-arrow-down-short-wide mr-1 text-emerald-500"></i>
                     {isBn ? "সাজানোর ক্রম" : "Sort By"}
                   </label>
                   <select
@@ -4382,7 +4384,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 {/* Search Filter */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                    <i className="fa-solid fa-magnifying-glass mr-1"></i>
+                    <i className="fa-solid fa-magnifying-glass mr-1 text-slate-400"></i>
                     {isBn ? "ফিল্টার খুঁজুন" : "Filter Group"}
                   </label>
                   <input
@@ -4437,26 +4439,34 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* Dedicated Column Hide / Unhide Toggle Button */}
                   <button
                     type="button"
                     onClick={() => setIsColumnConfigOpen((prev) => !prev)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 shadow-xs active:scale-95 ${
                       isColumnConfigOpen
-                        ? "bg-slate-800 dark:bg-slate-700 text-white border-slate-600"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40"
                         : isDark
                         ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100 shadow-sm"
                     }`}
+                    title={isBn ? "কলাম প্রদর্শন বা লুকান (Hide / Unhide Columns)" : "Show / Hide Table Columns"}
                   >
-                    <i className="fa-solid fa-columns text-slate-400"></i>
-                    <span>{isBn ? "কলাম যোগ / কনফিগার করুন" : "Add / Configure Columns"}</span>
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                      {Object.values(pivotVisibleCols).filter(Boolean).length}
+                    <i className="fa-solid fa-table-columns text-blue-500"></i>
+                    <span>{isBn ? "কলাম অপশন (Hide/Unhide)" : "Columns (Hide/Unhide)"}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      isColumnConfigOpen
+                        ? "bg-white text-blue-700"
+                        : "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800"
+                    }`}>
+                      {pivotColDim === "none"
+                        ? Object.values(pivotVisibleCols).filter(Boolean).length
+                        : activePivotColKeys.length}
                     </span>
                     <i className={`fa-solid ${isColumnConfigOpen ? "fa-chevron-up" : "fa-chevron-down"} text-[10px]`}></i>
                   </button>
 
-                  <span className="text-[11px] font-bold text-slate-400">
+                  <span className="text-[11px] font-bold text-slate-400 ml-1">
                     {isBn
                       ? `(${pivotData.rows.length} টি গ্রুপ)`
                       : `(${pivotData.rows.length} groups)`}
@@ -4464,264 +4474,381 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                 </div>
               </div>
 
-              {/* Expandable Column Chooser Drawer */}
+              {/* Expandable Column Chooser Drawer / Hide & Unhide Controls */}
               {isColumnConfigOpen && (
-                <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                <div className="p-4 rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-slate-900/90 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200 shadow-lg">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/70 dark:border-slate-800 pb-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                        <i className="fa-solid fa-sliders mr-1.5"></i>
-                        {isBn ? "রিপোর্টে যে যে কলাম প্রদর্শন করবেন তা সিলেক্ট করুন:" : "Choose Columns to display in Pivot Report:"}
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-[10px]">
+                        <i className="fa-solid fa-sliders"></i>
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                        {isBn
+                          ? "পিভট টেবিল কলাম প্রদর্শন ও লুকানোর অপশন (Column Visibility):"
+                          : "Pivot Table Column Visibility (Hide / Show Columns):"}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols({
-                            count: true,
-                            totalTax: true,
-                            unpaidTax: true,
-                            paidTax: true,
-                            unpaidCount: true,
-                            paidCount: true,
-                            avgTax: true,
-                            minTax: true,
-                            maxTax: true,
-                            sharePercent: true,
-                          });
-                        }}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition-all hover:bg-slate-300 dark:hover:bg-slate-700"
-                      >
-                        {isBn ? "সব কলাম (Select All)" : "Select All"}
-                      </button>
+                      {pivotColDim === "none" ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPivotMetric("custom");
+                              setPivotVisibleCols({
+                                count: true,
+                                totalTax: true,
+                                unpaidTax: true,
+                                paidTax: true,
+                                unpaidCount: true,
+                                paidCount: true,
+                                avgTax: true,
+                                minTax: true,
+                                maxTax: true,
+                                sharePercent: true,
+                              });
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-slate-700 transition-all hover:bg-blue-50 shadow-xs"
+                          >
+                            {isBn ? "সব কলাম দেখাও (Select All)" : "Select All"}
+                          </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPivotMetric("financialBreakdown");
-                          setPivotVisibleCols({
-                            count: true,
-                            totalTax: true,
-                            unpaidTax: true,
-                            paidTax: true,
-                            unpaidCount: true,
-                            paidCount: true,
-                            avgTax: false,
-                            minTax: false,
-                            maxTax: false,
-                            sharePercent: true,
-                          });
-                        }}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition-all hover:bg-slate-300 dark:hover:bg-slate-700"
-                      >
-                        {isBn ? "ডিফল্ট (Default)" : "Default"}
-                      </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPivotMetric("financialBreakdown");
+                              setPivotVisibleCols({
+                                count: true,
+                                totalTax: true,
+                                unpaidTax: true,
+                                paidTax: true,
+                                unpaidCount: true,
+                                paidCount: true,
+                                avgTax: false,
+                                minTax: false,
+                                maxTax: false,
+                                sharePercent: true,
+                              });
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition-all hover:bg-slate-100 shadow-xs"
+                          >
+                            {isBn ? "ডিফল্ট (Default)" : "Default"}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPivotHiddenColKeys([]);
+                              setPivotVisibleCols((prev) => ({ ...prev, count: true, totalTax: true, sharePercent: true }));
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-slate-700 transition-all hover:bg-blue-50 shadow-xs"
+                          >
+                            {isBn ? "সব কলাম দেখাও (Show All)" : "Show All"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setPivotHiddenColKeys([...pivotColKeys])}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-slate-700 transition-all hover:bg-rose-50 shadow-xs"
+                          >
+                            {isBn ? "সব লুকান (Hide All)" : "Hide All"}
+                          </button>
+                        </>
+                      )}
 
                       <button
                         type="button"
                         onClick={() => setIsColumnConfigOpen(false)}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs ml-1"
+                        className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 text-xs flex items-center justify-center ml-1"
                       >
                         <i className="fa-solid fa-times"></i>
                       </button>
                     </div>
                   </div>
 
-                  {/* Checkbox pills */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 pt-1">
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.count
-                          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.count}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, count: !prev.count }));
-                        }}
-                        className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "মোট বিল সংখ্যা" : "Bill Count"}</span>
-                    </label>
+                  {/* Dynamic Checkbox list based on Dimension Mode */}
+                  {pivotColDim !== "none" ? (
+                    <div className="space-y-3">
+                      <div>
+                        <span className="block text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 mb-2">
+                          <i className="fa-solid fa-table-columns mr-1.5"></i>
+                          {isBn ? "ডাইমেনশন কলামসমূহ (Dimension Column Keys - টিক দিয়ে চালু/বন্ধ করুন):" : "Dimension Column Keys (Check to Show / Uncheck to Hide):"}
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-1 bg-white/70 dark:bg-slate-800/50 rounded-xl border border-blue-100 dark:border-slate-800">
+                          {pivotColKeys.map((ck) => {
+                            const isVisible = !pivotHiddenColKeys.includes(ck);
+                            return (
+                              <label
+                                key={ck}
+                                className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                                  isVisible
+                                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 shadow-2xs"
+                                    : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 opacity-60 line-through"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isVisible}
+                                  onChange={() => {
+                                    setPivotHiddenColKeys((prev) =>
+                                      prev.includes(ck) ? prev.filter((k) => k !== ck) : [...prev, ck]
+                                    );
+                                  }}
+                                  className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                                />
+                                <span className="truncate">{ck}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.totalTax
-                          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.totalTax}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, totalTax: !prev.totalTax }));
-                        }}
-                        className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "মোট ট্যাক্স (Total Tax)" : "Total Tax"}</span>
-                    </label>
+                      {/* Summary Columns */}
+                      <div className="border-t border-blue-200/60 dark:border-slate-800 pt-2.5">
+                        <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
+                          {isBn ? "সামারি ও মোট কলাম (Summary & Total Columns):" : "Summary & Total Columns:"}
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                          <label className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                            pivotVisibleCols.count
+                              ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
+                              : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 opacity-60"
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={pivotVisibleCols.count}
+                              onChange={() => setPivotVisibleCols((prev) => ({ ...prev, count: !prev.count }))}
+                              className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                            />
+                            <span>{isBn ? "চালান সংখ্যা (Records)" : "Records Count"}</span>
+                          </label>
 
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.unpaidTax
-                          ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.unpaidTax}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, unpaidTax: !prev.unpaidTax }));
-                        }}
-                        className="w-4 h-4 rounded accent-rose-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "বকেয়া ট্যাক্স (Unpaid)" : "Unpaid Tax"}</span>
-                    </label>
+                          <label className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                            pivotVisibleCols.totalTax
+                              ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
+                              : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 opacity-60"
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={pivotVisibleCols.totalTax}
+                              onChange={() => setPivotVisibleCols((prev) => ({ ...prev, totalTax: !prev.totalTax }))}
+                              className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                            />
+                            <span>{isBn ? "মোট ট্যাক্স (Total Tax)" : "Total Tax Sum"}</span>
+                          </label>
 
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.paidTax
-                          ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.paidTax}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, paidTax: !prev.paidTax }));
-                        }}
-                        className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "পরিশোধিত ট্যাক্স (Paid)" : "Paid Tax"}</span>
-                    </label>
+                          <label className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                            pivotVisibleCols.sharePercent
+                              ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
+                              : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 opacity-60"
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={pivotVisibleCols.sharePercent}
+                              onChange={() => setPivotVisibleCols((prev) => ({ ...prev, sharePercent: !prev.sharePercent }))}
+                              className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                            />
+                            <span>{isBn ? "ট্যাক্স শেয়ার (% Share)" : "% Share of Tax"}</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 pt-1">
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.count
+                            ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.count}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, count: !prev.count }));
+                          }}
+                          className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "চালান সংখ্যা (Count)" : "Bill Count"}</span>
+                      </label>
 
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.unpaidCount
-                          ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.unpaidCount}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, unpaidCount: !prev.unpaidCount }));
-                        }}
-                        className="w-4 h-4 rounded accent-rose-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "বকেয়া বিল সংখ্যা" : "Unpaid Count"}</span>
-                    </label>
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.totalTax
+                            ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.totalTax}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, totalTax: !prev.totalTax }));
+                          }}
+                          className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "মোট ট্যাক্স (Total Tax)" : "Total Tax"}</span>
+                      </label>
 
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.paidCount
-                          ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.paidCount}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, paidCount: !prev.paidCount }));
-                        }}
-                        className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "পরিশোধিত বিল সংখ্যা" : "Paid Count"}</span>
-                    </label>
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.unpaidTax
+                            ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.unpaidTax}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, unpaidTax: !prev.unpaidTax }));
+                          }}
+                          className="w-4 h-4 rounded accent-rose-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "বকেয়া ট্যাক্স (Unpaid)" : "Unpaid Tax"}</span>
+                      </label>
 
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.avgTax
-                          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.avgTax}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, avgTax: !prev.avgTax }));
-                        }}
-                        className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "গড় ট্যাক্স (Average)" : "Average Tax"}</span>
-                    </label>
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.paidTax
+                            ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.paidTax}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, paidTax: !prev.paidTax }));
+                          }}
+                          className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "পরিশোধিত ট্যাক্স (Paid)" : "Paid Tax"}</span>
+                      </label>
 
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.minTax
-                          ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.minTax}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, minTax: !prev.minTax }));
-                        }}
-                        className="w-4 h-4 rounded accent-slate-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "সর্বনিম্ন ট্যাক্স (Min)" : "Min Tax"}</span>
-                    </label>
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.unpaidCount
+                            ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.unpaidCount}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, unpaidCount: !prev.unpaidCount }));
+                          }}
+                          className="w-4 h-4 rounded accent-rose-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "বকেয়া বিল সংখ্যা" : "Unpaid Count"}</span>
+                      </label>
 
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.maxTax
-                          ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.maxTax}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, maxTax: !prev.maxTax }));
-                        }}
-                        className="w-4 h-4 rounded accent-slate-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "সর্বোচ্চ ট্যাক্স (Max)" : "Max Tax"}</span>
-                    </label>
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.paidCount
+                            ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.paidCount}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, paidCount: !prev.paidCount }));
+                          }}
+                          className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "পরিশোধিত বিল সংখ্যা" : "Paid Count"}</span>
+                      </label>
 
-                    <label
-                      className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        pivotVisibleCols.sharePercent
-                          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
-                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pivotVisibleCols.sharePercent}
-                        onChange={() => {
-                          setPivotMetric("custom");
-                          setPivotVisibleCols((prev) => ({ ...prev, sharePercent: !prev.sharePercent }));
-                        }}
-                        className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
-                      />
-                      <span>{isBn ? "ট্যাক্স শেয়ার (% Share)" : "% Share"}</span>
-                    </label>
-                  </div>
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.avgTax
+                            ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.avgTax}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, avgTax: !prev.avgTax }));
+                          }}
+                          className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "গড় ট্যাক্স (Avg Tax)" : "Average Tax"}</span>
+                      </label>
+
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.minTax
+                            ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.minTax}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, minTax: !prev.minTax }));
+                          }}
+                          className="w-4 h-4 rounded accent-slate-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "সর্বনিম্ন ট্যাক্স (Min)" : "Min Tax"}</span>
+                      </label>
+
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.maxTax
+                            ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.maxTax}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, maxTax: !prev.maxTax }));
+                          }}
+                          className="w-4 h-4 rounded accent-slate-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "সর্বোচ্চ ট্যাক্স (Max)" : "Max Tax"}</span>
+                      </label>
+
+                      <label
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          pivotVisibleCols.sharePercent
+                            ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pivotVisibleCols.sharePercent}
+                          onChange={() => {
+                            setPivotMetric("custom");
+                            setPivotVisibleCols((prev) => ({ ...prev, sharePercent: !prev.sharePercent }));
+                          }}
+                          className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                        />
+                        <span>{isBn ? "ট্যাক্স শেয়ার (% Share)" : "% Share"}</span>
+                      </label>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -4861,10 +4988,12 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                       </>
                     ) : (
                       <>
-                        <th className="py-3 px-3 text-center w-24">
-                          {isBn ? "চালান সংখ্যা" : "Records"}
-                        </th>
-                        {pivotColKeys.map((ck) => (
+                        {pivotVisibleCols.count && (
+                          <th className="py-3 px-3 text-center w-24">
+                            {isBn ? "চালান সংখ্যা" : "Records"}
+                          </th>
+                        )}
+                        {activePivotColKeys.map((ck) => (
                           <th key={ck} className="py-3 px-3 text-right border-l border-slate-200 dark:border-slate-700">
                             <span className="font-bold">{ck}</span>
                             <span className="block text-[9px] text-slate-400 font-normal">
@@ -4872,13 +5001,23 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             </span>
                           </th>
                         ))}
-                        <th className="py-3 px-4 text-right border-l border-slate-200 dark:border-slate-700">
-                          {isBn ? "মোট ট্যাক্স" : "Total Tax"}
-                        </th>
-                        <th className="py-3 px-4 min-w-[120px]">
-                          {isBn ? "শেয়ার (%)" : "% Share"}
-                        </th>
+                        {pivotVisibleCols.totalTax && (
+                          <th className="py-3 px-4 text-right border-l border-slate-200 dark:border-slate-700">
+                            {isBn ? "মোট ট্যাক্স" : "Total Tax"}
+                          </th>
+                        )}
+                        {pivotVisibleCols.sharePercent && (
+                          <th className="py-3 px-4 min-w-[120px]">
+                            {isBn ? "শেয়ার (%)" : "% Share"}
+                          </th>
+                        )}
                       </>
+                    )}
+
+                    {onTransferToDutyPayment && (
+                      <th className="py-3 px-2 text-center w-28">
+                        {isBn ? "Duty Payment" : "Transfer"}
+                      </th>
                     )}
 
                     <th className="py-3 px-3 text-center w-20">
@@ -4891,7 +5030,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   {pivotData.rows.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={14}
+                        colSpan={16}
                         className="py-12 text-center text-slate-400 font-semibold"
                       >
                         <i className="fa-solid fa-inbox text-3xl mb-2 block opacity-40"></i>
@@ -4901,6 +5040,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                   ) : (
                     pivotData.rows.map((row, idx) => {
                       const isExpanded = pivotExpandedGroups.includes(row.key);
+                      const groupRecordIds = row.records.map((r) => r.id || "").filter(Boolean);
+                      const allGroupSelected = groupRecordIds.length > 0 && groupRecordIds.every((id) => selectedDrilldownIds.includes(id));
+                      const someGroupSelected = groupRecordIds.some((id) => selectedDrilldownIds.includes(id));
+
                       return (
                         <React.Fragment key={row.key}>
                           <tr
@@ -5012,13 +5155,15 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                               </>
                             ) : (
                               <>
-                                <td className="py-3 px-3 text-center font-bold">
-                                  <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px]">
-                                    {row.count}
-                                  </span>
-                                </td>
+                                {pivotVisibleCols.count && (
+                                  <td className="py-3 px-3 text-center font-bold">
+                                    <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px]">
+                                      {row.count}
+                                    </span>
+                                  </td>
+                                )}
 
-                                {pivotColKeys.map((ck) => {
+                                {activePivotColKeys.map((ck) => {
                                   const colData = row.colBreakdown[ck] || { count: 0, totalTax: 0 };
                                   return (
                                     <td key={ck} className="py-3 px-3 text-right font-bold border-l border-slate-200 dark:border-slate-800">
@@ -5032,24 +5177,51 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                                   );
                                 })}
 
-                                <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800">
-                                  ৳ {row.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
-                                </td>
+                                {pivotVisibleCols.totalTax && (
+                                  <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800">
+                                    ৳ {row.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                  </td>
+                                )}
 
-                                <td className="py-3 px-4">
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex-1 bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                                      <div
-                                        className="bg-blue-600 dark:bg-blue-500 h-full rounded-full"
-                                        style={{ width: `${Math.min(row.sharePercent, 100)}%` }}
-                                      />
+                                {pivotVisibleCols.sharePercent && (
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                                        <div
+                                          className="bg-blue-600 dark:bg-blue-500 h-full rounded-full"
+                                          style={{ width: `${Math.min(row.sharePercent, 100)}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-12 text-right">
+                                        {row.sharePercent.toFixed(1)}%
+                                      </span>
                                     </div>
-                                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-12 text-right">
-                                      {row.sharePercent.toFixed(1)}%
-                                    </span>
-                                  </div>
-                                </td>
+                                  </td>
+                                )}
                               </>
+                            )}
+
+                            {/* Direct Group Transfer to Duty Payment */}
+                            {onTransferToDutyPayment && (
+                              <td className="py-3 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onTransferToDutyPayment(row.records);
+                                    setIsPivotModalOpen(false);
+                                    showSuccess(
+                                      isBn
+                                        ? `${row.label} এর ${row.records.length} টি রেকর্ড Duty Payment এ পাঠানো হয়েছে!`
+                                        : `Transferred ${row.records.length} records of ${row.label} to Duty Payment!`
+                                    );
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-600 text-blue-600 dark:text-blue-400 hover:text-white border border-blue-200 dark:border-blue-800 text-[11px] font-bold transition-all shadow-2xs active:scale-95 flex items-center justify-center gap-1 mx-auto"
+                                  title={isBn ? `${row.label} এর সব (${row.records.length} টি) বিল Duty Payment এ পাঠান` : `Send all ${row.records.length} bills of this group to Duty Payment`}
+                                >
+                                  <i className="fa-solid fa-paper-plane text-[10px]"></i>
+                                  <span>{isBn ? "পাঠান" : "Send"}</span>
+                                </button>
+                              </td>
                             )}
 
                             <td className="py-3 px-3 text-center">
@@ -5058,7 +5230,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                                 onClick={() => handleTogglePivotGroup(row.key)}
                                 className={`p-1.5 rounded-lg border text-xs font-bold transition-all ${
                                   isExpanded
-                                    ? "bg-slate-800 text-white dark:bg-slate-700 border-slate-700"
+                                    ? "bg-slate-800 text-white dark:bg-slate-700 border-slate-700 shadow-xs"
                                     : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
                                 }`}
                                 title={isExpanded ? "Collapse" : "Expand Drilldown"}
@@ -5068,69 +5240,204 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             </td>
                           </tr>
 
-                          {/* Nested Drilldown Table */}
+                          {/* Nested Drilldown Table with Selection & Duty Transfer */}
                           {isExpanded && (
                             <tr className="bg-slate-50 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 animate-in fade-in">
-                              <td colSpan={14} className="p-4">
-                                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3 shadow-sm">
-                                  <div className="flex items-center justify-between">
-                                    <h5 className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2 uppercase tracking-wider">
-                                      <i className="fa-solid fa-list-ol text-blue-500"></i>
-                                      <span>
-                                        {isBn
-                                          ? `${row.label} এর বিস্তারিত বিল তালিকা (${row.records.length} টি)`
-                                          : `Detailed Bills for: ${row.label} (${row.records.length} items)`}
-                                      </span>
-                                    </h5>
-                                    <button
-                                      onClick={() => handleTogglePivotGroup(row.key)}
-                                      className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                    >
-                                      {isBn ? "লুকান" : "Close"}
-                                    </button>
+                              <td colSpan={16} className="p-4">
+                                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3.5 shadow-md">
+                                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-bold">
+                                        <i className="fa-solid fa-list-ol"></i>
+                                      </div>
+                                      <div>
+                                        <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                                          <span>{row.label}</span>
+                                          <span className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold font-mono">
+                                            {row.records.length} {isBn ? "টি বিল" : "bills"}
+                                          </span>
+                                        </h5>
+                                      </div>
+                                    </div>
+
+                                    {/* Action Bar inside Drilldown */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {onTransferToDutyPayment && (
+                                        <>
+                                          {/* Send Checked Items in this group */}
+                                          {someGroupSelected && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const checkedInGroup = row.records.filter((r) =>
+                                                  selectedDrilldownIds.includes(r.id || "")
+                                                );
+                                                if (checkedInGroup.length > 0) {
+                                                  onTransferToDutyPayment(checkedInGroup);
+                                                  setIsPivotModalOpen(false);
+                                                  setSelectedDrilldownIds((prev) =>
+                                                    prev.filter((id) => !checkedInGroup.some((g) => g.id === id))
+                                                  );
+                                                  showSuccess(
+                                                    isBn
+                                                      ? `সিলেক্টেড ${checkedInGroup.length} টি রেকর্ড Duty Payment এ পাঠানো হয়েছে!`
+                                                      : `Transferred ${checkedInGroup.length} selected records to Duty Payment!`
+                                                  );
+                                                }
+                                              }}
+                                              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+                                            >
+                                              <i className="fa-solid fa-paper-plane text-xs"></i>
+                                              <span>
+                                                {isBn
+                                                  ? `সিলেক্টেড (${row.records.filter((r) => selectedDrilldownIds.includes(r.id || "")).length}) Duty Payment এ পাঠান`
+                                                  : `Send Selected (${row.records.filter((r) => selectedDrilldownIds.includes(r.id || "")).length}) to Duty Payment`}
+                                              </span>
+                                            </button>
+                                          )}
+
+                                          {/* Send All Records in this group */}
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              onTransferToDutyPayment(row.records);
+                                              setIsPivotModalOpen(false);
+                                              showSuccess(
+                                                isBn
+                                                  ? `এই গ্রুপের সব (${row.records.length} টি) রেকর্ড Duty Payment এ পাঠানো হয়েছে!`
+                                                  : `Transferred all ${row.records.length} records to Duty Payment!`
+                                              );
+                                            }}
+                                            className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-600 text-indigo-600 dark:text-indigo-300 hover:text-white border border-indigo-200 dark:border-indigo-800 font-bold text-xs transition-all shadow-xs active:scale-95 flex items-center gap-1.5"
+                                            title={isBn ? "গ্রুপের সব রেকর্ড Duty Payment এ পাঠান" : "Send All Group Records to Duty Payment"}
+                                          >
+                                            <i className="fa-solid fa-arrow-right-to-bracket text-xs"></i>
+                                            <span>{isBn ? "গ্রুপের সব বিল পাঠান" : "Send All Bills"}</span>
+                                          </button>
+                                        </>
+                                      )}
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleTogglePivotGroup(row.key)}
+                                        className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-2 py-1 rounded-lg"
+                                      >
+                                        {isBn ? "লুকান" : "Close"}
+                                      </button>
+                                    </div>
                                   </div>
 
-                                  <div className="overflow-x-auto max-h-60 rounded-xl border border-slate-200 dark:border-slate-800">
+                                  <div className="overflow-x-auto max-h-72 rounded-xl border border-slate-200 dark:border-slate-800">
                                     <table className="w-full text-left text-[11px]">
-                                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold sticky top-0">
+                                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold sticky top-0 shadow-2xs">
                                         <tr>
-                                          <th className="p-2">#</th>
-                                          <th className="p-2">Ref</th>
-                                          <th className="p-2">Reg No</th>
-                                          <th className="p-2">Date</th>
-                                          <th className="p-2">Type</th>
-                                          <th className="p-2">Status</th>
-                                          <th className="p-2 text-right">Tax (BDT)</th>
+                                          <th className="p-2.5 w-8 text-center">
+                                            <input
+                                              type="checkbox"
+                                              checked={allGroupSelected}
+                                              onChange={() => {
+                                                if (allGroupSelected) {
+                                                  setSelectedDrilldownIds((prev) =>
+                                                    prev.filter((id) => !groupRecordIds.includes(id))
+                                                  );
+                                                } else {
+                                                  setSelectedDrilldownIds((prev) => [
+                                                    ...prev,
+                                                    ...groupRecordIds.filter((id) => !prev.includes(id)),
+                                                  ]);
+                                                }
+                                              }}
+                                              className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
+                                              title={isBn ? "এই গ্রুপের সব সিলেক্ট করুন" : "Select all in this group"}
+                                            />
+                                          </th>
+                                          <th className="p-2.5 w-8 text-center">#</th>
+                                          <th className="p-2.5">Ref</th>
+                                          <th className="p-2.5">Reg No</th>
+                                          <th className="p-2.5">Date</th>
+                                          <th className="p-2.5">Type</th>
+                                          <th className="p-2.5">Status</th>
+                                          <th className="p-2.5 text-right">Tax (BDT)</th>
+                                          {onTransferToDutyPayment && (
+                                            <th className="p-2.5 text-center w-24">Duty Payment</th>
+                                          )}
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-medium">
-                                        {row.records.map((sub, sIdx) => (
-                                          <tr key={sub.id || sIdx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                                            <td className="p-2 text-slate-400 font-bold">{sIdx + 1}</td>
-                                            <td className="p-2 font-mono text-slate-700 dark:text-slate-300">{sub.ref || "-"}</td>
-                                            <td className="p-2 font-mono font-bold text-slate-800 dark:text-slate-200">{sub.regNo || "-"}</td>
-                                            <td className="p-2 text-slate-500 dark:text-slate-400">{sub.date || "-"}</td>
-                                            <td className="p-2">
-                                              <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold text-[10px] text-slate-700 dark:text-slate-300">
-                                                {sub.type || "N/A"}
-                                              </span>
-                                            </td>
-                                            <td className="p-2">
-                                              <span
-                                                className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                                                  sub.paymentStatus === "Paid"
-                                                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40"
-                                                    : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40"
-                                                }`}
-                                              >
-                                                {sub.paymentStatus || "Unpaid"}
-                                              </span>
-                                            </td>
-                                            <td className="p-2 text-right font-bold text-slate-900 dark:text-slate-100">
-                                              ৳ {sub.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
-                                            </td>
-                                          </tr>
-                                        ))}
+                                        {row.records.map((sub, sIdx) => {
+                                          const isSelected = selectedDrilldownIds.includes(sub.id || "");
+                                          return (
+                                            <tr
+                                              key={sub.id || sIdx}
+                                              className={`transition-colors ${
+                                                isSelected
+                                                  ? "bg-blue-50/80 dark:bg-blue-950/30"
+                                                  : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                                              }`}
+                                            >
+                                              <td className="p-2.5 text-center">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isSelected}
+                                                  onChange={() => {
+                                                    const recId = sub.id || "";
+                                                    if (!recId) return;
+                                                    setSelectedDrilldownIds((prev) =>
+                                                      prev.includes(recId)
+                                                        ? prev.filter((id) => id !== recId)
+                                                        : [...prev, recId]
+                                                    );
+                                                  }}
+                                                  className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
+                                                />
+                                              </td>
+                                              <td className="p-2.5 text-slate-400 font-bold text-center">{sIdx + 1}</td>
+                                              <td className="p-2.5 font-mono text-slate-700 dark:text-slate-300">{sub.ref || "-"}</td>
+                                              <td className="p-2.5 font-mono font-bold text-slate-800 dark:text-slate-200">{sub.regNo || "-"}</td>
+                                              <td className="p-2.5 text-slate-500 dark:text-slate-400">{sub.date || "-"}</td>
+                                              <td className="p-2.5">
+                                                <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold text-[10px] text-slate-700 dark:text-slate-300">
+                                                  {sub.type || "N/A"}
+                                                </span>
+                                              </td>
+                                              <td className="p-2.5">
+                                                <span
+                                                  className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                                    sub.paymentStatus === "Paid"
+                                                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40"
+                                                      : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40"
+                                                  }`}
+                                                >
+                                                  {sub.paymentStatus || "Unpaid"}
+                                                </span>
+                                              </td>
+                                              <td className="p-2.5 text-right font-bold text-slate-900 dark:text-slate-100">
+                                                ৳ {sub.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                                              </td>
+                                              {onTransferToDutyPayment && (
+                                                <td className="p-2.5 text-center">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      onTransferToDutyPayment([sub]);
+                                                      setIsPivotModalOpen(false);
+                                                      showSuccess(
+                                                        isBn
+                                                          ? "রেকর্ডটি Duty Payment এ পাঠানো হয়েছে!"
+                                                          : "Transferred record to Duty Payment!"
+                                                      );
+                                                    }}
+                                                    className="px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-600 text-blue-600 dark:text-blue-400 hover:text-white border border-blue-200 dark:border-blue-800 text-[10px] font-bold transition-all shadow-2xs active:scale-95 flex items-center justify-center gap-1 mx-auto"
+                                                    title={isBn ? "এই বিলটি Duty Payment এ পাঠান" : "Send this bill to Duty Payment"}
+                                                  >
+                                                    <i className="fa-solid fa-paper-plane"></i>
+                                                    <span>{isBn ? "পাঠান" : "Send"}</span>
+                                                  </button>
+                                                </td>
+                                              )}
+                                            </tr>
+                                          );
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>
@@ -5221,11 +5528,13 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                         </>
                       ) : (
                         <>
-                          <td className="py-3 px-3 text-center font-bold">
-                            {pivotData.grandTotal.count.toLocaleString()}
-                          </td>
+                          {pivotVisibleCols.count && (
+                            <td className="py-3 px-3 text-center font-bold">
+                              {pivotData.grandTotal.count.toLocaleString()}
+                            </td>
+                          )}
 
-                          {pivotColKeys.map((ck) => {
+                          {activePivotColKeys.map((ck) => {
                             const colData = pivotData.grandTotal.colBreakdown[ck] || { count: 0, totalTax: 0 };
                             return (
                               <td key={ck} className="py-3 px-3 text-right font-bold border-l border-slate-200 dark:border-slate-700">
@@ -5234,12 +5543,20 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                             );
                           })}
 
-                          <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-slate-100 text-sm border-l border-slate-200 dark:border-slate-700">
-                            ৳ {pivotData.grandTotal.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
-                          </td>
+                          {pivotVisibleCols.totalTax && (
+                            <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-slate-100 text-sm border-l border-slate-200 dark:border-slate-700">
+                              ৳ {pivotData.grandTotal.totalTax.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                            </td>
+                          )}
 
-                          <td className="py-3 px-4 font-bold text-slate-500 dark:text-slate-400">100.0%</td>
+                          {pivotVisibleCols.sharePercent && (
+                            <td className="py-3 px-4 font-bold text-slate-500 dark:text-slate-400">100.0%</td>
+                          )}
                         </>
+                      )}
+
+                      {onTransferToDutyPayment && (
+                        <td className="py-3 px-2 text-center">-</td>
                       )}
 
                       <td className="py-3 px-3 text-center">-</td>
@@ -5249,14 +5566,66 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
               </table>
             </div>
 
+            {/* Sticky Floating Selection Action Bar (when records are selected across drilldowns) */}
+            {selectedDrilldownIds.length > 0 && onTransferToDutyPayment && (
+              <div className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-2xl animate-in slide-in-from-bottom-2 duration-200">
+                <div className="flex items-center gap-2.5 font-extrabold text-xs">
+                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs">
+                    <i className="fa-solid fa-list-check"></i>
+                  </div>
+                  <span>
+                    {isBn
+                      ? `${selectedDrilldownIds.length} টি রেকর্ড সিলেক্ট করা হয়েছে`
+                      : `${selectedDrilldownIds.length} records selected`}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const recs = history.filter((r) => selectedDrilldownIds.includes(r.id || ""));
+                      if (recs.length > 0) {
+                        onTransferToDutyPayment(recs);
+                        setIsPivotModalOpen(false);
+                        setSelectedDrilldownIds([]);
+                        showSuccess(
+                          isBn
+                            ? `সিলেক্টেড ${recs.length} টি রেকর্ড Duty Payment এ পাঠানো হয়েছে!`
+                            : `Transferred ${recs.length} records to Duty Payment!`
+                        );
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-black text-xs transition-all shadow-md active:scale-95 flex items-center gap-2"
+                  >
+                    <i className="fa-solid fa-paper-plane"></i>
+                    <span>{isBn ? "Duty Payment এ পাঠান" : "Transfer to Duty Payment"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDrilldownIds([])}
+                    className="px-3 py-2 rounded-xl bg-blue-800/60 hover:bg-blue-800 text-white font-bold text-xs transition-all"
+                  >
+                    {isBn ? "সিলেকশন মুছুন" : "Clear"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Modal Footer */}
             <div
               className={`p-4 border-t flex flex-wrap items-center justify-between gap-3 shrink-0 ${
                 isDark ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"
               }`}
             >
-              <div className="text-xs text-slate-400">
-                {isBn ? "টিপস: যে কোন রো-এর ডানে Drilldown বাটনে ক্লিক করে বিস্তারিত বিল দেখা যাবে।" : "Tip: Click the drilldown arrow to view all bills under any category."}
+              <div className="text-xs text-slate-400 flex items-center gap-2">
+                <i className="fa-solid fa-circle-info text-blue-500"></i>
+                <span>
+                  {isBn
+                    ? "টিপস: Drilldown এ গিয়ে নির্দিষ্ট রেকর্ড সিলেক্ট করে বা সরাসরি গ্রুপ রো থেকে Duty Payment এ পাঠাতে পারবেন।"
+                    : "Tip: Select specific records in drilldown or send entire groups directly to Duty Payment."}
+                </span>
               </div>
 
               <div className="flex items-center gap-3">

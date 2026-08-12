@@ -1999,6 +1999,60 @@ const App: React.FC = () => {
               systemConfig={config}
               supabase={supabase}
               clients={clients}
+              onTransferToDutyPayment={async (records) => {
+                if (!records || records.length === 0) return;
+                const clientPhoneMap = new Map<string, string>();
+                clients.forEach((c) => {
+                  if (c.ain) clientPhoneMap.set(c.ain.trim(), c.phone || "");
+                  if (c.name) clientPhoneMap.set(c.name.trim().toLowerCase(), c.phone || "");
+                });
+
+                const newDutyRecords: PaymentRecord[] = records.map((r) => {
+                  const ainKey = (r.ainNo || "").trim();
+                  const nameKey = (r.ainName || "").trim().toLowerCase();
+                  const phone = clientPhoneMap.get(ainKey) || clientPhoneMap.get(nameKey) || "";
+                  return {
+                    id: crypto.randomUUID(),
+                    date: r.date || new Date().toISOString().split("T")[0],
+                    receiveDate: r.paymentStatus === "Paid" ? r.date || new Date().toISOString().split("T")[0] : "",
+                    ain: r.ainNo || "",
+                    clientName: r.ainName || "",
+                    phone: phone,
+                    beYear: r.year || String(new Date().getFullYear()),
+                    duty: Number(r.totalTax || 0),
+                    received: r.paymentStatus === "Paid" ? Number(r.totalTax || 0) : 0,
+                    status: (r.paymentStatus === "Paid" ? "Paid" : "New") as PaymentRecord["status"],
+                    profit: 0,
+                  };
+                });
+
+                // Update Duty state
+                setDutyHistory((prev) => [...newDutyRecords, ...prev]);
+
+                // Sync to Supabase if connected
+                if (supabase) {
+                  try {
+                    const payload = newDutyRecords.map((item) => ({
+                      date: item.date,
+                      receive_date: item.receiveDate || null,
+                      ain: item.ain,
+                      client_name: item.clientName,
+                      phone: item.phone,
+                      be_year: item.beYear,
+                      duty: item.duty,
+                      received: item.received,
+                      status: item.status,
+                      profit: item.profit || 0,
+                    }));
+                    await supabase.from("duty_records").insert(payload);
+                  } catch (err) {
+                    console.error("Failed to insert transferred duty records to Supabase:", err);
+                  }
+                }
+
+                // Switch view to duty payment
+                setActiveTab("duty");
+              }}
             />
           )}
           {activeTab === "reports" && tabAccess.reports && (
