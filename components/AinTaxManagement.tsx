@@ -19,6 +19,7 @@ interface AinTaxManagementProps {
   systemConfig: SystemConfig;
   supabase: SupabaseClient | null;
   clients: Client[];
+  onTransferToDutyPayment?: (records: AinTaxRecord[]) => void;
 }
 
 const LOCAL_STORAGE_KEY = "ain_tax_records_local";
@@ -30,6 +31,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
   systemConfig,
   supabase,
   clients,
+  onTransferToDutyPayment,
 }) => {
   const isDark = systemConfig.theme === "dark";
   const isBn = systemConfig.language === "bn";
