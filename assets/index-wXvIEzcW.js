@@ -117,7 +117,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
               display: block;
               position: fixed;
               bottom: -10mm;
+              left: 0;
               right: 0;
+              text-align: center;
               font-size: 9px;
               color: #64748b;
               font-family: 'Segoe UI', Arial, sans-serif;
