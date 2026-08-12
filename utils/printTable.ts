@@ -73,7 +73,14 @@ export function printElement(
         txt === "control" ||
         txt === "action" ||
         txt === "select" ||
-        txt.includes("অ্যাকশন")
+        txt.includes("অ্যাকশন") ||
+        txt === "transfer" ||
+        txt === "drilldown" ||
+        txt === "duty payment" ||
+        txt === "বিবরণ" ||
+        th.hasAttribute("data-print-exclude") ||
+        th.classList.contains("no-print") ||
+        th.classList.contains("print-hidden")
       ) {
         excluded.add(idx);
       }

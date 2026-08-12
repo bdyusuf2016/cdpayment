@@ -5135,12 +5135,12 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                     )}
 
                     {onTransferToDutyPayment && (
-                      <th className="py-3 px-2 text-center w-28">
+                      <th className="py-3 px-2 text-center w-28 no-print">
                         {isBn ? "Duty Payment" : "Transfer"}
                       </th>
                     )}
 
-                    <th className="py-3 px-3 text-center w-20">
+                    <th className="py-3 px-3 text-center w-20 no-print">
                       {isBn ? "বিবরণ" : "Drilldown"}
                     </th>
                   </tr>
@@ -5323,7 +5323,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
 
                             {/* Direct Group Transfer to Duty Payment */}
                             {onTransferToDutyPayment && (
-                              <td className="py-3 px-2 text-center">
+                              <td className="py-3 px-2 text-center no-print">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -5344,7 +5344,7 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                               </td>
                             )}
 
-                            <td className="py-3 px-3 text-center">
+                            <td className="py-3 px-3 text-center no-print">
                               <button
                                 type="button"
                                 onClick={() => handleTogglePivotGroup(row.key)}
@@ -5676,10 +5676,10 @@ export const AinTaxManagement: React.FC<AinTaxManagementProps> = ({
                       )}
 
                       {onTransferToDutyPayment && (
-                        <td className="py-3 px-2 text-center">-</td>
+                        <td className="py-3 px-2 text-center no-print">-</td>
                       )}
 
-                      <td className="py-3 px-3 text-center">-</td>
+                      <td className="py-3 px-3 text-center no-print">-</td>
                     </tr>
                   </tfoot>
                 )}
