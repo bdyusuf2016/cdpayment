@@ -215,18 +215,36 @@ const fromWasteRecordDb = (row: any): WasteRecord => ({
   status: (row.status ?? "Unpaid") as WasteRecord["status"],
 });
 
-// Generic fetch
+// Generic fetch (fetches all rows in chunks of 1000)
 export async function fetchData<T>(
   supabase: SupabaseClient,
   tableName: string,
 ): Promise<T[]> {
   try {
-    const { data, error } = await supabase
-      .from(tableName)
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data as T[]) || [];
+    const PAGE_SIZE = 1000;
+    let allRows: any[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      if (data && data.length > 0) {
+        allRows = allRows.concat(data);
+        if (data.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+    return (allRows as T[]) || [];
   } catch (err) {
     console.error(`Error fetching ${tableName}:`, err);
     return [];
@@ -988,15 +1006,25 @@ export async function bulkInsertAinTaxRecords(
   records: Omit<AinTaxRecord, "id" | "createdAt">[]
 ): Promise<AinTaxRecord[]> {
   const payload = records.map((r) => toAinTaxDb(r));
-  const { data, error } = await supabase
-    .from("ain_tax_records")
-    .insert(payload)
-    .select();
-  if (error) {
-    console.error("bulkInsertAinTaxRecords error", error);
-    throw formatSupabaseError("Bulk insert AIN Tax records", error);
+  const CHUNK_SIZE = 500;
+  const inserted: any[] = [];
+
+  for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
+    const chunk = payload.slice(i, i + CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from("ain_tax_records")
+      .insert(chunk)
+      .select();
+    if (error) {
+      console.error("bulkInsertAinTaxRecords error", error);
+      throw formatSupabaseError("Bulk insert AIN Tax records", error);
+    }
+    if (data) {
+      inserted.push(...data);
+    }
   }
-  return (data || []).map((row) => fromAinTaxDb(row));
+
+  return inserted.map((row) => fromAinTaxDb(row));
 }
 
 export async function updateAinTaxRecord(

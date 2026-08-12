@@ -407,22 +407,51 @@ const App: React.FC = () => {
     ) => {
       const getRowKey = (row: any) => row?.id ?? row?.ain;
 
-      // Fetch initial data
-      const query = supabase.from(tableName).select("*");
-      const { data, error } =
-        tableName === "audit_logs"
-          ? await query.order("created_at", { ascending: false })
-          : await query;
-      if (error) {
-        console.error(`Error fetching ${tableName}:`, error);
-      } else {
-        setter(
-          (data || []).map((rawRow) => {
-            const row = sanitizeData(rawRow);
-            return transform ? transform(row) : row;
-          }),
-        );
+      // Fetch initial data in batches of 1,000 to bypass Supabase PostgREST default limit
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        let query = supabase
+          .from(tableName)
+          .select("*")
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (tableName === "audit_logs") {
+          query = query.order("created_at", { ascending: false });
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          console.error(`Error fetching ${tableName} (range ${from}-${from + PAGE_SIZE - 1}):`, error);
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allData = allData.concat(data);
+          if (data.length < PAGE_SIZE) {
+            hasMore = false;
+          } else {
+            from += PAGE_SIZE;
+          }
+        } else {
+          hasMore = false;
+        }
+
+        // For audit_logs, limit to the most recent 1,000 entries
+        if (tableName === "audit_logs") {
+          break;
+        }
       }
+
+      setter(
+        allData.map((rawRow) => {
+          const row = sanitizeData(rawRow);
+          return transform ? transform(row) : row;
+        }),
+      );
 
       // Subscribe to changes
       const channel = supabase
