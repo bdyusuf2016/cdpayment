@@ -93,18 +93,55 @@ function preparePrintTableNode(
   }
 
   if (excluded.size > 0) {
-    const removeByIndex = (cells: Element[]) => {
-      Array.from(excluded)
-        .sort((a, b) => b - a)
-        .forEach((idx) => {
-          const cell = cells[idx];
-          if (cell) cell.remove();
-        });
-    };
+    const sortedExcluded = Array.from(excluded).sort((a, b) => b - a);
 
     table.querySelectorAll("tr").forEach((tr) => {
-      const cells = Array.from(tr.querySelectorAll("th, td"));
-      removeByIndex(cells);
+      const rawCells = Array.from(
+        tr.querySelectorAll<HTMLTableCellElement>("th, td")
+      );
+
+      // Build a map of grid column indices to cell objects
+      let gridColIdx = 0;
+      const cellMap: {
+        cell: HTMLTableCellElement;
+        colStart: number;
+        colEnd: number;
+      }[] = [];
+      rawCells.forEach((cell) => {
+        const span = cell.colSpan || 1;
+        cellMap.push({
+          cell,
+          colStart: gridColIdx,
+          colEnd: gridColIdx + span - 1,
+        });
+        gridColIdx += span;
+      });
+
+      // Exclude target columns in descending order
+      sortedExcluded.forEach((targetColIdx) => {
+        const itemIndex = cellMap.findIndex(
+          (item) => item.colStart <= targetColIdx && targetColIdx <= item.colEnd
+        );
+        if (itemIndex >= 0) {
+          const item = cellMap[itemIndex];
+          const currentSpan = item.cell.colSpan || 1;
+          if (currentSpan > 1) {
+            item.cell.colSpan = currentSpan - 1;
+            item.colEnd -= 1;
+            for (let i = itemIndex + 1; i < cellMap.length; i++) {
+              cellMap[i].colStart -= 1;
+              cellMap[i].colEnd -= 1;
+            }
+          } else {
+            item.cell.remove();
+            cellMap.splice(itemIndex, 1);
+            for (let i = itemIndex; i < cellMap.length; i++) {
+              cellMap[i].colStart -= 1;
+              cellMap[i].colEnd -= 1;
+            }
+          }
+        }
+      });
     });
   }
 
@@ -301,6 +338,10 @@ export function printElement(
 
   const { table, formatDateDisplay } = preparePrintTableNode(el, options);
 
+  const orgHeader =
+    options.header?.organization ||
+    "Customs Bond Commissionerate, Dhaka (South), DEPZ Division";
+
   const html = `
     <!doctype html>
     <html>
@@ -312,13 +353,28 @@ export function printElement(
             display: none !important;
           }
           @page { 
-            margin: 15mm; 
+            margin: 10mm 10mm 18mm 10mm; 
             size: auto;
+            @bottom-right {
+              content: "Page " counter(page) " of " counter(pages);
+              font-family: 'Segoe UI', Arial, sans-serif;
+              font-size: 10px;
+              font-weight: 700;
+              color: #475569;
+            }
+            @bottom-left {
+              content: "${orgHeader.replace(/"/g, '\\"').replace(/'/g, "\\'")}";
+              font-family: 'Segoe UI', Arial, sans-serif;
+              font-size: 10px;
+              font-weight: 700;
+              color: #475569;
+            }
           }
           * { box-sizing: border-box; }
           body {
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
+            padding-bottom: 40px;
             color: #0f172a;
             background: #ffffff;
             -webkit-print-color-adjust: exact;
@@ -328,16 +384,17 @@ export function printElement(
             width: 100%;
           }
           .title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 800;
             margin: 0 0 4px;
             letter-spacing: 0.02em;
+            color: #0f172a;
           }
           .brand {
             margin: 0 0 2px;
             font-size: 13px;
             font-weight: 800;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
             color: #1d4ed8;
           }
@@ -357,9 +414,10 @@ export function printElement(
             font-size: 11px;
           }
           thead { display: table-header-group; }
+          tfoot { display: table-footer-group; page-break-inside: avoid; }
           tr { page-break-inside: avoid; }
           th, td {
-            padding: 8px 10px;
+            padding: 7px 9px;
             border: 1px solid #475569; /* Darker border for print clarity */
             vertical-align: middle;
             line-height: 1.3;
@@ -371,6 +429,12 @@ export function printElement(
             text-align: left;
             white-space: normal; /* Enables wrapping */
             word-wrap: break-word;
+          }
+          th.text-right, td.text-right, .text-right {
+            text-align: right !important;
+          }
+          th.text-center, td.text-center, .text-center {
+            text-align: center !important;
           }
           .flex-col, td div.flex-col {
             display: flex !important;
@@ -391,15 +455,11 @@ export function printElement(
           span {
             font: inherit;
           }
-          @page {
-            margin: 12mm;
-            size: auto;
-          }
         </style>
       </head>
       <body>
         <div class="sheet">
-          ${options.header?.organization ? `<div class="brand">${options.header.organization}</div>` : ""}
+          <div class="brand">${orgHeader}</div>
           ${title ? `<div class="title">${title}</div>` : ""}
           ${options.header?.subtext ? `<div class="subtext">${options.header.subtext}</div>` : ""}
           ${options.dateRange && (options.dateRange.startDate || options.dateRange.endDate) ? `
