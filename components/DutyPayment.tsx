@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import { DutyItem, PaymentRecord, Client, SystemConfig } from "../types";
-import { insertDuty, updateDuty, deleteDuty } from "../utils/supabaseApi";
+import { insertDuty, updateDuty, deleteDuty, insertClient, updateClient } from "../utils/supabaseApi";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createSimplePdfBlob } from "../utils/simplePdf";
 import { getClientPhones, getPrimaryClientPhone } from "../utils/clientPhones";
@@ -12,6 +12,12 @@ import * as XLSX from "xlsx";
 
 interface DutyPaymentProps {
   clients: Client[];
+  setClients?: React.Dispatch<React.SetStateAction<Client[]>>;
+  defaultOpenImport?: boolean;
+  pendingImportData?: {
+    headers: string[];
+    rows: (string | number | null)[][];
+  } | null;
   history: PaymentRecord[];
   setHistory: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
   onVisibleRowsChange: (rows: PaymentRecord[]) => void;
@@ -183,6 +189,7 @@ const inferImportColumns = (
     yearColumn: headers[0] || "",
     beColumn: headers[7] || "",
     dutyColumn: headers[16] || "",
+    whatsappColumn: "",
   };
 
   if (
@@ -279,6 +286,17 @@ const inferImportColumns = (
     exclude: [inferredYearIndex, inferredBeIndex, inferredDutyIndex],
   });
 
+  const isWhatsappValue = (value: unknown) => {
+    const text = String(value ?? "").trim().replace(/[+\-\s]/g, "");
+    if (!text) return false;
+    return /^(01\d{9}|8801\d{9})$/.test(text);
+  };
+
+  const whatsappScores = scoreColumn(isWhatsappValue);
+  const inferredWhatsappIndex = pickBestIndex(whatsappScores, {
+    exclude: [inferredYearIndex, inferredBeIndex, inferredDutyIndex, inferredAinIndex],
+  });
+
   return {
     ainColumn:
       inferredAinIndex >= 0
@@ -289,6 +307,8 @@ const inferImportColumns = (
       inferredYearIndex >= 0 ? headers[inferredYearIndex] : headers[1] || "",
     dutyColumn:
       inferredDutyIndex >= 0 ? headers[inferredDutyIndex] : headers[2] || "",
+    whatsappColumn:
+      inferredWhatsappIndex >= 0 ? headers[inferredWhatsappIndex] : "",
   };
 };
 
@@ -310,6 +330,9 @@ const parsePastedImportRows = (
 
 const DutyPayment: React.FC<DutyPaymentProps> = ({
   clients,
+  setClients,
+  defaultOpenImport = true,
+  pendingImportData,
   history,
   setHistory,
   onVisibleRowsChange,
@@ -317,6 +340,51 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   supabase,
   dashboardFilter = "all",
 }) => {
+  const [newContactNumbers, setNewContactNumbers] = useState<Record<string, string>>({});
+  const [newClientNames, setNewClientNames] = useState<Record<string, string>>({});
+
+  const handleSaveNewClient = async (ain: string) => {
+    const matchedClient = clients.find((c) => c.ain === ain);
+    const enteredPhone = newContactNumbers[ain]?.trim() || "";
+    const enteredName = newClientNames[ain]?.trim() || matchedClient?.name || "Client " + ain;
+
+    if (!enteredPhone) {
+      alert("WhatsApp number is required.");
+      return;
+    }
+
+    try {
+      if (matchedClient) {
+        const updatedClient = { ...matchedClient, phone: enteredPhone, phones: [enteredPhone] };
+        if (supabase) {
+          await updateClient(supabase, ain, { phone: enteredPhone });
+        }
+        if (setClients) {
+          setClients((prev) => prev.map((c) => (c.ain === ain ? updatedClient : c)));
+        }
+        alert("WhatsApp number saved to AIN Database successfully!");
+      } else {
+        const newClient: Client = {
+          ain,
+          name: enteredName,
+          phone: enteredPhone,
+          phones: [enteredPhone],
+          active: true,
+        };
+        if (supabase) {
+          await insertClient(supabase, newClient);
+        }
+        if (setClients) {
+          setClients((prev) => [...prev, newClient]);
+        }
+        alert("New client saved to AIN Database successfully!");
+      }
+    } catch (err: any) {
+      console.error("Failed to save to AIN Database:", err);
+      alert("Error: " + (err?.message || "Failed to save client."));
+    }
+  };
+
   const [ain, setAin] = useState("");
   const [clientName, setClientName] = useState("");
   const [phone, setPhone] = useState("");
@@ -339,7 +407,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [startDate, setStartDate] = useState(getTodayDateInputValue);
   const [endDate, setEndDate] = useState(getTodayDateInputValue);
   const [sortKey, setSortKey] = useState<
-    "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit"
+    "date" | "clientName" | "beYear" | "duty" | "received" | "status" | "profit" | "receiveDate"
   >("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
@@ -371,14 +439,35 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDate, setPaymentDate] = useState(getTodayDateInputValue);
-  const [showImportMappingModal, setShowImportMappingModal] = useState(false);
+  const [showImportMappingModal, setShowImportMappingModal] = useState(defaultOpenImport);
   const [importHeaders, setImportHeaders] = useState<string[]>([]);
   const [importRows, setImportRows] = useState<(string | number | null)[][]>([]);
   const [selectedBeColumn, setSelectedBeColumn] = useState("");
   const [selectedYearColumn, setSelectedYearColumn] = useState("");
   const [selectedDutyColumn, setSelectedDutyColumn] = useState("");
   const [selectedAinColumn, setSelectedAinColumn] = useState("");
-  const [showDutyImportOption, setShowDutyImportOption] = useState(false);
+  const [selectedWhatsappColumn, setSelectedWhatsappColumn] = useState("");
+  const [showDutyImportOption, setShowDutyImportOption] = useState(defaultOpenImport);
+
+  useEffect(() => {
+    setShowDutyImportOption(defaultOpenImport);
+    setShowImportMappingModal(defaultOpenImport);
+  }, [defaultOpenImport]);
+
+  useEffect(() => {
+    if (pendingImportData && pendingImportData.rows.length > 0) {
+      setImportHeaders(pendingImportData.headers);
+      setImportRows(pendingImportData.rows);
+      setSelectedYearColumn("Year");
+      setSelectedBeColumn("B/E Ref (Reg No)");
+      setSelectedDutyColumn("Amount (Total Tax)");
+      setSelectedAinColumn("AIN No");
+      setSelectedWhatsappColumn("WhatsApp / Phone");
+      setSelectedPreviewRows(pendingImportData.rows.map((_, index) => index));
+      setShowImportMappingModal(true);
+      setShowDutyImportOption(true);
+    }
+  }, [pendingImportData]);
   const [pastedImportText, setPastedImportText] = useState("");
   const [selectedPreviewRows, setSelectedPreviewRows] = useState<number[]>([]);
   const [queuePhoneOverrides, setQueuePhoneOverrides] = useState<
@@ -700,6 +789,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     setSelectedYearColumn(inferredColumns.yearColumn);
     setSelectedDutyColumn(inferredColumns.dutyColumn);
     setSelectedAinColumn(inferredColumns.ainColumn);
+    setSelectedWhatsappColumn(inferredColumns.whatsappColumn || "");
     setSelectedPreviewRows(rows.map((_, index) => index));
     setShowImportMappingModal(true);
   };
@@ -785,6 +875,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     setSelectedYearColumn("");
     setSelectedDutyColumn("");
     setSelectedAinColumn("");
+    setSelectedWhatsappColumn("");
     setPastedImportText("");
     setSelectedPreviewRows([]);
   };
@@ -795,10 +886,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const previewColumns = [
-    { label: "AIN Column", value: selectedAinColumn || "Use selected AIN" },
-    { label: "B/E Year Column", value: selectedYearColumn || "Column 1" },
-    { label: "B/E Number Column", value: selectedBeColumn || "Column 8" },
-    { label: "Duty Amount (BDT) Column", value: selectedDutyColumn || "Column 17" },
+    { label: "AIN No.", value: selectedAinColumn || "Use selected AIN" },
+    { label: "Reg No", value: selectedBeColumn || "Column 8" },
+    { label: "Year", value: selectedYearColumn || "Column 1" },
+    { label: "Amount", value: selectedDutyColumn || "Column 17" },
+    { label: "Whatsapp contact", value: selectedWhatsappColumn || "Not mapped" },
   ];
   const importPatternText =
     "Pattern: selected AIN/WhatsApp auto-fill হবে, আর চাইলে AIN column manually select করা যাবে.";
@@ -888,10 +980,17 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         selectedAinColumn,
         ain,
       );
+
+      const whatsappIndex = selectedWhatsappColumn
+        ? importHeaders.findIndex((header) => header === selectedWhatsappColumn)
+        : -1;
+      const importedPhone = whatsappIndex >= 0 && row[whatsappIndex]
+        ? String(row[whatsappIndex]).trim()
+        : "";
+
       const matchedClient = clients.find((client) => client.ain === importedAin);
       if (!be || !year || duty === null) continue;
       if (!importedAin) continue;
-      if (ainColumnIndex >= 0 && !matchedClient) continue;
 
       importedItems.push({
         id: Math.random().toString(36).substr(2, 9),
@@ -899,8 +998,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         year,
         duty,
         ain: importedAin,
-        clientName: matchedClient?.name || clientName,
-        phone: matchedClient ? getPrimaryClientPhone(matchedClient) : phone,
+        clientName: matchedClient?.name || (ainColumnIndex >= 0 && row[ainColumnIndex] ? "Client " + row[ainColumnIndex] : clientName),
+        phone: importedPhone || (matchedClient ? getPrimaryClientPhone(matchedClient) : phone),
       });
     }
 
@@ -1975,6 +2074,8 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
                   <div className="space-y-3">
                     {queuedAinPreviewRows.map((row) => {
+                      const matchedClient = clients.find((c) => c.ain === row.ain);
+                      const hasPhone = matchedClient && matchedClient.phone && matchedClient.phone.trim() !== "";
                       const hasMultipleRowPhones = row.phones.length > 1;
                       const selectedRowPhone =
                         queuePhoneOverrides[row.ain] || row.phones[0] || "";
@@ -1991,43 +2092,88 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                             <p className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-800"}`}>
                               {row.ain}
                             </p>
-                            <p className="text-xs font-bold text-slate-500">
-                              {row.clientName}
-                            </p>
-                          </div>
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                              WhatsApp Number
-                            </label>
-                            {hasMultipleRowPhones ? (
-                              <div className="relative">
-                                <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
-                                <select
-                                  value={selectedRowPhone}
+                            {!matchedClient ? (
+                              <div className="space-y-1 mt-1">
+                                <label className="text-[9px] font-bold uppercase text-slate-400">Client Name</label>
+                                <input
+                                  type="text"
+                                  value={newClientNames[row.ain] ?? row.clientName}
                                   onChange={(e) =>
-                                    setQueuePhoneOverrides((prev) => ({
+                                    setNewClientNames((prev) => ({
                                       ...prev,
                                       [row.ain]: e.target.value,
                                     }))
                                   }
-                                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all appearance-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
-                                >
-                                  {row.phones.map((phoneNumber) => (
-                                    <option key={`${row.ain}-${phoneNumber}`} value={phoneNumber}>
-                                      {phoneNumber}
-                                    </option>
-                                  ))}
-                                </select>
+                                  placeholder="Enter Name"
+                                  className={`w-full px-2 py-1 rounded border text-xs font-semibold outline-none ${isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                                />
                               </div>
+                            ) : (
+                              <p className="text-xs font-bold text-slate-500">
+                                {row.clientName}
+                              </p>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                              <span>WhatsApp Number</span>
+                              {!hasPhone && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveNewClient(row.ain)}
+                                  className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold uppercase tracking-wider transition-all"
+                                >
+                                  {!matchedClient ? "Add to AIN DB" : "Update AIN DB"}
+                                </button>
+                              )}
+                            </label>
+                            {hasPhone ? (
+                              hasMultipleRowPhones ? (
+                                <div className="relative">
+                                  <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                  <select
+                                    value={selectedRowPhone}
+                                    onChange={(e) =>
+                                      setQueuePhoneOverrides((prev) => ({
+                                        ...prev,
+                                        [row.ain]: e.target.value,
+                                      }))
+                                    }
+                                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all appearance-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
+                                  >
+                                    {row.phones.map((phoneNumber) => (
+                                      <option key={`${row.ain}-${phoneNumber}`} value={phoneNumber}>
+                                        {phoneNumber}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : (
+                                <div className="relative">
+                                  <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={selectedRowPhone}
+                                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-600"}`}
+                                    placeholder="No WhatsApp number"
+                                  />
+                                </div>
+                              )
                             ) : (
                               <div className="relative">
                                 <i className="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                                 <input
                                   type="text"
-                                  readOnly
-                                  value={selectedRowPhone}
-                                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? "bg-slate-900/50 border-slate-700 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-600"}`}
-                                  placeholder="No WhatsApp number"
+                                  value={newContactNumbers[row.ain] ?? ""}
+                                  onChange={(e) =>
+                                    setNewContactNumbers((prev) => ({
+                                      ...prev,
+                                      [row.ain]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="Type WhatsApp contact to save..."
+                                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-800"}`}
                                 />
                               </div>
                             )}
@@ -2915,10 +3061,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-3">
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          AIN Column
+                          AIN No. Column
                         </label>
                         <select
                           value={selectedAinColumn}
@@ -2938,25 +3084,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          B/E Year Column
-                        </label>
-                        <select
-                          value={selectedYearColumn}
-                          onChange={(e) => setSelectedYearColumn(e.target.value)}
-                          className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
-                        >
-                          <option value="">Select column</option>
-                          {importHeaders.map((header, index) => (
-                            <option key={`${header}-${index}`} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          B/E Number Column
+                          Reg No Column
                         </label>
                         <select
                           value={selectedBeColumn}
@@ -2974,7 +3102,25 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
 
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          Duty Amount (BDT) Column
+                          Year Column
+                        </label>
+                        <select
+                          value={selectedYearColumn}
+                          onChange={(e) => setSelectedYearColumn(e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                        >
+                          <option value="">Select column</option>
+                          {importHeaders.map((header, index) => (
+                            <option key={`${header}-${index}`} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Amount Column
                         </label>
                         <select
                           value={selectedDutyColumn}
@@ -2982,6 +3128,24 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                           className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
                         >
                           <option value="">Select column</option>
+                          {importHeaders.map((header, index) => (
+                            <option key={`${header}-${index}`} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Whatsapp Contact Column
+                        </label>
+                        <select
+                          value={selectedWhatsappColumn}
+                          onChange={(e) => setSelectedWhatsappColumn(e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none focus:border-blue-500 transition-all ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                        >
+                          <option value="">Not mapped</option>
                           {importHeaders.map((header, index) => (
                             <option key={`${header}-${index}`} value={header}>
                               {header}

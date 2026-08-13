@@ -1,3 +1,6 @@
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+
 type PrintOptions = {
   header?: {
     organization?: string;
@@ -25,15 +28,10 @@ type PrintOptions = {
   };
 };
 
-export function printElement(
-  el: HTMLElement | null,
-  title = "",
+function preparePrintTableNode(
+  el: HTMLElement,
   options: PrintOptions = {},
 ) {
-  if (!el) return;
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) return;
-
   const table = el.cloneNode(true) as HTMLElement;
   const excluded = new Set<number>(options.excludeColumnIndexes || []);
   const getHeaderCells = () => Array.from(table.querySelectorAll("thead th"));
@@ -59,6 +57,13 @@ export function printElement(
     const replacement = document.createElement("span");
     replacement.textContent = (button.textContent || "").trim();
     button.replaceWith(replacement);
+  });
+
+  // Remove non-cell elements with no-print, print-hidden, or data-print-exclude
+  table.querySelectorAll(".no-print, .print-hidden, [data-print-exclude]").forEach((el) => {
+    if (el.tagName !== "TH" && el.tagName !== "TD") {
+      el.remove();
+    }
   });
 
   if (options.autoExcludeControls) {
@@ -282,6 +287,20 @@ export function printElement(
     tfoot.appendChild(countRow);
   }
 
+  return { table, formatDateDisplay };
+}
+
+export function printElement(
+  el: HTMLElement | null,
+  title = "",
+  options: PrintOptions = {},
+) {
+  if (!el) return;
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
+
+  const { table, formatDateDisplay } = preparePrintTableNode(el, options);
+
   const html = `
     <!doctype html>
     <html>
@@ -289,6 +308,9 @@ export function printElement(
         <meta charset="utf-8" />
         <title>${title || "Print"}</title>
         <style>
+          .no-print, .print-hidden, [data-print-exclude] {
+            display: none !important;
+          }
           @page { 
             margin: 15mm; 
             size: auto;
@@ -350,6 +372,14 @@ export function printElement(
             white-space: normal; /* Enables wrapping */
             word-wrap: break-word;
           }
+          .flex-col, td div.flex-col {
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          td span.block, td .block {
+            display: block !important;
+            margin-top: 2px !important;
+          }
           tbody tr:nth-child(even) td {
             background: #f8fafc;
           }
@@ -361,29 +391,13 @@ export function printElement(
           span {
             font: inherit;
           }
-          .print-footer {
-            display: none;
-          }
-          @media print {
-            .print-footer {
-              display: block;
-              position: fixed;
-              bottom: -10mm;
-              left: 0;
-              right: 0;
-              text-align: center;
-              font-size: 9px;
-              color: #64748b;
-              font-family: 'Segoe UI', Arial, sans-serif;
-            }
-            .print-footer::after {
-              content: "Page " counter(page);
-            }
+          @page {
+            margin: 12mm;
+            size: auto;
           }
         </style>
       </head>
       <body>
-        <div class="print-footer"></div>
         <div class="sheet">
           ${options.header?.organization ? `<div class="brand">${options.header.organization}</div>` : ""}
           ${title ? `<div class="title">${title}</div>` : ""}
@@ -408,10 +422,123 @@ export function printElement(
     try {
       printWindow.focus();
       printWindow.print();
-      // Optionally close after printing
-      // printWindow.close();
     } catch (e) {
       // ignore
     }
   }, 300);
 }
+
+export async function exportPrintLayoutToPdfBlob(
+  el: HTMLElement | null,
+  title = "",
+  options: PrintOptions = {},
+): Promise<Blob | null> {
+  if (!el) return null;
+
+  const { table, formatDateDisplay } = preparePrintTableNode(el, options);
+
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "-9999px";
+  container.style.top = "-9999px";
+  container.style.width = "1150px";
+  container.style.backgroundColor = "#ffffff";
+  container.style.color = "#0f172a";
+  container.style.fontFamily = "'Segoe UI', Arial, sans-serif";
+  container.style.padding = "24px";
+  container.style.boxSizing = "border-box";
+
+  const printDate = new Date();
+  const dateStr = printDate.toLocaleDateString("en-GB");
+  const timeStr = printDate.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const headerHtml = `
+    <style>
+      .no-print, .print-hidden, [data-print-exclude] { display: none !important; }
+      * { box-sizing: border-box; }
+      body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; color: #0f172a; background: #ffffff; }
+      .sheet { width: 100%; }
+      .title { font-size: 20px; font-weight: 800; margin: 0 0 4px; letter-spacing: 0.02em; color: #0f172a; }
+      .brand { margin: 0 0 2px; font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #1d4ed8; }
+      .subtext { margin: 0 0 10px; color: #334155; font-size: 11px; }
+      .meta { margin: 0 0 14px; color: #475569; font-size: 11px; }
+      table { width: 100%; border-collapse: collapse; font-size: 11px; }
+      tr { page-break-inside: avoid; }
+      th, td { padding: 8px 10px; border: 1px solid #475569; vertical-align: middle; line-height: 1.3; }
+      th { background: #f1f5f9; color: #0f172a; font-weight: 800; text-align: left; white-space: normal; word-wrap: break-word; }
+      tbody tr:nth-child(even) td { background: #f8fafc; }
+      tfoot td { background: #f1f5f9; font-weight: 800; border-top: 2px solid #0f172a; }
+    </style>
+    <div class="sheet">
+      ${options.header?.organization ? `<div class="brand">${options.header.organization}</div>` : ""}
+      ${title ? `<div class="title">${title}</div>` : ""}
+      ${options.header?.subtext ? `<div class="subtext">${options.header.subtext}</div>` : ""}
+      ${
+        options.dateRange && (options.dateRange.startDate || options.dateRange.endDate)
+          ? `<div style="margin: 4px 0 10px; font-size: 11px; font-weight: 700; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.05em;">
+              Date Filter: ${options.dateRange.startDate ? formatDateDisplay(options.dateRange.startDate) : "Beginning"} to ${options.dateRange.endDate ? formatDateDisplay(options.dateRange.endDate) : "End"}
+            </div>`
+          : ""
+      }
+      <div class="meta">Printed on ${dateStr} ${timeStr}</div>
+      ${table.outerHTML}
+    </div>
+  `;
+
+  container.innerHTML = headerHtml;
+  document.body.appendChild(container);
+
+  try {
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+    });
+
+    if (document.body.contains(container)) {
+      document.body.removeChild(container);
+    }
+
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+
+    const isLandscape = imgWidth > imgHeight * 1.1;
+    const pdf = new jsPDF({
+      orientation: isLandscape ? "l" : "p",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgScaledHeight = (imgHeight * pdfWidth) / imgWidth;
+
+    const imgData = canvas.toDataURL("image/png");
+
+    let heightLeft = imgScaledHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgScaledHeight);
+    heightLeft -= pdfHeight;
+
+    while (heightLeft > 5) {
+      position -= pdfHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgScaledHeight);
+      heightLeft -= pdfHeight;
+    }
+
+    return pdf.output("blob");
+  } catch (err) {
+    if (document.body.contains(container)) {
+      document.body.removeChild(container);
+    }
+    console.error("Error generating print layout PDF:", err);
+    return null;
+  }
+}
+

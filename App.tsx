@@ -253,6 +253,11 @@ const App: React.FC = () => {
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   const [activeTab, setActiveTab] = useState<TabType>("duty");
+  const [defaultOpenImport, setDefaultOpenImport] = useState(false);
+  const [pendingDutyImportData, setPendingDutyImportData] = useState<{
+    headers: string[];
+    rows: (string | number | null)[][];
+  } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem("sidebar_collapsed") === "true";
@@ -1673,7 +1678,12 @@ const App: React.FC = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as TabType)}
+                  onClick={() => {
+                    setActiveTab(tab.id as TabType);
+                    if (tab.id === "duty") {
+                      setDefaultOpenImport(true);
+                    }
+                  }}
                   title={isSidebarCollapsed ? tab.label : undefined}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
                     isSidebarCollapsed ? "justify-center" : "justify-start"
@@ -1772,6 +1782,9 @@ const App: React.FC = () => {
                       onClick={() => {
                         setActiveTab(tab.id as TabType);
                         setIsMobileMenuOpen(false);
+                        if (tab.id === "duty") {
+                          setDefaultOpenImport(true);
+                        }
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
                         isActive
@@ -1932,6 +1945,9 @@ const App: React.FC = () => {
           {activeTab === "duty" && tabAccess.duty && (
             <DutyPayment
               clients={clients}
+              setClients={setClients}
+              defaultOpenImport={defaultOpenImport}
+              pendingImportData={pendingDutyImportData}
               history={dutyHistory}
               setHistory={setDutyHistory}
               onVisibleRowsChange={setVisibleDutyRows}
@@ -2012,56 +2028,49 @@ const App: React.FC = () => {
               clients={clients}
               onTransferToDutyPayment={async (records) => {
                 if (!records || records.length === 0) return;
+
+                const todayStr = new Date().toISOString().split("T")[0];
+
                 const clientPhoneMap = new Map<string, string>();
                 clients.forEach((c) => {
                   if (c.ain) clientPhoneMap.set(c.ain.trim(), c.phone || "");
                   if (c.name) clientPhoneMap.set(c.name.trim().toLowerCase(), c.phone || "");
                 });
 
-                const newDutyRecords: PaymentRecord[] = records.map((r) => {
+                const headers = [
+                  "Year",
+                  "B/E Ref (Reg No)",
+                  "Amount (Total Tax)",
+                  "AIN No",
+                  "Client Name",
+                  "WhatsApp / Phone",
+                  "Date",
+                ];
+
+                const importRows = records.map((r) => {
                   const ainKey = (r.ainNo || "").trim();
                   const nameKey = (r.ainName || "").trim().toLowerCase();
                   const phone = clientPhoneMap.get(ainKey) || clientPhoneMap.get(nameKey) || "";
-                  return {
-                    id: crypto.randomUUID(),
-                    date: r.date || new Date().toISOString().split("T")[0],
-                    receiveDate: r.paymentStatus === "Paid" ? r.date || new Date().toISOString().split("T")[0] : "",
-                    ain: r.ainNo || "",
-                    clientName: r.ainName || "",
-                    phone: phone,
-                    beYear: r.year || String(new Date().getFullYear()),
-                    duty: Number(r.totalTax || 0),
-                    received: r.paymentStatus === "Paid" ? Number(r.totalTax || 0) : 0,
-                    status: (r.paymentStatus === "Paid" ? "Paid" : "New") as PaymentRecord["status"],
-                    profit: 0,
-                  };
+                  const rawRegNo = (r.regNo || r.ref || "").trim();
+                  const regNo = rawRegNo.startsWith("C-") ? rawRegNo : (rawRegNo ? `C-${rawRegNo}` : "C-0000");
+
+                  return [
+                    r.year || String(new Date().getFullYear()),
+                    regNo,
+                    Number(r.totalTax || 0),
+                    r.ainNo || "",
+                    r.ainName || "",
+                    phone,
+                    todayStr,
+                  ];
                 });
 
-                // Update Duty state
-                setDutyHistory((prev) => [...newDutyRecords, ...prev]);
+                setPendingDutyImportData({
+                  headers,
+                  rows: importRows,
+                });
 
-                // Sync to Supabase if connected
-                if (supabase) {
-                  try {
-                    const payload = newDutyRecords.map((item) => ({
-                      date: item.date,
-                      receive_date: item.receiveDate || null,
-                      ain: item.ain,
-                      client_name: item.clientName,
-                      phone: item.phone,
-                      be_year: item.beYear,
-                      duty: item.duty,
-                      received: item.received,
-                      status: item.status,
-                      profit: item.profit || 0,
-                    }));
-                    await supabase.from("duty_payments").insert(payload);
-                  } catch (err) {
-                    console.error("Failed to insert transferred duty records to Supabase:", err);
-                  }
-                }
-
-                // Switch view to duty payment
+                setDefaultOpenImport(true);
                 setActiveTab("duty");
               }}
             />
