@@ -412,19 +412,22 @@ export function printElement(
             width: 100%;
             border-collapse: collapse;
             font-size: 11px;
+            background: #ffffff !important;
           }
           thead { display: table-header-group; }
           tfoot { display: table-footer-group; page-break-inside: avoid; }
-          tr { page-break-inside: avoid; }
+          tr { page-break-inside: avoid; background: transparent !important; }
           th, td {
             padding: 7px 9px;
             border: 1px solid #475569; /* Darker border for print clarity */
             vertical-align: middle;
             line-height: 1.3;
+            background: #ffffff !important;
+            color: #0f172a !important;
           }
           th {
-            background: #f1f5f9;
-            color: #0f172a;
+            background: #ffffff !important;
+            color: #0f172a !important;
             font-weight: 800;
             text-align: left;
             white-space: normal; /* Enables wrapping */
@@ -436,23 +439,32 @@ export function printElement(
           th.text-center, td.text-center, .text-center {
             text-align: center !important;
           }
-          .flex-col, td div.flex-col {
+          .flex-col, td div.flex-col, th div.flex-col {
             display: flex !important;
             flex-direction: column !important;
           }
-          td span.block, td .block {
+          th span.block, th .block, td span.block, td .block, .block {
             display: block !important;
             margin-top: 2px !important;
           }
+          th div, td div {
+            line-height: 1.25 !important;
+          }
+          tbody tr td {
+            background: #ffffff !important;
+          }
           tbody tr:nth-child(even) td {
-            background: #f8fafc;
+            background: #ffffff !important;
           }
           tfoot td {
-            background: #f1f5f9;
+            background: #ffffff !important;
+            color: #0f172a !important;
             font-weight: 800;
             border-top: 2px solid #0f172a;
           }
-          span {
+          span, div, label, p {
+            background: transparent !important;
+            background-color: transparent !important;
             font: inherit;
           }
         </style>
@@ -525,12 +537,16 @@ export async function exportPrintLayoutToPdfBlob(
       .brand { margin: 0 0 2px; font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #1d4ed8; }
       .subtext { margin: 0 0 10px; color: #334155; font-size: 11px; }
       .meta { margin: 0 0 14px; color: #475569; font-size: 11px; }
-      table { width: 100%; border-collapse: collapse; font-size: 11px; }
-      tr { page-break-inside: avoid; }
-      th, td { padding: 8px 10px; border: 1px solid #475569; vertical-align: middle; line-height: 1.3; }
-      th { background: #f1f5f9; color: #0f172a; font-weight: 800; text-align: left; white-space: normal; word-wrap: break-word; }
-      tbody tr:nth-child(even) td { background: #f8fafc; }
-      tfoot td { background: #f1f5f9; font-weight: 800; border-top: 2px solid #0f172a; }
+      table { width: 100%; border-collapse: collapse; font-size: 11px; background: #ffffff !important; }
+      tr { page-break-inside: avoid; background: transparent !important; }
+      th, td { padding: 8px 10px; border: 1px solid #475569; vertical-align: middle; line-height: 1.3; background: #ffffff !important; color: #0f172a !important; }
+      th { background: #ffffff !important; color: #0f172a !important; font-weight: 800; text-align: left; white-space: normal; word-wrap: break-word; }
+      th span.block, th .block, td span.block, td .block, .block { display: block !important; margin-top: 2px !important; }
+      th div, td div { line-height: 1.25 !important; }
+      tbody tr td { background: #ffffff !important; }
+      tbody tr:nth-child(even) td { background: #ffffff !important; }
+      tfoot td { background: #ffffff !important; color: #0f172a !important; font-weight: 800; border-top: 2px solid #0f172a; }
+      span, div, label, p { background: transparent !important; background-color: transparent !important; }
     </style>
     <div class="sheet">
       ${options.header?.organization ? `<div class="brand">${options.header.organization}</div>` : ""}
