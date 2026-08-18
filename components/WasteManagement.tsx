@@ -527,13 +527,14 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const dayWiseTotals = useMemo(() => {
     return dayWiseSummary.reduce(
       (acc, row) => {
+        acc.companyCount += row.companyCount || 0;
         acc.trips += row.trips || 0;
         acc.amount += row.amount || 0;
         acc.received += row.received || 0;
         acc.due += row.due || 0;
         return acc;
       },
-      { trips: 0, amount: 0, received: 0, due: 0 }
+      { companyCount: 0, trips: 0, amount: 0, received: 0, due: 0 }
     );
   }, [dayWiseSummary]);
 
@@ -936,6 +937,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     dayWiseSummary.forEach((row) => {
       lines.push([row.date, row.companyCount, row.trips, row.amount, row.received, row.due].map(toCsvValue).join(","));
     });
+    lines.push([`Grand Total (${dayWiseSummary.length}d)`, dayWiseTotals.companyCount, dayWiseTotals.trips, dayWiseTotals.amount, dayWiseTotals.received, dayWiseTotals.due].map(toCsvValue).join(","));
     lines.push("");
     lines.push("Date,Company,Car Type,Garbage,Wastage,Total Trips,Rate,Amount,Received,Due,Status,Payment Method,Notes");
     filteredHistory.forEach((row) => {
@@ -1027,6 +1029,10 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
         `${padRight(row.date, 12)}${padLeft(String(row.companyCount), 11)}${padLeft(String(row.trips), 9)}${padLeft(money(row.amount), 16)}${padLeft(money(row.received), 16)}${padLeft(money(row.due), 16)}`
       );
     });
+    lines.push(thinSeparator);
+    lines.push(
+      `${padRight(`Grand Total (${dayWiseSummary.length}d)`, 12)}${padLeft(String(dayWiseTotals.companyCount), 11)}${padLeft(String(dayWiseTotals.trips), 9)}${padLeft(money(dayWiseTotals.amount), 16)}${padLeft(money(dayWiseTotals.received), 16)}${padLeft(money(dayWiseTotals.due), 16)}`
+    );
     lines.push(thinSeparator);
     lines.push("");
 
@@ -1527,12 +1533,12 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                 </tbody>
                 <tfoot className={`sticky bottom-0 font-black ${isDark ? "bg-slate-950/90 text-slate-100 border-t-2 border-slate-700" : "bg-slate-100 text-slate-900 border-t-2 border-slate-200"}`}>
                   <tr>
-                    <td className="px-4 py-3 uppercase tracking-widest">Grand Total</td>
-                    <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{dayWiseSummary.length} day(s)</td>
+                    <td className="px-4 py-3 uppercase tracking-widest">Grand Total ({dayWiseSummary.length}d)</td>
+                    <td className="px-4 py-3 text-right font-bold text-slate-600 dark:text-slate-300">{dayWiseTotals.companyCount}</td>
                     <td className="px-4 py-3 text-right">{dayWiseTotals.trips}</td>
-                    <td className="px-4 py-3 text-right text-blue-600">{money(dayWiseTotals.amount)}</td>
-                    <td className="px-4 py-3 text-right text-emerald-600">{money(dayWiseTotals.received)}</td>
-                    <td className="px-4 py-3 text-right text-rose-500">{money(dayWiseTotals.due)}</td>
+                    <td className="px-4 py-3 text-right text-blue-600 font-black">{money(dayWiseTotals.amount)}</td>
+                    <td className="px-4 py-3 text-right text-emerald-600 font-black">{money(dayWiseTotals.received)}</td>
+                    <td className="px-4 py-3 text-right text-rose-500 font-black">{money(dayWiseTotals.due)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -1557,6 +1563,15 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                     </tr>
                   ))}
                 </tbody>
+                <tfoot className={`sticky bottom-0 font-black ${isDark ? "bg-slate-950/90 text-slate-100 border-t-2 border-slate-700" : "bg-slate-100 text-slate-900 border-t-2 border-slate-200"}`}>
+                  <tr>
+                    <td className="px-4 py-3 uppercase tracking-widest">Grand Total ({monthlySummary.length}m)</td>
+                    <td className="px-4 py-3 text-right">{summary.totalTrips}</td>
+                    <td className="px-4 py-3 text-right text-blue-600 font-black">{money(summary.amount)}</td>
+                    <td className="px-4 py-3 text-right text-emerald-600 font-black">{money(summary.received)}</td>
+                    <td className="px-4 py-3 text-right text-rose-500 font-black">{money(summary.due)}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
