@@ -436,6 +436,18 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     return selectedRecords.reduce((sum, r) => sum + (r.totalTrips || 0), 0);
   }, [selectedRecords]);
 
+  const selectedGarbageTrips = useMemo(() => {
+    return selectedRecords.reduce((sum, r) => sum + (r.garbageTrips || 0), 0);
+  }, [selectedRecords]);
+
+  const selectedWastageTrips = useMemo(() => {
+    return selectedRecords.reduce((sum, r) => sum + (r.wastageTrips || 0), 0);
+  }, [selectedRecords]);
+
+  const selectedReceivedAmount = useMemo(() => {
+    return selectedRecords.reduce((sum, r) => sum + (r.received || 0), 0);
+  }, [selectedRecords]);
+
   const summary = useMemo(
     () =>
       filteredHistory.reduce(
@@ -511,6 +523,19 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       }))
       .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
   }, [historyForDayWiseReport]);
+
+  const dayWiseTotals = useMemo(() => {
+    return dayWiseSummary.reduce(
+      (acc, row) => {
+        acc.trips += row.trips || 0;
+        acc.amount += row.amount || 0;
+        acc.received += row.received || 0;
+        acc.due += row.due || 0;
+        return acc;
+      },
+      { trips: 0, amount: 0, received: 0, due: 0 }
+    );
+  }, [dayWiseSummary]);
 
   const reportRangeLabel = useMemo(() => {
     if (startDate && endDate) return `${startDate} to ${endDate}`;
@@ -1034,6 +1059,61 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     );
   };
 
+  const handlePrintTable = (onlySelected: boolean = false) => {
+    const tableEl = document.getElementById("waste-table");
+    if (!tableEl) return;
+
+    if (!onlySelected || selectedIds.length === 0) {
+      printElement(tableEl, "Waste Management Records", {
+        header: {
+          organization: systemConfig.agencyName || undefined,
+          subtext: systemConfig.agencyAddress || undefined,
+        },
+        autoExcludeControls: true,
+        dateRange: startDate || endDate ? { startDate, endDate } : undefined,
+      });
+      return;
+    }
+
+    const clonedTable = tableEl.cloneNode(true) as HTMLElement;
+    clonedTable.querySelectorAll("tbody tr[data-record-id]").forEach((tr) => {
+      const id = tr.getAttribute("data-record-id");
+      if (id && !selectedIds.includes(id)) {
+        tr.remove();
+      }
+    });
+
+    const garbageCell = clonedTable.querySelector('[data-total-field="garbageTrips"]');
+    if (garbageCell) garbageCell.textContent = String(selectedGarbageTrips);
+
+    const wastageCell = clonedTable.querySelector('[data-total-field="wastageTrips"]');
+    if (wastageCell) wastageCell.textContent = String(selectedWastageTrips);
+
+    const tripsCell = clonedTable.querySelector('[data-total-field="totalTrips"]');
+    if (tripsCell) tripsCell.textContent = String(selectedTotalTrips);
+
+    const amountCell = clonedTable.querySelector('[data-total-field="amount"]');
+    if (amountCell) amountCell.textContent = money(selectedTotalAmount);
+
+    const receivedCell = clonedTable.querySelector('[data-total-field="received"]');
+    if (receivedCell) receivedCell.textContent = money(selectedReceivedAmount);
+
+    const dueCell = clonedTable.querySelector('[data-total-field="due"]');
+    if (dueCell) dueCell.textContent = money(selectedDueAmount);
+
+    const countCell = clonedTable.querySelector('[data-total-field="count"]');
+    if (countCell) countCell.textContent = `${selectedRecords.length} row(s)`;
+
+    printElement(clonedTable, "Waste Management Records (Selected)", {
+      header: {
+        organization: systemConfig.agencyName || undefined,
+        subtext: systemConfig.agencyAddress || undefined,
+      },
+      autoExcludeControls: true,
+      dateRange: startDate || endDate ? { startDate, endDate } : undefined,
+    });
+  };
+
   // Table Column Resizing & Visibility
   const initialColumnWidths = useMemo(
     () => ({
@@ -1393,19 +1473,22 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
             >
               Reset
             </button>
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => handlePrintTable(true)}
+                title="Print selected entries"
+                className="rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-md active:scale-95 transition-all w-full md:w-auto flex items-center justify-center gap-1.5"
+              >
+                <i className="fas fa-print"></i> Print Selected ({selectedIds.length})
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => printElement(document.getElementById("waste-table"), "Waste Management Records", {
-                header: {
-                  organization: systemConfig.agencyName || undefined,
-                  subtext: systemConfig.agencyAddress || undefined,
-                },
-                autoExcludeControls: true,
-                dateRange: startDate || endDate ? { startDate, endDate } : undefined,
-              })}
-              className="rounded-xl bg-slate-600 hover:bg-slate-700 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-md active:scale-95 transition-all w-full md:w-auto"
+              onClick={() => handlePrintTable(false)}
+              className="rounded-xl bg-slate-600 hover:bg-slate-700 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-md active:scale-95 transition-all w-full md:w-auto flex items-center justify-center gap-1.5"
             >
-              <i className="fas fa-print mr-1"></i> Print Table
+              <i className="fas fa-print"></i> Print Table
             </button>
 
             <ColumnVisibilityToggle
@@ -1442,6 +1525,16 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                     </tr>
                   ))}
                 </tbody>
+                <tfoot className={`sticky bottom-0 font-black ${isDark ? "bg-slate-950/90 text-slate-100 border-t-2 border-slate-700" : "bg-slate-100 text-slate-900 border-t-2 border-slate-200"}`}>
+                  <tr>
+                    <td className="px-4 py-3 uppercase tracking-widest">Grand Total</td>
+                    <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{dayWiseSummary.length} day(s)</td>
+                    <td className="px-4 py-3 text-right">{dayWiseTotals.trips}</td>
+                    <td className="px-4 py-3 text-right text-blue-600">{money(dayWiseTotals.amount)}</td>
+                    <td className="px-4 py-3 text-right text-emerald-600">{money(dayWiseTotals.received)}</td>
+                    <td className="px-4 py-3 text-right text-rose-500">{money(dayWiseTotals.due)}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
@@ -1664,6 +1757,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
               {sortedHistory.map((record) => (
                 <tr
                   key={record.id}
+                  data-record-id={record.id}
                   className={`group transition-all ${
                     selectedIds.includes(record.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""
                   }`}
@@ -1722,18 +1816,38 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                   )}
                 </tr>
               ))}
-              <tr className={`${isDark ? "bg-slate-900 text-slate-100" : "bg-slate-100 text-slate-900"}`}>
-                <td className="px-4 py-3" />
-                <td className="px-4 py-3 font-black uppercase tracking-widest" colSpan={3}>Grand Total</td>
-                <td className="px-4 py-3 text-right font-black">{summary.garbageTrips}</td>
-                <td className="px-4 py-3 text-right font-black">{summary.wastageTrips}</td>
-                <td className="px-4 py-3 text-right font-black">{summary.totalTrips}</td>
-                <td className="px-4 py-3 text-right font-black">-</td>
-                <td className="px-4 py-3 text-right font-black text-blue-600">{money(summary.amount)}</td>
-                <td className="px-4 py-3 text-right font-black text-emerald-600">{money(summary.received)}</td>
-                <td className="px-4 py-3 text-right font-black text-rose-500">{money(summary.due)}</td>
-                <td className="px-4 py-3 text-center font-black">{sortedHistory.length} row(s)</td>
-                <td className="px-4 py-3" />
+              <tr className={`font-black ${isDark ? "bg-slate-900 text-slate-100" : "bg-slate-100 text-slate-900"}`}>
+                {isColumnVisible("select") && <td className="px-4 py-3" />}
+                {isColumnVisible("date") && (
+                  <td className="px-4 py-3 uppercase tracking-widest">Grand Total</td>
+                )}
+                {isColumnVisible("companyName") && <td className="px-4 py-3" />}
+                {isColumnVisible("carType") && <td className="px-4 py-3" />}
+                {isColumnVisible("garbageTrips") && (
+                  <td data-total-field="garbageTrips" className="px-4 py-3 text-right">{summary.garbageTrips}</td>
+                )}
+                {isColumnVisible("wastageTrips") && (
+                  <td data-total-field="wastageTrips" className="px-4 py-3 text-right">{summary.wastageTrips}</td>
+                )}
+                {isColumnVisible("totalTrips") && (
+                  <td data-total-field="totalTrips" className="px-4 py-3 text-right">{summary.totalTrips}</td>
+                )}
+                {isColumnVisible("ratePerTrip") && (
+                  <td className="px-4 py-3 text-right">-</td>
+                )}
+                {isColumnVisible("amount") && (
+                  <td data-total-field="amount" className="px-4 py-3 text-right text-blue-600">{money(summary.amount)}</td>
+                )}
+                {isColumnVisible("received") && (
+                  <td data-total-field="received" className="px-4 py-3 text-right text-emerald-600">{money(summary.received)}</td>
+                )}
+                {isColumnVisible("due") && (
+                  <td data-total-field="due" className="px-4 py-3 text-right text-rose-500">{money(summary.due)}</td>
+                )}
+                {isColumnVisible("status") && (
+                  <td data-total-field="count" className="px-4 py-3 text-center">{sortedHistory.length} row(s)</td>
+                )}
+                {isColumnVisible("action") && <td className="px-4 py-3" />}
               </tr>
             </tbody>
           </table>
@@ -1850,6 +1964,14 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
             <span className="text-base md:text-lg font-extrabold tracking-wide text-red-500">
               Due {money(selectedDueAmount)}
             </span>
+            <button
+              type="button"
+              onClick={() => handlePrintTable(true)}
+              className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+            >
+              <i className="fas fa-print"></i>
+              Print Table
+            </button>
             <button
               type="button"
               onClick={() => initiateBulkPayment(selectedIds)}
