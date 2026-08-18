@@ -1135,6 +1135,8 @@ const App: React.FC = () => {
         const totalDue = rows.reduce((acc, r) => acc + (r.due || 0), 0);
         const totalTrips = rows.reduce((acc, r) => acc + (r.totalTrips || 0), 0);
         const garbageTrips = rows.reduce((acc, r) => acc + (r.garbageTrips || 0), 0);
+        const dueRows = rows.filter((r) => (r.due || 0) > 0 || (r.received || 0) <= 0);
+        const dueTrips = dueRows.reduce((acc, r) => acc + (r.totalTrips || 0), 0);
         return [
           {
             label: "Total Bill",
@@ -1152,7 +1154,7 @@ const App: React.FC = () => {
             label: "Due",
             value: `Tk ${totalDue.toLocaleString()}`,
             color: "#ef4444",
-            subtitle: `${rows.filter((r) => (r.due || 0) > 0).length.toLocaleString()} entries`,
+            subtitle: `${dueTrips.toLocaleString()} trips • ${dueRows.length.toLocaleString()} entries`,
           },
           {
             label: "Trips",
