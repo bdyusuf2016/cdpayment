@@ -162,6 +162,12 @@ export interface GranularPermissions {
   waste_delete?: boolean;
   waste_company_manage?: boolean;
 
+  // Vendor Management Module
+  vendor_view?: boolean;
+  vendor_add?: boolean;
+  vendor_edit?: boolean;
+  vendor_delete?: boolean;
+
   // AIN Client Module
   ain_view?: boolean;
   ain_add?: boolean;

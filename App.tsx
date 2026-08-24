@@ -774,6 +774,11 @@ const App: React.FC = () => {
   );
   const canAccessDutyModule = useMemo(
     () =>
+      hasPermission("duty_view") ||
+      hasPermission("duty_add") ||
+      hasPermission("duty_edit") ||
+      hasPermission("duty_delete") ||
+      hasPermission("duty_export") ||
       hasPermission("bill_add") ||
       hasPermission("bill_edit") ||
       hasPermission("bill_delete") ||
@@ -783,16 +788,69 @@ const App: React.FC = () => {
       hasPermission("invoice_print"),
     [hasPermission],
   );
-  const canAccessAssessmentModule = canAccessDutyModule;
-  const canAccessClearanceModule = canAccessDutyModule;
-  const canAccessWasteCompanyModule = canAccessDutyModule;
-  const canAccessWasteModule = canAccessDutyModule;
-  const canAccessVendorModule = canAccessDutyModule;
-  const canAccessAinModule = hasPermission("ain_view");
-  const canAccessAinTaxModule = canAccessDutyModule || hasPermission("ain_tax_view") || hasPermission("ain_view");
+  const canAccessAssessmentModule = useMemo(
+    () =>
+      hasPermission("assessment_view") ||
+      hasPermission("assessment_add") ||
+      hasPermission("assessment_edit") ||
+      hasPermission("assessment_delete") ||
+      hasPermission("assessment_export"),
+    [hasPermission],
+  );
+  const canAccessClearanceModule = useMemo(
+    () =>
+      hasPermission("clearance_view") ||
+      hasPermission("clearance_add") ||
+      hasPermission("clearance_edit") ||
+      hasPermission("clearance_delete"),
+    [hasPermission],
+  );
+  const canAccessWasteCompanyModule = useMemo(
+    () =>
+      hasPermission("waste_company_manage") ||
+      hasPermission("waste_view"),
+    [hasPermission],
+  );
+  const canAccessWasteModule = useMemo(
+    () =>
+      hasPermission("waste_view") ||
+      hasPermission("waste_add") ||
+      hasPermission("waste_edit") ||
+      hasPermission("waste_delete") ||
+      hasPermission("waste_company_manage"),
+    [hasPermission],
+  );
+  const canAccessVendorModule = useMemo(
+    () =>
+      hasPermission("vendor_view") ||
+      hasPermission("vendor_add") ||
+      hasPermission("vendor_edit") ||
+      hasPermission("vendor_delete"),
+    [hasPermission],
+  );
+  const canAccessAinModule = useMemo(
+    () =>
+      hasPermission("ain_view") ||
+      hasPermission("ain_add") ||
+      hasPermission("ain_delete") ||
+      hasPermission("ain_import") ||
+      hasPermission("ain_export"),
+    [hasPermission],
+  );
+  const canAccessAinTaxModule = useMemo(
+    () =>
+      hasPermission("ain_tax_view") ||
+      hasPermission("ain_tax_add") ||
+      hasPermission("ain_tax_edit") ||
+      hasPermission("ain_tax_delete") ||
+      hasPermission("ain_tax_pay") ||
+      hasPermission("ain_tax_import") ||
+      hasPermission("ain_tax_export"),
+    [hasPermission],
+  );
   const canAccessReportsModule = hasPermission("report_view");
   const canAccessLogsModule = hasPermission("view_logs");
-  const canAccessAdminModule = isAdminUser;
+  const canAccessAdminModule = isAdminUser || hasPermission("user_manage");
   const tabAccess = useMemo<Record<TabType, boolean>>(
     () => ({
       duty: canAccessDutyModule,
@@ -817,6 +875,7 @@ const App: React.FC = () => {
       canAccessWasteCompanyModule,
       canAccessDutyModule,
       canAccessWasteModule,
+      canAccessVendorModule,
       canAccessReportsModule,
       canAccessLogsModule,
     ],
@@ -1682,9 +1741,6 @@ const App: React.FC = () => {
                   key={tab.id}
                   onClick={() => {
                     setActiveTab(tab.id as TabType);
-                    if (tab.id === "duty") {
-                      setDefaultOpenImport(true);
-                    }
                   }}
                   title={isSidebarCollapsed ? tab.label : undefined}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
@@ -1784,9 +1840,6 @@ const App: React.FC = () => {
                       onClick={() => {
                         setActiveTab(tab.id as TabType);
                         setIsMobileMenuOpen(false);
-                        if (tab.id === "duty") {
-                          setDefaultOpenImport(true);
-                        }
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
                         isActive

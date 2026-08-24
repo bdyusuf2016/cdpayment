@@ -331,7 +331,7 @@ const parsePastedImportRows = (
 const DutyPayment: React.FC<DutyPaymentProps> = ({
   clients,
   setClients,
-  defaultOpenImport = true,
+  defaultOpenImport = false,
   pendingImportData,
   history,
   setHistory,
@@ -411,6 +411,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   >("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | "all">(25);
+  const [jumpPageInput, setJumpPageInput] = useState("");
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Payment Modal State
@@ -439,7 +444,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDate, setPaymentDate] = useState(getTodayDateInputValue);
-  const [showImportMappingModal, setShowImportMappingModal] = useState(defaultOpenImport);
+  const [showImportMappingModal, setShowImportMappingModal] = useState(false);
   const [importHeaders, setImportHeaders] = useState<string[]>([]);
   const [importRows, setImportRows] = useState<(string | number | null)[][]>([]);
   const [selectedBeColumn, setSelectedBeColumn] = useState("");
@@ -447,11 +452,13 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [selectedDutyColumn, setSelectedDutyColumn] = useState("");
   const [selectedAinColumn, setSelectedAinColumn] = useState("");
   const [selectedWhatsappColumn, setSelectedWhatsappColumn] = useState("");
-  const [showDutyImportOption, setShowDutyImportOption] = useState(defaultOpenImport);
+  const [showDutyImportOption, setShowDutyImportOption] = useState(false);
 
   useEffect(() => {
-    setShowDutyImportOption(defaultOpenImport);
-    setShowImportMappingModal(defaultOpenImport);
+    if (defaultOpenImport) {
+      setShowDutyImportOption(true);
+      setShowImportMappingModal(true);
+    }
   }, [defaultOpenImport]);
 
   useEffect(() => {
@@ -656,6 +663,68 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   useEffect(() => {
     onVisibleRowsChange(sortedHistory);
   }, [sortedHistory, onVisibleRowsChange]);
+
+  // Reset page to 1 whenever search, filters, or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    filterSearch,
+    filterStatus,
+    filterPaymentMethod,
+    startDate,
+    endDate,
+    dashboardFilter,
+    pageSize,
+    sortKey,
+    sortDir,
+  ]);
+
+  // Pagination Calculations
+  const totalFilteredCount = sortedHistory.length;
+  const numericPageSize = pageSize === "all" ? totalFilteredCount || 1 : pageSize;
+  const totalPages = pageSize === "all" ? 1 : Math.ceil(totalFilteredCount / numericPageSize) || 1;
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+
+  const startIndex = pageSize === "all" ? 0 : (safeCurrentPage - 1) * numericPageSize;
+  const endIndex =
+    pageSize === "all"
+      ? totalFilteredCount
+      : Math.min(startIndex + numericPageSize, totalFilteredCount);
+
+  const paginatedHistory = useMemo(() => {
+    if (pageSize === "all") return sortedHistory;
+    return sortedHistory.slice(startIndex, endIndex);
+  }, [sortedHistory, startIndex, endIndex, pageSize]);
+
+  const isCurrentPageAllSelected =
+    paginatedHistory.length > 0 &&
+    paginatedHistory.every((rec) => selectedIds.includes(rec.id));
+
+  const getPageNumbers = () => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (safeCurrentPage <= 4) {
+        for (let i = 1; i <= 5; i++) pages.push(i);
+        pages.push("...");
+        pages.push(totalPages);
+      } else if (safeCurrentPage >= totalPages - 3) {
+        pages.push(1);
+        pages.push("...");
+        for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push("...");
+        pages.push(safeCurrentPage - 1);
+        pages.push(safeCurrentPage);
+        pages.push(safeCurrentPage + 1);
+        pages.push("...");
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
 
   const selectedClient = useMemo(
     () => clients.find((c) => c.ain === ain) || null,
@@ -2584,17 +2653,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                     <input
                       type="checkbox"
                       className="w-4 h-4 rounded cursor-pointer accent-blue-600"
-                      checked={
-                        selectedIds.length === sortedHistory.length &&
-                        sortedHistory.length > 0
-                      }
-                      onChange={() =>
-                        setSelectedIds(
-                          selectedIds.length === sortedHistory.length
-                            ? []
-                            : sortedHistory.map((h) => h.id),
-                        )
-                      }
+                      checked={isCurrentPageAllSelected}
+                      onChange={() => {
+                        if (isCurrentPageAllSelected) {
+                          const pageIds = new Set(paginatedHistory.map((r) => r.id));
+                          setSelectedIds((prev) => prev.filter((id) => !pageIds.has(id)));
+                        } else {
+                          const pageIds = paginatedHistory.map((r) => r.id);
+                          setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+                        }
+                      }}
                     />
                     <div
                       onMouseDown={(e) => startResizing("select", e)}
@@ -2769,192 +2837,415 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
             <tbody
               className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-300"}`}
             >
-              {sortedHistory.map((rec, index) => (
-                <tr
-                  key={rec.id}
-                  className={`group transition-all ${getRowBackground(rec.status)} ${selectedIds.includes(rec.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""}`}
-                >
-                  {isColumnVisible("select") && (
-                    <td className="px-6 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded cursor-pointer accent-blue-600"
-                        checked={selectedIds.includes(rec.id)}
-                        onChange={() =>
-                          setSelectedIds((prev) =>
-                            prev.includes(rec.id)
-                              ? prev.filter((i) => i !== rec.id)
-                              : [...prev, rec.id],
-                          )
-                        }
-                      />
-                    </td>
-                  )}
-                  {isColumnVisible("date") && (
-                    <td
-                      className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-400" : "text-slate-900"}`}
-                    >
-                      {rec.date}
-                    </td>
-                  )}
-                  {isColumnVisible("clientName") && (
-                    <td className="px-6 py-3">
-                      <p
-                        className={`text-base font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}
+              {paginatedHistory.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={
+                      [
+                        "select",
+                        "date",
+                        "clientName",
+                        "beYear",
+                        "duty",
+                        "received",
+                        "receiveDate",
+                        "status",
+                        "profit",
+                        "controls",
+                      ].filter((k) => isColumnVisible(k as any)).length
+                    }
+                    className={`px-6 py-12 text-center text-sm font-bold ${
+                      isDark ? "text-slate-400" : "text-slate-500"
+                    }`}
+                  >
+                    <i className="fa-solid fa-inbox text-2xl mb-2 block opacity-40"></i>
+                    {isBn ? "কোন রেকর্ড পাওয়া যায়নি" : "No records found"}
+                  </td>
+                </tr>
+              ) : (
+                paginatedHistory.map((rec, index) => (
+                  <tr
+                    key={rec.id}
+                    className={`group transition-all ${getRowBackground(rec.status)} ${selectedIds.includes(rec.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""}`}
+                  >
+                    {isColumnVisible("select") && (
+                      <td className="px-6 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                          checked={selectedIds.includes(rec.id)}
+                          onChange={() =>
+                            setSelectedIds((prev) =>
+                              prev.includes(rec.id)
+                                ? prev.filter((i) => i !== rec.id)
+                                : [...prev, rec.id],
+                            )
+                          }
+                        />
+                      </td>
+                    )}
+                    {isColumnVisible("date") && (
+                      <td
+                        className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-400" : "text-slate-900"}`}
                       >
-                        {rec.clientName}
-                      </p>
-                      <p
-                        className={`text-xs font-bold mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}
-                      >
-                        AIN: {rec.ain || "-"}
-                      </p>
-                      <div
-                        className="flex items-center gap-2 mt-1.5 text-base font-bold text-slate-600 hover:text-blue-600 cursor-pointer w-fit"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyToClipboard(rec.phone);
-                        }}
-                      >
-                        <i className="fas fa-phone-alt text-[10px]"></i>{" "}
-                        {rec.phone}{" "}
-                        <i className="fas fa-copy ml-1 opacity-50 hover:opacity-100 text-xs"></i>
-                      </div>
-                    </td>
-                  )}
-                  {isColumnVisible("beYear") && (
-                    <td className={`px-6 py-3 ${isDark ? "text-slate-300" : "text-slate-900"}`}>
-                      <div className="text-sm font-bold">{rec.beYear}</div>
-                      {rec.rNo ? (
-                        <div className="text-[10px] font-semibold text-slate-500 mt-1">
-                          R No: {rec.rNo}
-                        </div>
-                      ) : null}
-                    </td>
-                  )}
-                  {isColumnVisible("duty") && (
-                    <td
-                      className={`px-6 py-3 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
-                    >
-                      ৳{rec.duty.toLocaleString()}
-                    </td>
-                  )}
-                  {isColumnVisible("received") && (
-                    <td
-                      className={`px-6 py-3 text-sm font-bold text-right ${rec.received > 0 ? "text-green-600" : "text-slate-400"}`}
-                    >
-                      {rec.received > 0
-                        ? `৳${rec.received.toLocaleString()}`
-                        : "-"}
-                    </td>
-                  )}
-                  {isColumnVisible("receiveDate") && (
-                    <td
-                      className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}
-                    >
-                      {rec.receiveDate || "-"}
-                    </td>
-                  )}
-                  {isColumnVisible("status") && (
-                    <td className="px-6 py-3 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <span
-                          className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                            rec.status === "Paid"
-                              ? "bg-green-100 text-green-700"
-                              : rec.status === "Completed"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-indigo-100 text-indigo-700"
-                          }`}
+                        {rec.date}
+                      </td>
+                    )}
+                    {isColumnVisible("clientName") && (
+                      <td className="px-6 py-3">
+                        <p
+                          className={`text-base font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}
                         >
-                          {rec.status === "Paid" && rec.paymentMethod
-                            ? `${rec.status} | ${rec.paymentMethod}`
-                            : rec.status}
-                        </span>
-                        {rec.rNo ? (
-                          <span className="text-[10px] font-semibold text-slate-500">
-                            R No: {rec.rNo}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                  )}
-                  {isColumnVisible("profit") && (
-                    <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
-                      {rec.status === "Paid"
-                        ? `৳${rec.profit.toLocaleString()}`
-                        : "-"}
-                    </td>
-                  )}
-                  {isColumnVisible("controls") && (
-                    <td className="px-6 py-3">
-                      <div className="flex justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                        {/* Workflow Action Buttons */}
-                        {rec.status === "New" && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCompletionTargetId(rec.id);
-                              setCompletionRNo(rec.rNo || "");
-                              setShowCompleteDialog(true);
-                            }}
-                            title="Mark as Completed"
-                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md animate-in zoom-in"
-                          >
-                            <i className="fas fa-check pointer-events-none"></i>
-                          </button>
-                        )}
-
-                        {rec.status === "Completed" && (
-                          <button
-                            type="button"
-                            onClick={() => initiatePayment([rec.id])}
-                            title="Settle Payment"
-                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-md animate-in zoom-in"
-                          >
-                            <i className="fas fa-hand-holding-dollar pointer-events-none"></i>
-                          </button>
-                        )}
-
-                        {/* Standard Actions */}
-                        <button
-                          type="button"
-                          onClick={() => shareWhatsApp([rec])}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                          {rec.clientName}
+                        </p>
+                        <p
+                          className={`text-xs font-bold mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}
                         >
-                          <i className="fab fa-whatsapp pointer-events-none"></i>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => printDutyInvoice([rec])}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-600 hover:bg-slate-600 hover:text-white transition-all shadow-sm"
-                        >
-                          <i className="fas fa-print pointer-events-none"></i>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(rec.id)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
-                        >
-                          <i className="fas fa-pen pointer-events-none"></i>
-                        </button>
-                        <button
-                          type="button"
+                          AIN: {rec.ain || "-"}
+                        </p>
+                        <div
+                          className="flex items-center gap-2 mt-1.5 text-base font-bold text-slate-600 hover:text-blue-600 cursor-pointer w-fit"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteClick(rec.id);
+                            copyToClipboard(rec.phone);
                           }}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-sm"
                         >
-                          <i className="fas fa-trash pointer-events-none"></i>
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
+                          <i className="fas fa-phone-alt text-[10px]"></i>{" "}
+                          {rec.phone}{" "}
+                          <i className="fas fa-copy ml-1 opacity-50 hover:opacity-100 text-xs"></i>
+                        </div>
+                      </td>
+                    )}
+                    {isColumnVisible("beYear") && (
+                      <td className={`px-6 py-3 ${isDark ? "text-slate-300" : "text-slate-900"}`}>
+                        <div className="text-sm font-bold">{rec.beYear}</div>
+                        {rec.rNo ? (
+                          <div className="text-[10px] font-semibold text-slate-500 mt-1">
+                            R No: {rec.rNo}
+                          </div>
+                        ) : null}
+                      </td>
+                    )}
+                    {isColumnVisible("duty") && (
+                      <td
+                        className={`px-6 py-3 text-sm font-bold text-right ${isDark ? "text-slate-200" : "text-slate-700"}`}
+                      >
+                        ৳{rec.duty.toLocaleString()}
+                      </td>
+                    )}
+                    {isColumnVisible("received") && (
+                      <td
+                        className={`px-6 py-3 text-sm font-bold text-right ${rec.received > 0 ? "text-green-600" : "text-slate-400"}`}
+                      >
+                        {rec.received > 0
+                          ? `৳${rec.received.toLocaleString()}`
+                          : "-"}
+                      </td>
+                    )}
+                    {isColumnVisible("receiveDate") && (
+                      <td
+                        className={`px-6 py-3 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
+                        {rec.receiveDate || "-"}
+                      </td>
+                    )}
+                    {isColumnVisible("status") && (
+                      <td className="px-6 py-3 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                              rec.status === "Paid"
+                                ? "bg-green-100 text-green-700"
+                                : rec.status === "Completed"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-indigo-100 text-indigo-700"
+                            }`}
+                          >
+                            {rec.status === "Paid" && rec.paymentMethod
+                              ? `${rec.status} | ${rec.paymentMethod}`
+                              : rec.status}
+                          </span>
+                          {rec.rNo ? (
+                            <span className="text-[10px] font-semibold text-slate-500">
+                              R No: {rec.rNo}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                    )}
+                    {isColumnVisible("profit") && (
+                      <td className="px-6 py-3 text-sm font-bold text-right text-blue-600">
+                        {rec.status === "Paid"
+                          ? `৳${rec.profit.toLocaleString()}`
+                          : "-"}
+                      </td>
+                    )}
+                    {isColumnVisible("controls") && (
+                      <td className="px-6 py-3">
+                        <div className="flex justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                          {/* Workflow Action Buttons */}
+                          {rec.status === "New" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCompletionTargetId(rec.id);
+                                setCompletionRNo(rec.rNo || "");
+                                setShowCompleteDialog(true);
+                              }}
+                              title="Mark as Completed"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md animate-in zoom-in"
+                            >
+                              <i className="fas fa-check pointer-events-none"></i>
+                            </button>
+                          )}
+
+                          {rec.status === "Completed" && (
+                            <button
+                              type="button"
+                              onClick={() => initiatePayment([rec.id])}
+                              title="Settle Payment"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-md animate-in zoom-in"
+                            >
+                              <i className="fas fa-hand-holding-dollar pointer-events-none"></i>
+                            </button>
+                          )}
+
+                          {/* Standard Actions */}
+                          <button
+                            type="button"
+                            onClick={() => shareWhatsApp([rec])}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                          >
+                            <i className="fab fa-whatsapp pointer-events-none"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => printDutyInvoice([rec])}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-600 hover:bg-slate-600 hover:text-white transition-all shadow-sm"
+                          >
+                            <i className="fas fa-print pointer-events-none"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(rec.id)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
+                          >
+                            <i className="fas fa-pen pointer-events-none"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(rec.id);
+                            }}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                          >
+                            <i className="fas fa-trash pointer-events-none"></i>
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination & Rows-Per-Page Control Bar */}
+        <div
+          data-print-exclude
+          className={`no-print print-hidden px-4 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold ${
+            isDark
+              ? "bg-slate-900/90 border-slate-800 text-slate-300"
+              : "bg-slate-50/90 border-slate-200 text-slate-700"
+          }`}
+        >
+          {/* Left: Rows Per Page & Record Info */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-400">
+                {isBn ? "প্রতি পেজে:" : "Rows per page:"}
+              </span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPageSize(val === "all" ? "all" : Number(val));
+                }}
+                className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition-all outline-none cursor-pointer ${
+                  isDark
+                    ? "bg-slate-800 border-slate-700 text-white"
+                    : "bg-white border-slate-300 text-slate-800 shadow-sm"
+                }`}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={250}>250</option>
+                <option value="all">{isBn ? "সবগুলো (All)" : "All"}</option>
+              </select>
+            </div>
+
+            <span className="text-[11px] font-bold text-slate-400 border-l pl-3 border-slate-700/40">
+              {totalFilteredCount === 0
+                ? isBn
+                  ? "০ টি রেকর্ড"
+                  : "0 records"
+                : isBn
+                ? `মোট ${totalFilteredCount} টির মধ্যে ${startIndex + 1}–${endIndex} টি দেখানো হচ্ছে`
+                : `Showing ${startIndex + 1}–${endIndex} of ${totalFilteredCount} records`}
+            </span>
+          </div>
+
+          {/* Right: Page Navigation & Jump to Page */}
+          {pageSize !== "all" && totalPages > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* First Page */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage(1)}
+                disabled={safeCurrentPage <= 1}
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
+                  safeCurrentPage <= 1
+                    ? "opacity-30 cursor-not-allowed border-transparent text-slate-500"
+                    : isDark
+                    ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 cursor-pointer"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm cursor-pointer"
+                }`}
+                title={isBn ? "প্রথম পেজ" : "First Page"}
+              >
+                <i className="fa-solid fa-angles-left"></i>
+              </button>
+
+              {/* Prev Page */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={safeCurrentPage <= 1}
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
+                  safeCurrentPage <= 1
+                    ? "opacity-30 cursor-not-allowed border-transparent text-slate-500"
+                    : isDark
+                    ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 cursor-pointer"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm cursor-pointer"
+                }`}
+                title={isBn ? "পূর্ববর্তী পেজ" : "Previous Page"}
+              >
+                <i className="fa-solid fa-chevron-left"></i>
+              </button>
+
+              {/* Page Numbers */}
+              {getPageNumbers().map((p, idx) => {
+                if (p === "...") {
+                  return (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 font-bold"
+                    >
+                      ...
+                    </span>
+                  );
+                }
+                const isSelected = p === safeCurrentPage;
+                return (
+                  <button
+                    key={`page-${p}`}
+                    type="button"
+                    onClick={() => setCurrentPage(p as number)}
+                    className={`w-8 h-8 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105"
+                        : isDark
+                        ? "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+                        : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-sm"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+
+              {/* Next Page */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={safeCurrentPage >= totalPages}
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
+                  safeCurrentPage >= totalPages
+                    ? "opacity-30 cursor-not-allowed border-transparent text-slate-500"
+                    : isDark
+                    ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 cursor-pointer"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm cursor-pointer"
+                }`}
+                title={isBn ? "পরবর্তী পেজ" : "Next Page"}
+              >
+                <i className="fa-solid fa-chevron-right"></i>
+              </button>
+
+              {/* Last Page */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={safeCurrentPage >= totalPages}
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
+                  safeCurrentPage >= totalPages
+                    ? "opacity-30 cursor-not-allowed border-transparent text-slate-500"
+                    : isDark
+                    ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 cursor-pointer"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm cursor-pointer"
+                }`}
+                title={isBn ? "সর্বশেষ পেজ" : "Last Page"}
+              >
+                <i className="fa-solid fa-angles-right"></i>
+              </button>
+
+              {/* Jump to Page Input */}
+              <div className="flex items-center gap-1 ml-1.5 pl-2 border-l border-slate-700/30">
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  placeholder={String(safeCurrentPage)}
+                  value={jumpPageInput}
+                  onChange={(e) => setJumpPageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const num = parseInt(jumpPageInput, 10);
+                      if (num >= 1 && num <= totalPages) {
+                        setCurrentPage(num);
+                        setJumpPageInput("");
+                      }
+                    }
+                  }}
+                  className={`w-12 px-1.5 py-1 text-center text-xs font-bold rounded-lg border outline-none ${
+                    isDark
+                      ? "bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                      : "bg-white border-slate-300 text-slate-800 shadow-sm"
+                  }`}
+                  title={isBn ? "পেজে যেতে এন্টার চাপুন" : "Type page & press Enter"}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const num = parseInt(jumpPageInput, 10);
+                    if (num >= 1 && num <= totalPages) {
+                      setCurrentPage(num);
+                      setJumpPageInput("");
+                    }
+                  }}
+                  className={`px-2 py-1 text-[11px] font-bold rounded-lg uppercase tracking-wider transition-all cursor-pointer ${
+                    isDark
+                      ? "bg-slate-800 text-blue-400 hover:bg-slate-700 border border-slate-700"
+                      : "bg-slate-100 text-blue-600 hover:bg-slate-200 border border-slate-200"
+                  }`}
+                >
+                  Go
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

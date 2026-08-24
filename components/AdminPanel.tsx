@@ -88,6 +88,18 @@ export const MODULE_PERMISSION_GROUPS: ModulePermissionGroup[] = [
     ],
   },
   {
+    moduleId: "vendors",
+    moduleNameBn: "ভেন্ডার ম্যানেজমেন্ট মডিউল",
+    moduleNameEn: "Vendor Management Module",
+    icon: "fa-solid fa-store text-violet-500",
+    permissions: [
+      { key: "vendor_view", labelBn: "ভেন্ডার তালিকা দেখুন", labelEn: "View Vendors", code: "VENDOR_VIEW" },
+      { key: "vendor_add", labelBn: "নতুন ভেন্ডার যুক্ত করুন", labelEn: "Add Vendor", code: "VENDOR_ADD" },
+      { key: "vendor_edit", labelBn: "ভেন্ডার তথ্য এডিট করুন", labelEn: "Edit Vendor", code: "VENDOR_EDIT" },
+      { key: "vendor_delete", labelBn: "ভেন্ডার ডিলেট করুন", labelEn: "Delete Vendor", code: "VENDOR_DELETE" },
+    ],
+  },
+  {
     moduleId: "waste",
     moduleNameBn: "ওয়েস্ট ট্র্যাকার ও ময়লা গাড়ি মডিউল",
     moduleNameEn: "Waste & Garbage Tracker Module",
@@ -173,6 +185,7 @@ const userRolePermissions: GranularPermissions = {
   assessment_add: true,
   clearance_view: true,
   waste_view: true,
+  vendor_view: true,
   ain_view: true,
   ain_add: true,
   ain_tax_view: true,
@@ -1008,7 +1021,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </h4>
             <button
               onClick={() => handleOpenUserModal()}
-              className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-blue-200 transition-all"
+              className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-blue-200 transition-all cursor-pointer"
             >
               <i className="fas fa-plus"></i> New User
             </button>
@@ -1016,7 +1029,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="space-y-4">
             <button
               onClick={() => setShowPasswordReset(true)}
-              className="w-full py-4 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center justify-center gap-3 shadow-lg"
+              className="w-full py-4 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center justify-center gap-3 shadow-lg cursor-pointer"
             >
               <i className="fas fa-key"></i> {t.reset}
             </button>
@@ -1026,13 +1039,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <p
                 className={`text-[10px] font-black opacity-50 uppercase tracking-[0.2em] mb-4 ${isDark ? "text-slate-400" : "text-slate-800"}`}
               >
-                Active Staff Permissions
+                Active Staff Accounts ({users.length})
               </p>
               <div className="space-y-3">
                 {users.map((u) => (
                   <div
                     key={u.id}
-                    className="flex items-center justify-between group p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
+                    className="flex items-center justify-between group p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all"
                     onClick={() => handleOpenUserModal(u)}
                   >
                     <div className="flex-1">
@@ -1042,11 +1055,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         {u.name}
                       </div>
                       <div className="text-[9px] text-slate-400">
-                        {u.lastActive}
+                        {u.lastActive || "Active"}
                       </div>
                     </div>
                     <span
-                      className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-tighter border ${isDark ? "bg-slate-900 border-slate-700 text-blue-400" : "bg-white border-slate-200 text-blue-700"}`}
+                      className={`text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-tighter border ${
+                        u.role === "Admin"
+                          ? isDark
+                            ? "bg-purple-900/40 border-purple-700 text-purple-300"
+                            : "bg-purple-50 border-purple-200 text-purple-700"
+                          : isDark
+                          ? "bg-slate-900 border-slate-700 text-blue-400"
+                          : "bg-white border-slate-200 text-blue-700"
+                      }`}
                     >
                       {u.role}
                     </span>
@@ -1066,6 +1087,235 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Comprehensive User Permission Matrix Section */}
+      <div
+        className={`p-6 md:p-8 rounded-[2rem] border shadow-xl transition-all ${
+          isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-300"
+        }`}
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-600/10 text-blue-600 flex items-center justify-center text-lg">
+              <i className="fas fa-table-cells"></i>
+            </div>
+            <div>
+              <h3 className={`text-base font-black uppercase tracking-wider ${isDark ? "text-white" : "text-slate-900"}`}>
+                {config.language === "bn" ? "মডিউল পারমিশন ম্যাট্রিক্স" : "User Permission Matrix"}
+              </h3>
+              <p className="text-xs text-slate-400 font-medium">
+                {config.language === "bn"
+                  ? "কোন ইউজার কোন কোন মডিউল দেখতে ও অ্যাক্সেস করতে পারবে তা সরাসরি সিলেক্ট করুন"
+                  : "View and toggle module access visibility directly for each user"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-400">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5"></span>
+              {config.language === "bn" ? "অ্যাক্সেস সক্রিয়" : "Active"}
+            </span>
+            <span className="text-xs font-bold text-slate-400 ml-2">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600 mr-1.5"></span>
+              {config.language === "bn" ? "নিষ্ক্রিয়" : "Disabled"}
+            </span>
+            <button
+              onClick={() => handleOpenUserModal()}
+              className="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <i className="fas fa-user-plus"></i>
+              <span>{config.language === "bn" ? "নতুন ইউজার" : "Add User"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Matrix Table */}
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+          <table className="w-full text-left border-collapse min-w-[900px]">
+            <thead>
+              <tr className={`border-b text-[10px] font-black uppercase tracking-wider ${isDark ? "bg-slate-900/60 border-slate-700 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-600"}`}>
+                <th className="px-4 py-3.5 whitespace-nowrap">User Name / Email</th>
+                <th className="px-3 py-3.5 text-center whitespace-nowrap">Role</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="Duty Payment">ডিউটি</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="Assessment Billing">অ্যাসেসমেন্ট</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="Daily Clearance Record">ক্লিয়ারেন্স</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="Vendor Management">ভেন্ডার</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="Waste & Garbage Tracker">ওয়েস্ট</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="Waste Company Setup">কোম্পানি</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="AIN Client Database">AIN ডাটা</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="AIN Tax Due Management">AIN ট্যাক্স</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="Daily Reports">রিপোর্ট</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="Audit Logs">অডিট লগ</th>
+                <th className="px-2 py-3.5 text-center whitespace-nowrap" title="Admin Settings">এডমিন</th>
+                <th className="px-4 py-3.5 text-right whitespace-nowrap">Action</th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y text-xs ${isDark ? "divide-slate-700/60 bg-slate-900/20" : "divide-slate-200 bg-white"}`}>
+              {users.map((u) => {
+                const isAdmin = u.role === "Admin";
+                const p = u.permissions || {};
+
+                const modules = [
+                  {
+                    id: "duty",
+                    active: isAdmin || Boolean(p.duty_view || p.duty_add || p.duty_edit || p.duty_delete || p.duty_export || p.bill_add || p.bill_edit || p.bill_delete || p.bill_bulk_pay || p.bill_export || p.bill_wa_share || p.invoice_print),
+                    name: "Duty Payment",
+                  },
+                  {
+                    id: "assessment",
+                    active: isAdmin || Boolean(p.assessment_view || p.assessment_add || p.assessment_edit || p.assessment_delete || p.assessment_export),
+                    name: "Assessment",
+                  },
+                  {
+                    id: "clearance",
+                    active: isAdmin || Boolean(p.clearance_view || p.clearance_add || p.clearance_edit || p.clearance_delete),
+                    name: "Clearance",
+                  },
+                  {
+                    id: "vendors",
+                    active: isAdmin || Boolean(p.vendor_view || p.vendor_add || p.vendor_edit || p.vendor_delete),
+                    name: "Vendors",
+                  },
+                  {
+                    id: "waste",
+                    active: isAdmin || Boolean(p.waste_view || p.waste_add || p.waste_edit || p.waste_delete),
+                    name: "Waste Management",
+                  },
+                  {
+                    id: "wasteCompanies",
+                    active: isAdmin || Boolean(p.waste_company_manage || p.waste_view),
+                    name: "Company Setup",
+                  },
+                  {
+                    id: "ain",
+                    active: isAdmin || Boolean(p.ain_view || p.ain_add || p.ain_delete || p.ain_import || p.ain_export),
+                    name: "AIN Database",
+                  },
+                  {
+                    id: "ainTax",
+                    active: isAdmin || Boolean(p.ain_tax_view || p.ain_tax_add || p.ain_tax_edit || p.ain_tax_delete || p.ain_tax_pay || p.ain_tax_import || p.ain_tax_export),
+                    name: "AIN Tax Due",
+                  },
+                  {
+                    id: "reports",
+                    active: isAdmin || Boolean(p.report_view),
+                    name: "Reports",
+                  },
+                  {
+                    id: "logs",
+                    active: isAdmin || Boolean(p.view_logs),
+                    name: "Audit Logs",
+                  },
+                  {
+                    id: "admin",
+                    active: isAdmin || Boolean(p.user_manage || p.settings_manage),
+                    name: "Admin Controls",
+                  },
+                ];
+
+                return (
+                  <tr
+                    key={u.id}
+                    className={`transition-colors ${
+                      isDark ? "hover:bg-slate-800/60" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-slate-800 dark:text-slate-100">{u.name}</div>
+                      <div className="text-[10px] text-slate-400">{u.active ? "Active account" : "Disabled account"}</div>
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span
+                        className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border ${
+                          isAdmin
+                            ? isDark
+                              ? "bg-purple-900/40 border-purple-700 text-purple-300"
+                              : "bg-purple-50 border-purple-200 text-purple-700"
+                            : isDark
+                            ? "bg-slate-900 border-slate-700 text-blue-400"
+                            : "bg-white border-slate-200 text-blue-700"
+                        }`}
+                      >
+                        {u.role}
+                      </span>
+                    </td>
+                    {modules.map((m) => (
+                      <td key={m.id} className="px-2 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (isAdmin) {
+                              alert("Admin user has full access to all modules.");
+                              return;
+                            }
+                            if (!supabase) return;
+
+                            const currentActive = m.active;
+                            const nextActive = !currentActive;
+
+                            let keysToUpdate: (keyof GranularPermissions)[] = [];
+                            if (m.id === "duty") {
+                              keysToUpdate = ["duty_view", "bill_add", "bill_edit", "bill_delete", "bill_bulk_pay", "bill_export", "bill_wa_share", "invoice_print"];
+                            } else if (m.id === "assessment") {
+                              keysToUpdate = ["assessment_view", "assessment_add", "assessment_edit", "assessment_delete", "assessment_export"];
+                            } else if (m.id === "clearance") {
+                              keysToUpdate = ["clearance_view", "clearance_add", "clearance_edit", "clearance_delete"];
+                            } else if (m.id === "vendors") {
+                              keysToUpdate = ["vendor_view", "vendor_add", "vendor_edit", "vendor_delete"];
+                            } else if (m.id === "waste") {
+                              keysToUpdate = ["waste_view", "waste_add", "waste_edit", "waste_delete"];
+                            } else if (m.id === "wasteCompanies") {
+                              keysToUpdate = ["waste_company_manage"];
+                            } else if (m.id === "ain") {
+                              keysToUpdate = ["ain_view", "ain_add", "ain_delete", "ain_import", "ain_export"];
+                            } else if (m.id === "ainTax") {
+                              keysToUpdate = ["ain_tax_view", "ain_tax_add", "ain_tax_edit", "ain_tax_delete", "ain_tax_pay", "ain_tax_import", "ain_tax_export"];
+                            } else if (m.id === "reports") {
+                              keysToUpdate = ["report_view"];
+                            } else if (m.id === "logs") {
+                              keysToUpdate = ["view_logs"];
+                            } else if (m.id === "admin") {
+                              keysToUpdate = ["user_manage", "user_profile_edit", "user_reset_pass", "settings_manage"];
+                            }
+
+                            const updatedPermissions = { ...u.permissions };
+                            keysToUpdate.forEach((k) => {
+                              updatedPermissions[k] = nextActive;
+                            });
+
+                            const optimisticUser = { ...u, permissions: updatedPermissions };
+                            setUsers((prev) => prev.map((usr) => (usr.id === u.id ? optimisticUser : usr)));
+                            await updateStaffUser(supabase, u.id, { permissions: updatedPermissions });
+                          }}
+                          title={isAdmin ? "Admin has full access" : `Click to toggle ${m.name}`}
+                          className={`w-7 h-7 rounded-lg inline-flex items-center justify-center transition-all cursor-pointer ${
+                            m.active
+                              ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:scale-110"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200"
+                          }`}
+                        >
+                          <i className={`fas ${m.active ? "fa-check" : "fa-xmark"} text-xs`}></i>
+                        </button>
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenUserModal(u)}
+                        className="px-3 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
+                      >
+                        <i className="fas fa-sliders mr-1"></i>
+                        {config.language === "bn" ? "এডিট" : "Edit"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
