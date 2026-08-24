@@ -392,24 +392,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           .from("staff_users")
           .update(staffPayload)
           .eq("id", existingRows[0].id)
-          .select()
-          .single();
+          .select();
         if (error) {
           alert(error.message || "Failed to update staff profile.");
           return;
         }
-        createdRow = data;
+        createdRow = Array.isArray(data) ? data[0] : data;
       } else {
         const { data, error } = await supabase
           .from("staff_users")
           .insert(staffPayload)
-          .select()
-          .single();
+          .select();
         if (error) {
           alert(error.message || "Failed to create staff profile.");
           return;
         }
-        createdRow = data;
+        createdRow = Array.isArray(data) ? data[0] : data;
       }
 
       const created: StaffUser = {

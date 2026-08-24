@@ -31,6 +31,12 @@ const formatSupabaseError = (action: string, error: any): Error => {
   return new Error(parts.join(" | ") || `${action} failed.`);
 };
 
+const getSingleRow = <T = any>(data: any): T | null => {
+  if (!data) return null;
+  if (Array.isArray(data)) return (data[0] as T) ?? null;
+  return data as T;
+};
+
 const toDutyDb = (record: Partial<PaymentRecord>) => ({
   date: record.date,
   receive_date: record.receiveDate,
@@ -259,13 +265,13 @@ export async function insertClient(
   const { data, error } = await supabase
     .from("clients")
     .insert(toClientDb(client))
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("insertClient error", error);
     throw formatSupabaseError("Insert client", error);
   }
-  return fromClientDb(data);
+  const row = getSingleRow(data);
+  return row ? fromClientDb(row) : null;
 }
 
 export async function updateClient(
@@ -281,30 +287,28 @@ export async function updateClient(
     .from("clients")
     .update(dbPatch)
     .eq("ain", ain)
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("updateClient error", error);
     throw formatSupabaseError("Update client", error);
   }
-  return fromClientDb(data);
+  const row = getSingleRow(data);
+  return row ? fromClientDb(row) : null;
 }
 
 export async function deleteClient(
   supabase: SupabaseClient,
   ain: string,
 ): Promise<{ ain: string } | null> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("clients")
     .delete()
-    .eq("ain", ain)
-    .select()
-    .single();
+    .eq("ain", ain);
   if (error) {
     console.error("deleteClient error", error);
     throw formatSupabaseError("Delete client", error);
   }
-  return data ? { ain } : null; // Return identifier for UI update
+  return { ain }; // Return identifier for UI update
 }
 
 // Duty Payments CRUD
@@ -315,13 +319,13 @@ export async function insertDuty(
   const { data, error } = await supabase
     .from("duty_payments")
     .insert(toDutyDb(record))
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("insertDuty error", error);
     return null;
   }
-  return fromDutyDb(data);
+  const row = getSingleRow(data);
+  return row ? fromDutyDb(row) : null;
 }
 
 export async function updateDuty(
@@ -337,30 +341,28 @@ export async function updateDuty(
     .from("duty_payments")
     .update(dbPatch)
     .eq("id", id)
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("updateDuty error", error);
     return null;
   }
-  return fromDutyDb(data);
+  const row = getSingleRow(data);
+  return row ? fromDutyDb(row) : null;
 }
 
 export async function deleteDuty(
   supabase: SupabaseClient,
   id: string,
 ): Promise<{ id: string } | null> {
-  const { error, data } = await supabase
+  const { error } = await supabase
     .from("duty_payments")
     .delete()
-    .eq("id", id)
-    .select()
-    .single();
+    .eq("id", id);
   if (error) {
     console.error("deleteDuty error", error);
     return null;
   }
-  return data ? { id } : null;
+  return { id };
 }
 
 // Assessments CRUD
@@ -371,13 +373,13 @@ export async function insertAssessment(
   const { data, error } = await supabase
     .from("assessments")
     .insert(toAssessmentDb(record))
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("insertAssessment error", error);
     return null;
   }
-  return fromAssessmentDb(data);
+  const row = getSingleRow(data);
+  return row ? fromAssessmentDb(row) : null;
 }
 
 export async function updateAssessment(
@@ -393,30 +395,28 @@ export async function updateAssessment(
     .from("assessments")
     .update(dbPatch)
     .eq("id", id)
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("updateAssessment error", error);
     return null;
   }
-  return fromAssessmentDb(data);
+  const row = getSingleRow(data);
+  return row ? fromAssessmentDb(row) : null;
 }
 
 export async function deleteAssessment(
   supabase: SupabaseClient,
   id: string,
 ): Promise<{ id: string } | null> {
-  const { error, data } = await supabase
+  const { error } = await supabase
     .from("assessments")
     .delete()
-    .eq("id", id)
-    .select()
-    .single();
+    .eq("id", id);
   if (error) {
     console.error("deleteAssessment error", error);
     return null;
   }
-  return data ? { id } : null;
+  return { id };
 }
 
 // Clearance records CRUD
@@ -427,13 +427,13 @@ export async function insertClearanceRecord(
   const { data, error } = await supabase
     .from("clearance_records")
     .insert(toClearanceDb(record))
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("insertClearanceRecord error", error);
     throw formatSupabaseError("Insert clearance record", error);
   }
-  return fromClearanceDb(data);
+  const row = getSingleRow(data);
+  return row ? fromClearanceDb(row) : null;
 }
 
 export async function updateClearanceRecord(
@@ -449,30 +449,28 @@ export async function updateClearanceRecord(
     .from("clearance_records")
     .update(dbPatch)
     .eq("id", id)
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("updateClearanceRecord error", error);
     throw formatSupabaseError("Update clearance record", error);
   }
-  return fromClearanceDb(data);
+  const row = getSingleRow(data);
+  return row ? fromClearanceDb(row) : null;
 }
 
 export async function deleteClearanceRecord(
   supabase: SupabaseClient,
   id: string,
 ): Promise<{ id: string } | null> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("clearance_records")
     .delete()
-    .eq("id", id)
-    .select("id")
-    .single();
+    .eq("id", id);
   if (error) {
     console.error("deleteClearanceRecord error", error);
     throw formatSupabaseError("Delete clearance record", error);
   }
-  return data ? { id: data.id } : null;
+  return { id };
 }
 
 // Waste companies CRUD
@@ -483,13 +481,13 @@ export async function insertWasteCompany(
   const { data, error } = await supabase
     .from("waste_companies")
     .insert(toWasteCompanyDb(company))
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("insertWasteCompany error", error);
     throw formatSupabaseError("Insert waste company", error);
   }
-  return fromWasteCompanyDb(data);
+  const row = getSingleRow(data);
+  return row ? fromWasteCompanyDb(row) : null;
 }
 
 export async function updateWasteCompany(
@@ -505,13 +503,13 @@ export async function updateWasteCompany(
     .from("waste_companies")
     .update(dbPatch)
     .eq("id", id)
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("updateWasteCompany error", error);
     throw formatSupabaseError("Update waste company", error);
   }
-  return fromWasteCompanyDb(data);
+  const row = getSingleRow(data);
+  return row ? fromWasteCompanyDb(row) : null;
 }
 
 // Vendor CRUD
@@ -522,13 +520,13 @@ export async function insertVendor(
   const { data, error } = await supabase
     .from("vendors")
     .insert(toVendorDb(vendor))
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("insertVendor error", error);
     throw formatSupabaseError("Insert vendor", error);
   }
-  return fromVendorDb(data);
+  const row = getSingleRow(data);
+  return row ? fromVendorDb(row) : null;
 }
 
 export async function updateVendor(
@@ -545,13 +543,13 @@ export async function updateVendor(
     .from("vendors")
     .update(dbPatch)
     .eq("id", id)
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("updateVendor error", error);
     throw formatSupabaseError("Update vendor", error);
   }
-  return fromVendorDb(data);
+  const row = getSingleRow(data);
+  return row ? fromVendorDb(row) : null;
 }
 
 export async function deleteVendor(
@@ -574,13 +572,13 @@ export async function insertWasteRecord(
   const { data, error } = await supabase
     .from("waste_records")
     .insert(toWasteRecordDb(record))
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("insertWasteRecord error", error);
     throw formatSupabaseError("Insert waste record", error);
   }
-  return fromWasteRecordDb(data);
+  const row = getSingleRow(data);
+  return row ? fromWasteRecordDb(row) : null;
 }
 
 export async function updateWasteRecord(
@@ -596,30 +594,28 @@ export async function updateWasteRecord(
     .from("waste_records")
     .update(dbPatch)
     .eq("id", id)
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("updateWasteRecord error", error);
     throw formatSupabaseError("Update waste record", error);
   }
-  return fromWasteRecordDb(data);
+  const row = getSingleRow(data);
+  return row ? fromWasteRecordDb(row) : null;
 }
 
 export async function deleteWasteRecord(
   supabase: SupabaseClient,
   id: string,
 ): Promise<{ id: string } | null> {
-  const { error, data } = await supabase
+  const { error } = await supabase
     .from("waste_records")
     .delete()
-    .eq("id", id)
-    .select("id")
-    .single();
+    .eq("id", id);
   if (error) {
     console.error("deleteWasteRecord error", error);
     throw formatSupabaseError("Delete waste record", error);
   }
-  return data ? { id: data.id } : null;
+  return { id };
 }
 
 // Staff Users CRUD
@@ -638,20 +634,21 @@ export async function updateStaffUser(
     .from("staff_users")
     .update(patch)
     .eq("id", id)
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("updateStaffUser error", error);
     return null;
   }
+  const row = getSingleRow(data);
+  if (!row) return null;
   return {
-    id: data.id,
-    authId: data.authId ?? data.auth_id ?? undefined,
-    name: data.name ?? "",
-    role: data.role ?? "User",
-    permissions: data.permissions ?? {},
-    lastActive: data.lastActive ?? data.last_active ?? "",
-    active: Boolean(data.active),
+    id: row.id,
+    authId: row.authId ?? row.auth_id ?? undefined,
+    name: row.name ?? "",
+    role: row.role ?? "User",
+    permissions: row.permissions ?? {},
+    lastActive: row.lastActive ?? row.last_active ?? "",
+    active: Boolean(row.active),
   };
 }
 
@@ -669,20 +666,21 @@ export async function insertStaffUser(
   const { data, error } = await supabase
     .from("staff_users")
     .insert(dbPayload)
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("insertStaffUser error", error);
     return null;
   }
+  const row = getSingleRow(data);
+  if (!row) return null;
   return {
-    id: data.id,
-    authId: data.authId ?? data.auth_id ?? undefined,
-    name: data.name ?? "",
-    role: data.role ?? "User",
-    permissions: data.permissions ?? {},
-    lastActive: data.lastActive ?? data.last_active ?? "",
-    active: Boolean(data.active),
+    id: row.id,
+    authId: row.authId ?? row.auth_id ?? undefined,
+    name: row.name ?? "",
+    role: row.role ?? "User",
+    permissions: row.permissions ?? {},
+    lastActive: row.lastActive ?? row.last_active ?? "",
+    active: Boolean(row.active),
   };
 }
 
@@ -690,17 +688,15 @@ export async function deleteStaffUser(
   supabase: SupabaseClient,
   id: string,
 ): Promise<{ id: string } | null> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("staff_users")
     .delete()
-    .eq("id", id)
-    .select("id")
-    .single();
+    .eq("id", id);
   if (error) {
     console.error("deleteStaffUser error", error);
     return null;
   }
-  return data ? { id: data.id } : null;
+  return { id };
 }
 
 // System Settings
@@ -711,7 +707,7 @@ export async function fetchSystemSettings(
     .from("system_settings")
     .select("*")
     .limit(1)
-    .single();
+    .maybeSingle();
   if (error) {
     console.error("fetchSystemSettings error", error);
     return null;
@@ -765,20 +761,20 @@ export async function updateSystemSettings(
   });
 
   // There's only one settings row, so we update it or insert if missing
-  let { data, error } = await supabase
+  let { data: rawData, error } = await supabase
     .from("system_settings")
     .update(dbPatch)
     .eq("id", 1) // Assuming the settings row has id 1
-    .select()
-    .maybeSingle();
+    .select();
+
+  let data = getSingleRow(rawData);
 
   if (!data && !error) {
     const insertRes = await supabase
       .from("system_settings")
       .insert([{ id: 1, ...dbPatch }])
-      .select()
-      .maybeSingle();
-    data = insertRes.data;
+      .select();
+    data = getSingleRow(insertRes.data);
     error = insertRes.error;
   }
 
@@ -841,20 +837,21 @@ export async function insertAuditLog(
     const { data, error } = await supabase
       .from("audit_logs")
       .insert([payload])
-      .select()
-      .single();
+      .select();
     if (error) throw error;
+    const row = getSingleRow(data);
+    if (!row) return null;
     return {
-      id: data.id,
+      id: row.id,
       timestamp: formatAuditLogDate(
-        data.createdAt ?? data.created_at ?? data.timestamp ?? payload.timestamp,
+        row.createdAt ?? row.created_at ?? row.timestamp ?? payload.timestamp,
       ),
-      createdAt: data.createdAt ?? data.created_at ?? undefined,
-      user: data.user_name ?? data.user ?? payload.user_name,
-      action: data.action || payload.action,
-      module: data.module || payload.module,
-      details: data.details || payload.details,
-      type: data.type || payload.type,
+      createdAt: row.createdAt ?? row.created_at ?? undefined,
+      user: row.user_name ?? row.user ?? payload.user_name,
+      action: row.action || payload.action,
+      module: row.module || payload.module,
+      details: row.details || payload.details,
+      type: row.type || payload.type,
     };
   } catch (err) {
     console.error("insertAuditLog error", err);
@@ -917,17 +914,19 @@ export async function insertCustomContact(
     const { data, error } = await supabase
       .from("whatsapp_contacts")
       .insert({ id: contact.id, name: contact.name, phone: contact.phone })
-      .select()
-      .single();
+      .select();
     if (error) {
       console.warn("insertCustomContact error:", error.message);
       return null;
     }
-    return {
-      id: data.id,
-      name: data.name ?? contact.name,
-      phone: data.phone ?? contact.phone,
-    };
+    const row = getSingleRow(data);
+    return row
+      ? {
+          id: row.id,
+          name: row.name ?? contact.name,
+          phone: row.phone ?? contact.phone,
+        }
+      : null;
   } catch (err) {
     console.error("insertCustomContact error", err);
     return null;
@@ -992,13 +991,13 @@ export async function insertAinTaxRecord(
   const { data, error } = await supabase
     .from("ain_tax_records")
     .insert(toAinTaxDb(record))
-    .select()
-    .single();
+    .select();
   if (error) {
     console.error("insertAinTaxRecord error", error);
     throw formatSupabaseError("Insert AIN Tax record", error);
   }
-  return fromAinTaxDb(data);
+  const row = getSingleRow(data);
+  return row ? fromAinTaxDb(row) : null;
 }
 
 export async function bulkInsertAinTaxRecords(
@@ -1040,25 +1039,23 @@ export async function updateAinTaxRecord(
     .from("ain_tax_records")
     .update(dbPatch)
     .eq("id", id)
-    .select()
-    .maybeSingle();
+    .select();
   if (error) {
     console.error("updateAinTaxRecord error", error);
     throw formatSupabaseError("Update AIN Tax record", error);
   }
-  return data ? fromAinTaxDb(data) : null;
+  const row = getSingleRow(data);
+  return row ? fromAinTaxDb(row) : null;
 }
 
 export async function deleteAinTaxRecord(
   supabase: SupabaseClient,
   id: string
 ): Promise<{ id: string } | null> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("ain_tax_records")
     .delete()
-    .eq("id", id)
-    .select()
-    .maybeSingle();
+    .eq("id", id);
   if (error) {
     console.error("deleteAinTaxRecord error", error);
     throw formatSupabaseError("Delete AIN Tax record", error);
