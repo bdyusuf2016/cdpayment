@@ -18,6 +18,7 @@ interface DutyPaymentProps {
     headers: string[];
     rows: (string | number | null)[][];
   } | null;
+  onClearPendingImport?: () => void;
   history: PaymentRecord[];
   setHistory: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
   onVisibleRowsChange: (rows: PaymentRecord[]) => void;
@@ -315,8 +316,21 @@ const inferImportColumns = (
 const parsePastedImportRows = (
   rawText: string,
 ): (string | number | null)[][] => {
-  const multilineRows = parseMultilineTabbedRows(rawText);
-  if (multilineRows.length > 0) {
+  if (!rawText.trim()) return [];
+
+  const lines = rawText.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const containsTabsOrMultipleSpaces = lines.some(
+    (line) => line.includes("\t") || /\s{2,}/.test(line),
+  );
+
+  if (!containsTabsOrMultipleSpaces && lines.length >= 3) {
+    const multilineRows: (string | number | null)[][] = [];
+    for (let index = 0; index < lines.length; index += 3) {
+      const chunk = lines.slice(index, index + 3).map((item) => item.trim());
+      if (chunk.length === 3 && chunk.some((item) => item.length > 0)) {
+        multilineRows.push(chunk);
+      }
+    }
     return multilineRows;
   }
 
@@ -333,6 +347,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   setClients,
   defaultOpenImport = false,
   pendingImportData,
+  onClearPendingImport,
   history,
   setHistory,
   onVisibleRowsChange,
@@ -453,13 +468,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   const [selectedAinColumn, setSelectedAinColumn] = useState("");
   const [selectedWhatsappColumn, setSelectedWhatsappColumn] = useState("");
   const [showDutyImportOption, setShowDutyImportOption] = useState(false);
+  const [pastedImportText, setPastedImportText] = useState("");
+  const [selectedPreviewRows, setSelectedPreviewRows] = useState<number[]>([]);
 
   useEffect(() => {
     if (defaultOpenImport) {
       setShowDutyImportOption(true);
       setShowImportMappingModal(true);
+      onClearPendingImport?.();
     }
-  }, [defaultOpenImport]);
+  }, [defaultOpenImport, onClearPendingImport]);
 
   useEffect(() => {
     if (pendingImportData && pendingImportData.rows.length > 0) {
@@ -473,10 +491,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       setSelectedPreviewRows(pendingImportData.rows.map((_, index) => index));
       setShowImportMappingModal(true);
       setShowDutyImportOption(true);
+      onClearPendingImport?.();
     }
-  }, [pendingImportData]);
-  const [pastedImportText, setPastedImportText] = useState("");
-  const [selectedPreviewRows, setSelectedPreviewRows] = useState<number[]>([]);
+  }, [pendingImportData, onClearPendingImport]);
+
   const [queuePhoneOverrides, setQueuePhoneOverrides] = useState<
     Record<string, string>
   >({});
@@ -955,11 +973,11 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
   };
 
   const previewColumns = [
-    { label: "AIN No.", value: selectedAinColumn || "Use selected AIN" },
-    { label: "Reg No", value: selectedBeColumn || "Column 8" },
-    { label: "Year", value: selectedYearColumn || "Column 1" },
-    { label: "Amount", value: selectedDutyColumn || "Column 17" },
-    { label: "Whatsapp contact", value: selectedWhatsappColumn || "Not mapped" },
+    { label: "AIN No.", value: selectedAinColumn, fallback: ain || "-" },
+    { label: "Reg No", value: selectedBeColumn, fallback: "-" },
+    { label: "Year", value: selectedYearColumn, fallback: "-" },
+    { label: "Amount", value: selectedDutyColumn, fallback: "-" },
+    { label: "Whatsapp contact", value: selectedWhatsappColumn, fallback: phone || "-" },
   ];
   const importPatternText =
     "Pattern: selected AIN/WhatsApp auto-fill হবে, আর চাইলে AIN column manually select করা যাবে.";
@@ -974,12 +992,6 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       return sum + (dutyValue || 0);
     }, 0);
   }, [importHeaders, importRows, selectedDutyColumn, selectedPreviewRows]);
-
-  useEffect(() => {
-    if (!showDutyImportOption) {
-      closeImportMappingModal();
-    }
-  }, [showDutyImportOption]);
 
   useEffect(() => {
     if (!showImportMappingModal) return;
@@ -1020,6 +1032,9 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
     const ainColumnIndex = selectedAinColumn
       ? importHeaders.findIndex((header) => header === selectedAinColumn)
       : -1;
+    const clientNameIndex = importHeaders.findIndex(
+      (header) => header.toLowerCase().includes("client") || header.toLowerCase().includes("name")
+    );
 
     if (
       beNumberIndex < 0 ||
@@ -1057,6 +1072,10 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         ? String(row[whatsappIndex]).trim()
         : "";
 
+      const importedClientName = clientNameIndex >= 0 && row[clientNameIndex]
+        ? String(row[clientNameIndex]).trim()
+        : "";
+
       const matchedClient = clients.find((client) => client.ain === importedAin);
       if (!be || !year || duty === null) continue;
       if (!importedAin) continue;
@@ -1067,7 +1086,7 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
         year,
         duty,
         ain: importedAin,
-        clientName: matchedClient?.name || (ainColumnIndex >= 0 && row[ainColumnIndex] ? "Client " + row[ainColumnIndex] : clientName),
+        clientName: matchedClient?.name || importedClientName || (ainColumnIndex >= 0 && row[ainColumnIndex] ? "Client " + row[ainColumnIndex] : clientName),
         phone: importedPhone || (matchedClient ? getPrimaryClientPhone(matchedClient) : phone),
       });
     }
@@ -3531,16 +3550,25 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
                               />
                             </td>
                             {previewColumns.map((column) => {
-                              const cellIndex = importHeaders.findIndex(
-                                (header) => header === column.value,
-                              );
+                              const cellIndex = column.value
+                                ? importHeaders.findIndex(
+                                    (header) => header === column.value,
+                                  )
+                                : -1;
+                              const cellVal =
+                                cellIndex >= 0 &&
+                                row[cellIndex] !== undefined &&
+                                row[cellIndex] !== null &&
+                                String(row[cellIndex]).trim() !== ""
+                                  ? String(row[cellIndex])
+                                  : column.fallback || "-";
                               return (
-                              <td
-                                key={`cell-${rowIndex}-${column.label}`}
-                                className={`px-4 py-3 text-sm ${isDark ? "text-slate-300" : "text-slate-700"}`}
-                              >
-                                {cellIndex >= 0 ? String(row[cellIndex] ?? "") : "-"}
-                              </td>
+                                <td
+                                  key={`cell-${rowIndex}-${column.label}`}
+                                  className={`px-4 py-3 text-sm ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                                >
+                                  {cellVal}
+                                </td>
                               );
                             })}
                           </tr>

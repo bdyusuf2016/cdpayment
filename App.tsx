@@ -1740,6 +1740,10 @@ const App: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => {
+                    if (tab.id !== "duty") {
+                      setPendingDutyImportData(null);
+                      setDefaultOpenImport(false);
+                    }
                     setActiveTab(tab.id as TabType);
                   }}
                   title={isSidebarCollapsed ? tab.label : undefined}
@@ -1838,6 +1842,10 @@ const App: React.FC = () => {
                     <button
                       key={tab.id}
                       onClick={() => {
+                        if (tab.id !== "duty") {
+                          setPendingDutyImportData(null);
+                          setDefaultOpenImport(false);
+                        }
                         setActiveTab(tab.id as TabType);
                         setIsMobileMenuOpen(false);
                       }}
@@ -2003,6 +2011,10 @@ const App: React.FC = () => {
               setClients={setClients}
               defaultOpenImport={defaultOpenImport}
               pendingImportData={pendingDutyImportData}
+              onClearPendingImport={() => {
+                setPendingDutyImportData(null);
+                setDefaultOpenImport(false);
+              }}
               history={dutyHistory}
               setHistory={setDutyHistory}
               onVisibleRowsChange={setVisibleDutyRows}
