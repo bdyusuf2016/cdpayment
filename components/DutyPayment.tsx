@@ -99,7 +99,21 @@ const isLikelyCustomsRecordStart = (line: string): boolean =>
 const parseMultilineTabbedRows = (
   rawText: string,
 ): (string | number | null)[][] => {
-  const lines = rawText
+  let cleanText = "";
+  let inQuotes = false;
+  for (let i = 0; i < rawText.length; i++) {
+    const char = rawText[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      cleanText += char;
+    } else if ((char === "\n" || char === "\r") && inQuotes) {
+      cleanText += " ";
+    } else {
+      cleanText += char;
+    }
+  }
+
+  const lines = cleanText
     .split(/\r?\n/)
     .map((line) => line.replace(/\u00a0/g, " ").trim())
     .filter((line) => line.length > 0);
@@ -121,6 +135,8 @@ const parseMultilineTabbedRows = (
 
     if (currentBlock.length > 0) {
       currentBlock.push(line);
+    } else {
+      currentBlock = [line];
     }
   });
 
@@ -182,26 +198,60 @@ const inferImportColumns = (
   rows: (string | number | null)[][],
   knownAins: string[],
 ) => {
+  if (headers.length === 0 || rows.length === 0) {
+    return {
+      ainColumn: "",
+      beColumn: "",
+      yearColumn: "",
+      dutyColumn: "",
+      whatsappColumn: "",
+    };
+  }
+
   const normalizedKnownAins = new Set(
     knownAins.map((ain) => normalizeImportedAin(ain)).filter(Boolean),
   );
-  const preferredColumns = {
-    ainColumn: headers[4] || "",
-    yearColumn: headers[0] || "",
-    beColumn: headers[7] || "",
-    dutyColumn: headers[16] || "",
-    whatsappColumn: "",
-  };
 
-  if (
-    preferredColumns.ainColumn &&
-    preferredColumns.yearColumn &&
-    preferredColumns.beColumn &&
-    preferredColumns.dutyColumn
-  ) {
-    return preferredColumns;
-  }
+  const maxCols = headers.length;
+  const sampleRow = rows.find((r) => r.length >= 6) || rows[0] || [];
+  const firstRowLower = (rows[0] || []).map((c) =>
+    String(c ?? "").trim().toLowerCase(),
+  );
 
+  // 1. Check if first row has table header text
+  const headerTotalTax = firstRowLower.findIndex(
+    (c) =>
+      c.includes("total tax") ||
+      c.includes("total taxes") ||
+      c.includes("duty") ||
+      c.includes("amount"),
+  );
+  const headerAinNo = firstRowLower.findIndex(
+    (c) =>
+      c.includes("ain no") ||
+      c.includes("ain number") ||
+      c.includes("declarant no") ||
+      c === "declarant" ||
+      c === "ain",
+  );
+  const headerRegNo = firstRowLower.findIndex(
+    (c) =>
+      (c.includes("reg") || c.includes("registration") || c.includes("b/e") || c.includes("be no")) &&
+      (c.includes("no") || c.endsWith("no")) &&
+      !c.includes("date"),
+  );
+  const headerYear = firstRowLower.findIndex(
+    (c) => c === "year" || c.includes("year") || c === "বছর",
+  );
+  const headerWhatsapp = firstRowLower.findIndex(
+    (c) =>
+      c.includes("whatsapp") ||
+      c.includes("phone") ||
+      c.includes("mobile") ||
+      c.includes("contact"),
+  );
+
+  // 2. Score columns for auto detection
   const isYearValue = (value: unknown) => {
     const text = String(value ?? "").trim();
     if (!/^\d{4}$/.test(text)) return false;
@@ -216,6 +266,15 @@ const inferImportColumns = (
   const isBeNumberValue = (value: unknown) =>
     /^\d{4,7}$/.test(String(value ?? "").trim());
 
+  const isDecimalAmountValue = (value: unknown) => {
+    const text = String(value ?? "").trim();
+    return (
+      /^\d{1,3}(,\d{3})*\.\d{2}$/.test(text) ||
+      /^\d+\.\d{2}$/.test(text) ||
+      /^\d{1,3}(,\d{3})*\.\d{1,2}$/.test(text)
+    );
+  };
+
   const isNumericAmountValue = (value: unknown) => {
     const text = String(value ?? "").trim();
     if (!text) return false;
@@ -226,17 +285,26 @@ const inferImportColumns = (
     const text = normalizeImportedAin(value);
     if (!text) return false;
     if (normalizedKnownAins.has(text)) return true;
-    if (/^\d{4}$/.test(text)) return false;
-    if (/^\d{4,7}$/.test(text)) return false;
-    return /^[A-Za-z0-9/-]{4,20}$/.test(text) && /[A-Za-z/-]/.test(text);
+    if (/^\d{8,12}$/.test(text)) return true;
+    if (/^[A-Za-z0-9/-]{4,20}$/.test(text) && /[A-Za-z/-]/.test(text)) return true;
+    return false;
   };
 
-  const scoreColumn = (predicate: (value: unknown) => boolean) =>
+  const isWhatsappValue = (value: unknown) => {
+    const text = String(value ?? "").trim().replace(/[+\-\s]/g, "");
+    if (!text) return false;
+    return /^(01\d{9}|8801\d{9})$/.test(text);
+  };
+
+  const scoreColumn = (
+    predicate: (value: unknown) => boolean,
+    weightFn?: (value: unknown) => number,
+  ) =>
     headers.map((_, index) =>
-      rows.reduce(
-        (count, row) => (predicate(row[index]) ? count + 1 : count),
-        0,
-      ),
+      rows.reduce((count, row) => {
+        if (!predicate(row[index])) return count;
+        return count + (weightFn ? weightFn(row[index]) : 1);
+      }, 0),
     );
 
   const pickBestIndex = (
@@ -261,55 +329,90 @@ const inferImportColumns = (
     return bestIndex;
   };
 
+  const dutyScores = scoreColumn(
+    isNumericAmountValue,
+    (val) => (isDecimalAmountValue(val) ? 10 : 1),
+  );
   const yearScores = scoreColumn(isYearValue);
   const dateScores = scoreColumn(isDateValue);
   const beScores = scoreColumn(isBeNumberValue);
-  const amountScores = scoreColumn(isNumericAmountValue);
   const ainScores = scoreColumn(isAinValue);
+  const whatsappScores = scoreColumn(isWhatsappValue);
 
-  const inferredYearIndex = pickBestIndex(yearScores);
-  const inferredDateIndex = pickBestIndex(dateScores);
-  const inferredDutyIndex = pickBestIndex(amountScores, { preferLast: true });
+  let inferredDutyIndex = headerTotalTax >= 0 ? headerTotalTax : -1;
+  if (inferredDutyIndex < 0) {
+    inferredDutyIndex = pickBestIndex(dutyScores, { preferLast: true });
+  }
 
-  let inferredBeIndex = -1;
-  if (
-    inferredDateIndex > 0 &&
-    ![inferredYearIndex, inferredDutyIndex].includes(inferredDateIndex - 1)
-  ) {
-    inferredBeIndex = inferredDateIndex - 1;
-  } else {
-    inferredBeIndex = pickBestIndex(beScores, {
-      exclude: [inferredYearIndex, inferredDutyIndex],
+  let inferredYearIndex = headerYear >= 0 ? headerYear : -1;
+  if (inferredYearIndex < 0) {
+    inferredYearIndex = pickBestIndex(yearScores, {
+      exclude: inferredDutyIndex >= 0 ? [inferredDutyIndex] : [],
     });
   }
 
-  const inferredAinIndex = pickBestIndex(ainScores, {
-    exclude: [inferredYearIndex, inferredBeIndex, inferredDutyIndex],
+  const inferredDateIndex = pickBestIndex(dateScores, {
+    exclude: [inferredYearIndex, inferredDutyIndex].filter((i) => i >= 0),
   });
 
-  const isWhatsappValue = (value: unknown) => {
-    const text = String(value ?? "").trim().replace(/[+\-\s]/g, "");
-    if (!text) return false;
-    return /^(01\d{9}|8801\d{9})$/.test(text);
-  };
+  let inferredBeIndex = headerRegNo >= 0 ? headerRegNo : -1;
+  if (inferredBeIndex < 0) {
+    if (
+      inferredDateIndex > 0 &&
+      ![inferredYearIndex, inferredDutyIndex].includes(inferredDateIndex - 1)
+    ) {
+      inferredBeIndex = inferredDateIndex - 1;
+    } else {
+      inferredBeIndex = pickBestIndex(beScores, {
+        exclude: [inferredYearIndex, inferredDutyIndex, inferredDateIndex].filter(
+          (i) => i >= 0,
+        ),
+      });
+    }
+  }
 
-  const whatsappScores = scoreColumn(isWhatsappValue);
-  const inferredWhatsappIndex = pickBestIndex(whatsappScores, {
-    exclude: [inferredYearIndex, inferredBeIndex, inferredDutyIndex, inferredAinIndex],
-  });
+  let inferredAinIndex = headerAinNo >= 0 ? headerAinNo : -1;
+  if (inferredAinIndex < 0) {
+    inferredAinIndex = pickBestIndex(ainScores, {
+      exclude: [inferredYearIndex, inferredBeIndex, inferredDutyIndex, inferredDateIndex].filter(
+        (i) => i >= 0,
+      ),
+    });
+  }
+
+  // Known standard ASYCUDA layout fallbacks if scoring missed any column
+  if (maxCols >= 20 && maxCols <= 25) {
+    if (inferredYearIndex < 0) inferredYearIndex = 0;
+    if (inferredAinIndex < 0) inferredAinIndex = 4;
+    if (inferredBeIndex < 0) inferredBeIndex = 7;
+    if (inferredDutyIndex < 0) inferredDutyIndex = 16;
+  } else if (maxCols >= 15 && maxCols < 20) {
+    if (inferredYearIndex < 0) inferredYearIndex = 0;
+    if (inferredAinIndex < 0) inferredAinIndex = 3;
+    if (inferredBeIndex < 0) inferredBeIndex = 6;
+    if (inferredDutyIndex < 0) inferredDutyIndex = 15;
+  } else if (maxCols >= 26) {
+    if (inferredYearIndex < 0) inferredYearIndex = 0;
+    if (inferredAinIndex < 0) inferredAinIndex = 5;
+    if (inferredBeIndex < 0) inferredBeIndex = 8;
+    if (inferredDutyIndex < 0) inferredDutyIndex = 25;
+  }
+
+  let inferredWhatsappIndex = headerWhatsapp >= 0 ? headerWhatsapp : -1;
+  if (inferredWhatsappIndex < 0) {
+    inferredWhatsappIndex = pickBestIndex(whatsappScores, {
+      exclude: [inferredYearIndex, inferredBeIndex, inferredDutyIndex, inferredAinIndex, inferredDateIndex].filter(
+        (i) => i >= 0,
+      ),
+    });
+  }
 
   return {
-    ainColumn:
-      inferredAinIndex >= 0
-        ? headers[inferredAinIndex]
-        : preferredColumns.ainColumn,
-    beColumn: inferredBeIndex >= 0 ? headers[inferredBeIndex] : headers[0] || "",
-    yearColumn:
-      inferredYearIndex >= 0 ? headers[inferredYearIndex] : headers[1] || "",
-    dutyColumn:
-      inferredDutyIndex >= 0 ? headers[inferredDutyIndex] : headers[2] || "",
-    whatsappColumn:
-      inferredWhatsappIndex >= 0 ? headers[inferredWhatsappIndex] : "",
+    ainColumn: inferredAinIndex >= 0 ? headers[inferredAinIndex] || "" : "",
+    beColumn: inferredBeIndex >= 0 ? headers[inferredBeIndex] || "" : headers[0] || "",
+    yearColumn: inferredYearIndex >= 0 ? headers[inferredYearIndex] || "" : headers[1] || "",
+    dutyColumn: inferredDutyIndex >= 0 ? headers[inferredDutyIndex] || "" : headers[2] || "",
+    whatsappColumn: inferredWhatsappIndex >= 0 ? headers[inferredWhatsappIndex] || "" : "",
   };
 };
 
@@ -318,7 +421,28 @@ const parsePastedImportRows = (
 ): (string | number | null)[][] => {
   if (!rawText.trim()) return [];
 
-  const lines = rawText.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  // Step 1: Pre-process quotes (join newlines enclosed in quotes)
+  let cleanText = "";
+  let inQuotes = false;
+  for (let i = 0; i < rawText.length; i++) {
+    const char = rawText[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      cleanText += char;
+    } else if ((char === "\n" || char === "\r") && inQuotes) {
+      cleanText += " ";
+    } else {
+      cleanText += char;
+    }
+  }
+
+  // Step 2: Try multiline tabbed / delimited customs record parsing
+  const multilineTabbed = parseMultilineTabbedRows(cleanText);
+  if (multilineTabbed.length > 0) {
+    return multilineTabbed;
+  }
+
+  const lines = cleanText.split(/\r?\n/).filter((line) => line.trim().length > 0);
   const containsTabsOrMultipleSpaces = lines.some(
     (line) => line.includes("\t") || /\s{2,}/.test(line),
   );
@@ -334,7 +458,7 @@ const parsePastedImportRows = (
     return multilineRows;
   }
 
-  return rawText
+  return cleanText
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
@@ -860,10 +984,16 @@ const DutyPayment: React.FC<DutyPaymentProps> = ({
       return;
     }
 
-    const headers = Array.from(
-      { length: widestColumnCount },
-      (_, index) => `Column ${index + 1}`,
-    );
+    const sampleRow = rows.find((r) => r.length >= 6) || rows[0] || [];
+    const headers = Array.from({ length: widestColumnCount }, (_, index) => {
+      const sampleVal =
+        sampleRow[index] !== undefined &&
+        sampleRow[index] !== null &&
+        String(sampleRow[index]).trim() !== ""
+          ? `: ${String(sampleRow[index]).slice(0, 15)}`
+          : "";
+      return `Col ${index + 1}${sampleVal}`;
+    });
     const inferredColumns = inferImportColumns(
       headers,
       rows,
