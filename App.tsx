@@ -1101,7 +1101,7 @@ const App: React.FC = () => {
           },
           {
             label: config.language === "en" ? "Version" : "ভার্সন",
-            value: "Pro v3.6",
+            value: "Pro v3.0.1",
             color: "#f59e0b",
           },
         ];
@@ -2189,7 +2189,7 @@ const App: React.FC = () => {
                 {config.agencyName}
               </p>
               <p className="text-[9px] font-bold text-slate-400 max-w-sm">
-                System v2.1.0 • {config.agencyAddress}
+                System v3.0.1 • {config.agencyAddress}
               </p>
               {config.showDeveloperCredit && config.developerCreditName ? (
                 <p className="text-[10px] font-bold text-slate-500">
