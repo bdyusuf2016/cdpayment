@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SystemConfig, WasteCompany, WasteRecord } from "../types";
 import { createSimplePdfBlob } from "../utils/simplePdf";
@@ -32,6 +32,14 @@ const getTodayDateInputValue = (): string => {
   const now = new Date();
   const offset = now.getTimezoneOffset();
   const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().split("T")[0];
+};
+
+const getYesterdayDateInputValue = (): string => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000);
   return local.toISOString().split("T")[0];
 };
 
@@ -132,6 +140,9 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const [settlementRecord, setSettlementRecord] = useState<WasteRecord | null>(null);
   const [settlementAmount, setSettlementAmount] = useState("");
   const [settlementPaymentMethod, setSettlementPaymentMethod] = useState("");
+
+  const entryFormRef = useRef<HTMLFormElement | null>(null);
+  const entryDateInputRef = useRef<HTMLInputElement | null>(null);
 
   // PDF Layout Settings States
   const [pdfSettingsModalOpen, setPdfSettingsModalOpen] = useState(false);
@@ -341,7 +352,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
           companyFilter === "all" || record.companyId === companyFilter;
         const matchesStatus =
           statusFilter === "all" || record.status.toLowerCase() === statusFilter;
-        const isDueOnly = (record.due || 0) > 0 || (record.received || 0) <= 0;
+        const isDueOnly = (record.due || 0) > 0 || record.status === "Unpaid" || record.status === "Partial";
 
         return matchesSearch && matchesCompany && matchesStatus && isDueOnly;
       })
@@ -625,7 +636,10 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
     setReceived(String(record.received || 0));
     setPaymentMethod(record.paymentMethod || systemConfig.paymentMethods[0] || "");
     setNotes(record.notes || "");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    entryFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => {
+      entryDateInputRef.current?.focus();
+    }, 150);
   };
 
   const handleRecordDelete = async (id: string) => {
@@ -653,7 +667,11 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const handleSettlementStart = (record: WasteRecord) => {
     setSettlementRecord(record);
     const defaultSettlementAmount =
-      record.amount > 0 ? record.received || 0 : record.amount || record.received || 0;
+      record.due > 0
+        ? record.due
+        : record.amount > 0
+          ? record.amount
+          : 0;
     setSettlementAmount(String(defaultSettlementAmount));
     setSettlementDate(getTodayDateInputValue());
     setSettlementPaymentMethod(
@@ -666,7 +684,8 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
   const handleSettlementSubmit = async () => {
     if (!supabase || !settlementRecord) return;
 
-    const amount = Math.max(0, Number(settlementAmount) || 0);
+    const rawAmount = Number(settlementAmount);
+    const amount = Math.max(0, isNaN(rawAmount) ? 0 : rawAmount);
     const hasFixedAmount = (settlementRecord.ratePerTrip || 0) > 0;
 
     if (hasFixedAmount && amount > (settlementRecord.amount || 0)) {
@@ -674,15 +693,23 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       return;
     }
 
-    const nextAmount = hasFixedAmount ? settlementRecord.amount || 0 : amount;
-    const nextReceived = amount;
-    const nextDue = Math.max(0, nextAmount - nextReceived);
-    const nextStatus: WasteRecord["status"] =
-      nextDue <= 0 && nextAmount > 0
-        ? "Paid"
-        : nextReceived > 0
-          ? "Partial"
-          : "Unpaid";
+    let nextAmount = 0;
+    let nextReceived = 0;
+    let nextDue = 0;
+    let nextStatus: WasteRecord["status"] = "Paid";
+
+    if (amount === 0) {
+      // Settlement without payment (0 payment received)
+      nextAmount = 0;
+      nextReceived = 0;
+      nextDue = 0;
+      nextStatus = "Paid";
+    } else {
+      nextAmount = hasFixedAmount ? settlementRecord.amount || 0 : amount;
+      nextReceived = amount;
+      nextDue = Math.max(0, nextAmount - nextReceived);
+      nextStatus = nextDue <= 0 ? "Paid" : "Partial";
+    }
 
     const nextNotes = updateSettleDateInNotes(settlementRecord.notes, settlementDate);
 
@@ -691,7 +718,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       received: nextReceived,
       due: nextDue,
       status: nextStatus,
-      paymentMethod: settlementPaymentMethod || settlementRecord.paymentMethod,
+      paymentMethod: settlementPaymentMethod || settlementRecord.paymentMethod || (amount === 0 ? "Without Payment" : undefined),
       notes: nextNotes,
     };
 
@@ -860,36 +887,53 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
 
     setActionError(null);
     try {
-      const results = await Promise.all(
-        targetRecords.map(async (rec) => {
-          const appliedAmount = receivedById[rec.id] ?? 0;
-          const hasFixedAmount = (rec.ratePerTrip || 0) > 0;
-          const nextAmount = hasFixedAmount ? rec.amount || 0 : appliedAmount;
-          const nextReceived = appliedAmount;
-          const nextDue = Math.max(0, nextAmount - nextReceived);
-          const nextStatus: WasteRecord["status"] =
-            nextDue <= 0 && (nextReceived > 0 || nextAmount > 0)
-              ? "Paid"
-              : nextReceived > 0
-                ? "Partial"
-                : "Unpaid";
+      let results;
+      if (amount === 0) {
+        // Bulk Settlement Without Payment (0 payment for all selected records)
+        results = await Promise.all(
+          targetRecords.map(async (rec) => {
+            const nextNotes = updateSettleDateInNotes(rec.notes, bulkSettlementDate);
+            const patch: Partial<WasteRecord> = {
+              amount: 0,
+              received: 0,
+              due: 0,
+              status: "Paid",
+              paymentMethod: bulkSettlementPaymentMethod || rec.paymentMethod || "Without Payment",
+              notes: nextNotes,
+            };
+            const updated = await updateWasteRecord(supabase, rec.id, patch);
+            return { id: rec.id, updated };
+          })
+        );
+      } else {
+        const receivedById = allocateBulkSettlement(targetRecords, amount);
+        results = await Promise.all(
+          targetRecords.map(async (rec) => {
+            const appliedAmount = receivedById[rec.id] ?? 0;
+            const hasFixedAmount = (rec.ratePerTrip || 0) > 0;
+            const nextAmount = hasFixedAmount ? rec.amount || 0 : appliedAmount;
+            const nextReceived = appliedAmount;
+            const nextDue = Math.max(0, nextAmount - nextReceived);
+            const nextStatus: WasteRecord["status"] =
+              nextDue <= 0 ? "Paid" : nextReceived > 0 ? "Partial" : "Unpaid";
 
-          const nextNotes = appliedAmount > 0
-            ? updateSettleDateInNotes(rec.notes, bulkSettlementDate)
-            : rec.notes;
+            const nextNotes = appliedAmount > 0
+              ? updateSettleDateInNotes(rec.notes, bulkSettlementDate)
+              : rec.notes;
 
-          const patch: Partial<WasteRecord> = {
-            amount: nextAmount,
-            received: nextReceived,
-            due: nextDue,
-            status: nextStatus,
-            paymentMethod: bulkSettlementPaymentMethod || rec.paymentMethod,
-            notes: nextNotes,
-          };
-          const updated = await updateWasteRecord(supabase, rec.id, patch);
-          return { id: rec.id, updated };
-        })
-      );
+            const patch: Partial<WasteRecord> = {
+              amount: nextAmount,
+              received: nextReceived,
+              due: nextDue,
+              status: nextStatus,
+              paymentMethod: bulkSettlementPaymentMethod || rec.paymentMethod,
+              notes: nextNotes,
+            };
+            const updated = await updateWasteRecord(supabase, rec.id, patch);
+            return { id: rec.id, updated };
+          })
+        );
+      }
 
       setHistory((prev) =>
         prev.map((rec) => {
@@ -1177,6 +1221,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
       )}
 
       <form
+        ref={entryFormRef}
         onSubmit={handleRecordSubmit}
         className={`rounded-[2rem] border shadow-xl p-8 ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
       >
@@ -1199,7 +1244,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
+          <input ref={entryDateInputRef} type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className={`rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
           <div className="relative w-full">
             <button
               type="button"
@@ -1453,6 +1498,17 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                   isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
                 }`}
               />
+              <button
+                type="button"
+                onClick={() => {
+                  const yesterday = getYesterdayDateInputValue();
+                  setStartDate(yesterday);
+                  setEndDate(yesterday);
+                }}
+                className="rounded-xl bg-slate-700 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-md active:scale-95 transition-all shrink-0"
+              >
+                Yesterday
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -1827,7 +1883,7 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
                     <td className="px-4 py-3 text-center"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${record.status === "Paid" ? "bg-emerald-50 text-emerald-600" : record.status === "Partial" ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"}`}>{record.status}</span></td>
                   )}
                   {isColumnVisible("action") && (
-                    <td className="px-4 py-3"><div className="flex justify-end gap-2">{record.due > 0 || record.amount <= 0 ? <button type="button" onClick={() => handleSettlementStart(record)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">Settle</button> : null}<button type="button" onClick={() => handleRecordEdit(record)} className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600">Edit</button><button type="button" onClick={() => handleRecordDelete(record.id)} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600">Delete</button></div></td>
+                    <td className="px-4 py-3"><div className="flex justify-end gap-2">{record.status !== "Paid" ? <button type="button" onClick={() => handleSettlementStart(record)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:bg-emerald-100 transition-all">Settle</button> : null}<button type="button" onClick={() => handleRecordEdit(record)} className="rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600">Edit</button><button type="button" onClick={() => handleRecordDelete(record.id)} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600">Delete</button></div></td>
                   )}
                 </tr>
               ))}
@@ -1910,21 +1966,35 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  {(settlementRecord.ratePerTrip || 0) > 0 ? "Settlement Amount" : "Final Amount"}
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                    {(settlementRecord.ratePerTrip || 0) > 0 ? "Settlement Amount" : "Final Amount"}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setSettlementAmount("0")}
+                    className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded transition-all"
+                  >
+                    Without Payment (৳0)
+                  </button>
+                </div>
                 <input
                   type="number"
                   min="0"
-                  max={(settlementRecord.ratePerTrip || 0) > 0 ? settlementRecord.due : undefined}
+                  max={(settlementRecord.ratePerTrip || 0) > 0 ? settlementRecord.amount : undefined}
                   value={settlementAmount}
                   onChange={(e) => setSettlementAmount(e.target.value)}
-                  placeholder={(settlementRecord.ratePerTrip || 0) > 0 ? "Settlement amount" : "Final amount"}
+                  placeholder="0"
                   className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                 />
               </div>
 
-              {(settlementRecord.ratePerTrip || 0) <= 0 ? (
+              {Number(settlementAmount) === 0 ? (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 flex items-center gap-1.5">
+                  <i className="fas fa-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                  <span>Without Payment Settlement: রেকর্ডটি ৳0 পেমেন্টে Paid হিসেবে settle হবে।</span>
+                </div>
+              ) : (settlementRecord.ratePerTrip || 0) <= 0 ? (
                 <p className="text-xs font-medium text-slate-400">
                   এই record-এ আগে amount set করা নেই। এখন যা receive করবেন, সেটাই final amount হিসেবে save হবে।
                 </p>
@@ -2075,18 +2145,34 @@ const WasteManagement: React.FC<WasteManagementProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  Received Amount
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                    Received Amount
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setBulkSettlementAmount("0")}
+                    className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded transition-all"
+                  >
+                    Without Payment (৳0)
+                  </button>
+                </div>
                 <input
                   type="number"
                   min="0"
                   value={bulkSettlementAmount}
                   onChange={(e) => setBulkSettlementAmount(e.target.value)}
-                  placeholder="Settlement amount"
+                  placeholder="0"
                   className={`w-full rounded-xl border px-4 py-3 font-bold outline-none ${isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                 />
               </div>
+
+              {Number(bulkSettlementAmount) === 0 ? (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 flex items-center gap-1.5">
+                  <i className="fas fa-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                  <span>Without Payment Bulk Settlement: সব নির্বাচিত {bulkSettlementIds.length}টি রেকর্ড ৳0 পেমেন্টে Paid হিসেবে settle হবে।</span>
+                </div>
+              ) : null}
 
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">

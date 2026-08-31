@@ -212,6 +212,9 @@ const AssessmentRecordTab: React.FC<AssessmentRecordTabProps> = ({
   const [excelPasteInput, setExcelPasteInput] = useState("");
   const [inWordEncoding, setInWordEncoding] = useState<"Unicode" | "ANSI">("ANSI");
 
+  const entryFormRef = useRef<HTMLFormElement | null>(null);
+  const clientNameRef = useRef<HTMLInputElement | null>(null);
+
   // Pay Modal States
   const [showPayModal, setShowPayModal] = useState(false);
   const [payRecord, setPayRecord] = useState<ClearanceRecord | null>(null);
@@ -1107,7 +1110,10 @@ ${tableStr}
     setInWord(record.inWord || "");
     const isAnsi = /[a-zA-Z]/.test(record.inWord || "");
     setInWordEncoding(isAnsi ? "ANSI" : "Unicode");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    entryFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => {
+      clientNameRef.current?.focus();
+    }, 150);
   };
 
   const handleDelete = async (id: string) => {
@@ -1549,6 +1555,7 @@ ${tableStr}
 
       {/* Input / Editing Form */}
       <form
+        ref={entryFormRef}
         onSubmit={handleSubmit}
         className={`rounded-[2rem] border shadow-xl p-8 transition-all ${isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
           }`}
@@ -1615,6 +1622,7 @@ ${tableStr}
               প্রতিষ্ঠানের নাম (Client Name)
             </label>
             <input
+              ref={clientNameRef}
               type="text"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}

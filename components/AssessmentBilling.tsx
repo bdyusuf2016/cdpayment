@@ -34,6 +34,14 @@ const getTodayDateInputValue = (): string => {
   return local.toISOString().split("T")[0];
 };
 
+const getYesterdayDateInputValue = (): string => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000);
+  return local.toISOString().split("T")[0];
+};
+
 const formatDateInputForRecord = (value: string): string => {
   if (!value) return new Date().toLocaleDateString("en-GB");
   const [year, month, day] = value.split("-");
@@ -1498,6 +1506,16 @@ const AssessmentBilling: React.FC<AssessmentBillingProps> = ({
               />
             </div>
 
+            <button
+              onClick={() => {
+                const yesterday = getYesterdayDateInputValue();
+                setStartDate(yesterday);
+                setEndDate(yesterday);
+              }}
+              className="bg-slate-700 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-slate-800"
+            >
+              Yesterday
+            </button>
             <button
               onClick={() => {
                 const today = getTodayDateInputValue();
